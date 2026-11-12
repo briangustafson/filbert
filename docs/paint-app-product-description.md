@@ -11,11 +11,11 @@ It will allow integration with major LLMs, such as Claude and ChatGPT, as well a
 
 This will be an app only, not a service.
 
-Android support is the first priority, followed by iOS, macOS, and web support.
+Android support is the first priority, followed by macOS, iOS, and web support.
 
 Data can be synced between the app on different devices. The user might do the prep work on their MacBook, then use a phone for in-progress work, then switch back to the laptop for posting to social media and recording notes.
 
-The working name is "PaintKit".
+The working name is "PaintPage".
 
 # Walkthrough of typical usage
 
