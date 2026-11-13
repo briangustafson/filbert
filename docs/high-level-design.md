@@ -2,6 +2,7 @@
 
 Status: Draft v1 (2026-11-12)
 Source requirements: [paint-app-product-description.md](paint-app-product-description.md)
+Rules for implementation: [engineering-guidelines.md](engineering-guidelines.md)
 
 This document captures the architecture, technology choices, integration approach, and milestone plan for Filbert Paint Studio ("Filbert" for short). Each milestone will get its own detailed design and implementation plan; those documents may refine anything here, but should call out deviations explicitly.
 
