@@ -95,7 +95,7 @@ lib/
     projects/  photo_viewer/  crop/  autocrop/  view_aids/  compare/
     ai/  print/  share/  notebook/  sync/  settings/
 packages/
-  sync_engine/      pure-Dart sync logic (no Flutter dependency)
+  sync_engine/      pure-Dart sync logic (no Flutter dependency; created in M3)
   canvas_detect/    detector interface + OpenCV implementations
 ```
 
@@ -123,8 +123,8 @@ All records carry `id` (UUIDv7), `createdAt`, `updatedAt`, `updatedByDeviceId`, 
 | `startNotes` | Goals, focus, style; optionally included in AI prompts |
 | `finalNotes` | Post-completion notes (M7) |
 | `status` | `inProgress` / `completed` |
-| `referenceImageId` | Optional |
-| `finalImageId` | Optional (M7) |
+| `referenceImageId` | Optional. The only record of which image is the reference (images carry no role field, so there's one source of truth after sync) |
+| `finalImageId` | Optional (M7); same approach as `referenceImageId` |
 | `viewPrefs` | Grid settings (count or physical spacing, color, width), last-used view aids |
 
 **Image** (metadata; the pixels live in a blob)
@@ -132,7 +132,6 @@ All records carry `id` (UUIDv7), `createdAt`, `updatedAt`, `updatedByDeviceId`, 
 | Field | Notes |
 |---|---|
 | `projectId` | Owning project |
-| `role` | `reference` / `progress` / `final` / `derived` / `other` |
 | `blobId` | Points at the immutable original file |
 | `width`, `height`, `capturedAt`, `source` | Source = camera / device / googlePhotos / derived |
 | `edits` | Current edit state (§5.1) |
@@ -154,9 +153,11 @@ Images are stored as their own records (not a list inside the project record) so
 
 - Originals are written once and never modified.
 - An image's `edits` field holds parameters:
-  - `crop`: four corner points in normalized original coordinates (supports both rectangular crop and perspective-corrected auto-crop), plus output aspect ratio.
-  - `rotation`: quarter turns (and optionally a small fine-rotation angle).
-- **Undo**: each change pushes the previous edit state onto a per-image history (capped, e.g. 50 entries). **Revert to original** is always available because the original is retained. Whether undo history syncs or stays local is an M1 design decision; the current edit state always syncs.
+  - `crop`: four corner points in normalized original coordinates, plus an optional output aspect ratio. One quad covers rectangular crops, straightened (fine-rotated) crops, and perspective-corrected auto-crops.
+  - `quarterTurns`: 90° rotations applied to the output.
+- **Undo**: each change pushes the previous edit state onto a per-image history (capped at 50 entries), stored locally and **never synced**. **Revert to original** is always available because the original is retained. The current edit state always syncs.
+
+See [milestones/m1-design.md](milestones/m1-design.md) §4.2 for the exact format.
 
 ### 5.2 Permanent edits vs. viewing aids
 
