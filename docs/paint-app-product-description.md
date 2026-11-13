@@ -15,7 +15,7 @@ Android support is the first priority, followed by macOS, iOS, and web support.
 
 Data can be synced between the app on different devices. The user might do the prep work on their MacBook, then use a phone for in-progress work, then switch back to the laptop for posting to social media and recording notes.
 
-The working name is "PaintPage".
+The working name is "Filbert Paint Studio", abbreviated as "Filbert".
 
 # Walkthrough of typical usage
 

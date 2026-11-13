@@ -1,9 +1,9 @@
-# PaintPage — High-Level Design
+# Filbert Paint Studio — High-Level Design
 
 Status: Draft v1 (2026-11-12)
 Source requirements: [paint-app-product-description.md](paint-app-product-description.md)
 
-This document captures the architecture, technology choices, integration approach, and milestone plan for PaintPage. Each milestone will get its own detailed design and implementation plan; those documents may refine anything here, but should call out deviations explicitly.
+This document captures the architecture, technology choices, integration approach, and milestone plan for Filbert Paint Studio ("Filbert" for short). Each milestone will get its own detailed design and implementation plan; those documents may refine anything here, but should call out deviations explicitly.
 
 ---
 
@@ -15,11 +15,11 @@ This document captures the architecture, technology choices, integration approac
 - Every feature is optional and usable on its own (e.g. someone who only wants auto-crop or print prep should find that path immediately).
 - Run on Android first, then macOS, iOS, and web, from one codebase.
 - Let a user move between devices mid-project, with data synced through storage the user already owns.
-- Integrate with other apps (camera, Google Photos, AI assistants, Instagram, printers) without PaintPage operating any server.
+- Integrate with other apps (camera, Google Photos, AI assistants, Instagram, printers) without Filbert operating any server.
 
 **Non-goals**
 
-- No PaintPage backend, accounts, or hosted service. ("App only, not a service.")
+- No Filbert backend, accounts, or hosted service. ("App only, not a service.")
 - No in-app LLM calls in the first release (hand-off only — see §8.3). The design keeps the door open for bring-your-own-API-key later.
 - No general-purpose photo editor (exposure, retouching, layers). Edits are limited to what painters need: crop/perspective/rotate and viewing aids.
 - No multi-user collaboration; sync is between one user's own devices.
@@ -194,7 +194,7 @@ original blob + edits + selected viewing aids ──▶ full-res render ──�
 
 ### 6.1 Approach
 
-- Storage: the user's own Google Drive, in the hidden **`appDataFolder`** (scope `drive.appdata`). It doesn't clutter their Drive, costs PaintPage nothing, and counts against the user's own quota.
+- Storage: the user's own Google Drive, in the hidden **`appDataFolder`** (scope `drive.appdata`). It doesn't clutter their Drive, costs Filbert nothing, and counts against the user's own quota.
 - Sync is opt-in. With sync off, the app is fully functional offline with no sign-in.
 - The local SQLite DB is always the source of truth for the UI; sync is a background process reconciling it with Drive.
 
@@ -277,7 +277,7 @@ Web is still "app only": it is served as static files with no backend. Hosting c
 
 ### 8.1 Photo sources
 
-- **Device / camera**: platform pickers and camera plugin (table above). Imported photos are copied into PaintPage's file store so the project doesn't depend on the original staying in the gallery.
+- **Device / camera**: platform pickers and camera plugin (table above). Imported photos are copied into Filbert's file store so the project doesn't depend on the original staying in the gallery.
 - **Google Photos (M3)**: via the **Photos Picker API**. Since March 2025, third-party apps can no longer browse a user's library through the Library API; the Picker is the supported path. Flow: create a picker session → open the session's `pickerUri` (in a browser / custom tab) → poll the session until the user finishes → list the picked media items → download each at full resolution using the auth token → copy into the project.
 
 ### 8.2 Sharing out (general)
@@ -287,14 +287,14 @@ Web is still "app only": it is served as static files with no backend. Hosting c
 ### 8.3 Ask AI (M4) — hand-off mode
 
 1. User picks a built-in prompt or writes their own; optionally includes the reference photo (and project start notes) and selects viewing aids via the Include checklist.
-2. PaintPage renders the image(s) and composes the prompt text.
+2. Filbert renders the image(s) and composes the prompt text.
 3. Hand-off:
    - **Android / iOS**: share sheet with images + text, so the user picks the Claude or ChatGPT app (or any other).
    - **macOS / web**: share sheet / Web Share where available; otherwise fallback.
    - **Fallback (all platforms)**: the prompt text is always also copied to the clipboard (some share targets drop text), and on desktop/web the app offers to open `claude.ai` or `chatgpt.com` with the rendered images saved/copied for attaching.
 4. Since answers don't come back automatically, the project notes offer a quick **Paste AI response** action.
 
-**Future API-key mode**: `AiProvider` is an interface with a `HandoffAiProvider` implementation now. A later `ApiKeyAiProvider` (user-supplied Claude/OpenAI key stored in secure storage, called directly from the device — still no PaintPage server) would return responses in-app and save them to the notebook. The prompt-building and image-selection code is shared by both.
+**Future API-key mode**: `AiProvider` is an interface with a `HandoffAiProvider` implementation now. A later `ApiKeyAiProvider` (user-supplied Claude/OpenAI key stored in secure storage, called directly from the device — still no Filbert server) would return responses in-app and save them to the notebook. The prompt-building and image-selection code is shared by both.
 
 ### 8.4 Instagram (M6)
 
@@ -315,7 +315,7 @@ Web is still "app only": it is served as static files with no backend. Hosting c
 
 ## 9. Privacy and security
 
-- No PaintPage servers; no analytics in v1 (any future crash reporting would be opt-in).
+- No Filbert servers; no analytics in v1 (any future crash reporting would be opt-in).
 - User data lives only on their devices and in their own Drive `appDataFolder`.
 - OAuth tokens and any future API keys live in platform secure storage only.
 - Minimal, incremental Google scopes, requested at the moment the related feature is first used.
