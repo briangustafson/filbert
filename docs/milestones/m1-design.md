@@ -310,8 +310,11 @@ When applying an auto-crop:
 
 - `flutter create` with org `com.example`, app name `filbert`; Android only (other platforms added in their milestones).
 - Pub workspace at the repo root: the app plus `packages/canvas_detect`.
-- Dependencies (latest stable at the time of the setup task; versions recorded in `pubspec.yaml`): `flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`, `build_runner`, `drift`, `drift_flutter`, `drift_dev`, `go_router`, `image_picker`, `uuid`, `path_provider`, `opencv_dart`, `flutter_lints`. Any additional package needs confirmation.
-- CI (GitHub Actions): `flutter pub get` → `build_runner` → `flutter analyze` → `flutter test` → `canvas_detect` evaluation → Android debug build.
+- Dependencies (latest stable at the time of the setup task; versions recorded in `pubspec.yaml`): `flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`, `build_runner`, `drift`, `drift_flutter`, `drift_dev`, `go_router`, `image_picker`, `uuid`, `path_provider`, `opencv_dart`, `flutter_lints`, `material_ui`. Any additional package needs confirmation.
+- `material_ui` is Flutter's Material library, now shipped as a package; `package:flutter/material.dart` is deprecated since Flutter 3.47, and `flutter create` adds `material_ui` by default. Import `package:material_ui/material_ui.dart`, never `package:flutter/material.dart`.
+- `opencv_dart` is added in the rendering task (T7) rather than the setup task. It is a heavy native build, nothing uses it earlier, and the T7 spike decides whether it belongs in the app or in `packages/canvas_detect_opencv` (§6.1).
+- Flutter version: 3.50.0 stable, pinned in CI (`.github/workflows/ci.yml`); bump it there and locally together.
+- CI (GitHub Actions, using `subosito/flutter-action`): `flutter pub get` → `build_runner` → `flutter analyze` → `flutter test` (app, then `dart test` in `packages/canvas_detect`) → `canvas_detect` evaluation (from T13) → Android debug build.
 
 ---
 

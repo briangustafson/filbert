@@ -6,16 +6,16 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 ## Before starting
 
-- [ ] **You:** install the Flutter SDK (stable) and Android Studio; have an emulator or a phone with USB debugging enabled. (Needed for T1.)
+- [x] **You:** install the Flutter SDK (stable) and Android Studio; have an emulator or a phone with USB debugging enabled. (Needed for T1.)
 - [ ] **You:** collect 20–40 photos of paintings on an easel / wall / in progress, covering the situations in m1-design §6.4. (Needed for T13.)
 
 ## Tasks
 
 ### Foundation
 
-- [ ] **T1 — Project skeleton and CI**
+- [x] **T1 — Project skeleton and CI**
   - `flutter create` (org `com.example`, name `filbert`, Android only); Pub workspace with an empty `packages/canvas_detect`.
-  - Add M1 dependencies (m1-design §7) at latest stable; `flutter_lints`; `build_runner` working.
+  - Add M1 dependencies (m1-design §7) at latest stable, except `opencv_dart` (added in T7); `flutter_lints`; `build_runner` working.
   - App shell: `go_router` with placeholder screens for every M1 route (§3.1); Material 3 neutral-gray theme, light/dark following system.
   - GitHub Actions: pub get → build_runner → analyze → test → Android debug build.
   - *Done when:* app launches on the emulator and navigates between placeholder screens; CI is green.
@@ -61,6 +61,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - Depends on: T3
 
 - [ ] **T7 — OpenCV integration and ImageRenderer**
+  - Add `opencv_dart` (deferred from T1: heavy native build, and the spike decides which package it lives in).
   - Spike first: confirm `opencv_dart` works in the app and whether it runs under plain `dart test`; record the outcome in m1-design §6.1 (resolves open item).
   - `ImageRenderer` in a background isolate: decode, apply edits via homography + `warpPerspective`, quarter turns, encode; preview and thumbnail caches keyed by edits hash.
   - *Done when:* golden tests for axis-aligned crop, straightened crop, perspective quad, and quarter turns; preview latency measured on a device and recorded.

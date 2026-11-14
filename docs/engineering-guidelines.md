@@ -39,6 +39,7 @@ packages/       canvas_detect/ (M1), sync_engine/ (M3)
 ## Code
 
 - Follow `flutter_lints`; `flutter analyze` must be clean.
+- Material widgets come from `package:material_ui/material_ui.dart`; `package:flutter/material.dart` is deprecated.
 - Generated files (`*.g.dart`, `*.drift.dart`) come from `build_runner`; never hand-edit them.
 - No secrets or tokens in the DB, logs, or synced data; use platform secure storage.
 - Each feature must be usable on its own (e.g. a user who only wants auto-crop).
