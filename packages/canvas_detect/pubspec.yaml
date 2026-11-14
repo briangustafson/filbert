@@ -1,0 +1,12 @@
+name: canvas_detect
+description: Canvas (painting) corner detection for Filbert. Pure-Dart API and scoring.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.14.0
+
+resolution: workspace
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.32.0
