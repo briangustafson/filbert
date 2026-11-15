@@ -1,23 +1,16 @@
-import 'package:filbert/app/app.dart';
 import 'package:filbert/app/router.dart';
 import 'package:filbert/app/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/fake_project_repository.dart';
+import '../support/pump_app.dart';
+
 void main() {
-  Future<ProviderContainer> pumpApp(WidgetTester tester) async {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const FilbertApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
-    return container;
-  }
+  late FakeProjectRepository projects;
+
+  setUp(() => projects = FakeProjectRepository());
 
   String location(ProviderContainer container) =>
       container.read(routerProvider).state.uri.toString();
@@ -37,18 +30,20 @@ void main() {
   }
 
   testWidgets('starts on the project list', (tester) async {
-    final container = await pumpApp(tester);
+    final container = await pumpFilbertApp(tester, projects: projects);
     expectTitle('Projects');
     expect(location(container), Routes.projectList);
     expect(find.byType(BackButton), findsNothing);
   });
 
   testWidgets('navigates down to every M1 route and back', (tester) async {
-    final container = await pumpApp(tester);
-    const p = 'sample-project';
+    final project = projects.seed('Harbor');
+    final container = await pumpFilbertApp(tester, projects: projects);
+    final p = project.id;
     const i = 'sample-image';
 
-    await tapLink(tester, 'Open project');
+    await tester.tap(find.text('Harbor'));
+    await tester.pumpAndSettle();
     expectTitle('Project');
     expect(location(container), Routes.project(p));
 
@@ -73,7 +68,10 @@ void main() {
     await tapBack(tester);
     expectTitle('Projects');
 
-    await tapLink(tester, 'Settings');
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
     expectTitle('Settings');
     expect(location(container), Routes.settings);
 
@@ -82,7 +80,7 @@ void main() {
   });
 
   testWidgets('deep links open with route ids', (tester) async {
-    final container = await pumpApp(tester);
+    final container = await pumpFilbertApp(tester, projects: projects);
     container.read(routerProvider).go(Routes.autocrop('p1', 'i1'));
     await tester.pumpAndSettle();
 

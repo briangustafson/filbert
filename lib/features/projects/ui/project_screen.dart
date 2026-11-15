@@ -1,11 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../app/placeholder_screen.dart';
-import '../../app/routes.dart';
+import '../../../app/placeholder_screen.dart';
+import '../../../app/routes.dart';
 
 /// Sample id used by placeholder links until real images exist (M1 T8).
 const placeholderImageId = 'sample-image';
 
+/// Placeholder until the project screen is built (M1 T5).
 class ProjectScreen extends StatelessWidget {
   const ProjectScreen({super.key, required this.projectId});
 

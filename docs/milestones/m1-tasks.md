@@ -35,7 +35,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 ### Projects UI
 
-- [ ] **T4 — Project list screen**
+- [x] **T4 — Project list screen**
   - Grid sorted by `updatedAt`, placeholder thumbnails, empty state.
   - **New project** creates instantly and opens the project screen.
   - Long-press → confirm delete → snackbar with Undo.
@@ -70,7 +70,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 - [ ] **T8 — Reference slot, photo grid, adding photos**
   - Project screen reference slot (add / replace / remove) and photo grid with thumbnails.
   - **Add photo** sheet (take photo / choose from device, multi-select) with import progress.
-  - **Take photo** on the project list (new project + photo in one step).
+  - **Take photo** on the project list (new project + photo in one step); add its line to the empty state.
   - Project-list cards show real thumbnails.
   - *Done when:* widget tests for the reference slot rules; adding from camera and picker works on a device.
   - Depends on: T5, T6, T7
