@@ -1,8 +1,8 @@
-import 'package:filbert/app/app.dart';
 import 'package:filbert/app/theme.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+
+import '../support/pump_app.dart';
 
 void main() {
   test('light and dark themes are Material 3 with matching brightness', () {
@@ -38,8 +38,7 @@ void main() {
       tester.platformDispatcher.platformBrightnessTestValue = brightness;
       addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-      await tester.pumpWidget(const ProviderScope(child: FilbertApp()));
-      await tester.pumpAndSettle();
+      await pumpFilbertApp(tester);
 
       final context = tester.element(find.byType(Scaffold));
       expect(Theme.of(context).brightness, brightness);

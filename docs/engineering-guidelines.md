@@ -48,5 +48,6 @@ packages/       canvas_detect/ (M1), sync_engine/ (M3)
 ## Testing
 
 - Unit tests for domain logic; golden tests for anything that renders images (crop, filters, grid, print pages).
+- Widget tests override repository providers with in-memory fakes (`test/support/`); Drift is exercised by repository tests, since its stream queries leave timers pending under the widget-test clock.
 - Auto-crop changes are checked against the evaluation photo set; report accuracy before/after.
 - Sync logic is tested against a fake Drive backend with multiple simulated devices.

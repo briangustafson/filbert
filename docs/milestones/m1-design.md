@@ -76,6 +76,10 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
 - Long-press a card → Delete (confirm → snackbar with Undo).
 - Empty state explains the two actions in one line each.
 - Overflow menu → Settings.
+- Implementation notes (T4):
+  - Card date is `MaterialLocalizations.formatShortDate` of `updatedAt` (e.g. "Nov 15, 2026"); no `intl` dependency.
+  - Long-press opens a small menu (currently just **Delete**) so later actions can join it; Delete → confirm dialog → tombstone → snackbar with **Undo** that disappears after 6 s.
+  - The empty state mentions only **New project** until **Take photo** ships (T8).
 
 ### 3.3 Project screen
 
