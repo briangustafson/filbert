@@ -6,12 +6,11 @@ import '../../../app/routes.dart';
 import '../data/project_providers.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
+import 'delete_project.dart';
 
 /// Home screen: the user's projects, newest first (m1-design §3.2).
 class ProjectListScreen extends ConsumerWidget {
   const ProjectListScreen({super.key});
-
-  static const undoDuration = Duration(seconds: 6);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,7 +40,7 @@ class ProjectListScreen extends ConsumerWidget {
         AsyncData(:final value) => _ProjectGrid(
           projects: value,
           onOpen: (p) => context.go(Routes.project(p.id)),
-          onDelete: (p) => _deleteProject(context, ref, p),
+          onDelete: (p) => confirmAndDeleteProject(context, ref, p),
         ),
         AsyncError() => const Center(child: Text("Couldn't load projects.")),
         _ => const Center(child: CircularProgressIndicator()),
@@ -52,48 +51,6 @@ class ProjectListScreen extends ConsumerWidget {
   Future<void> _createProject(BuildContext context, WidgetRef ref) async {
     final project = await ref.read(projectRepositoryProvider).create();
     if (context.mounted) context.go(Routes.project(project.id));
-  }
-
-  Future<void> _deleteProject(
-    BuildContext context,
-    WidgetRef ref,
-    Project project,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete “${project.name}”?'),
-        content: const Text('The project and its photos will be removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-
-    final repository = ref.read(projectRepositoryProvider);
-    await repository.delete(project.id);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('Deleted “${project.name}”'),
-          duration: undoDuration,
-          persist: false,
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () => repository.restore(project.id),
-          ),
-        ),
-      );
   }
 }
 

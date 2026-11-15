@@ -1,5 +1,6 @@
 import 'package:filbert/app/router.dart';
 import 'package:filbert/app/routes.dart';
+import 'package:filbert/features/projects/ui/delete_project.dart';
 import 'package:filbert/features/projects/ui/project_list_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -160,7 +161,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(SnackBar), findsOneWidget);
 
-    await tester.pump(ProjectListScreen.undoDuration);
+    await tester.pump(projectUndoDuration);
     await tester.pumpAndSettle();
     expect(find.byType(SnackBar), findsNothing);
   });
