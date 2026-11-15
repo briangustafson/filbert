@@ -42,7 +42,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* widget tests cover empty/non-empty states and delete + undo; works on the emulator.
   - Depends on: T3
 
-- [ ] **T5 — Project screen header and size picker**
+- [x] **T5 — Project screen header and size picker**
   - Inline name edit, start notes (collapsed/expanded), auto-save.
   - Size picker (§3.4): size / ratio / none, presets, custom, portrait/landscape, units by locale.
   - Delete project from the overflow menu.

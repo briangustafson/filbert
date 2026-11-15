@@ -44,12 +44,13 @@ void main() {
 
     await tester.tap(find.text('Harbor'));
     await tester.pumpAndSettle();
-    expectTitle('Project');
     expect(location(container), Routes.project(p));
+    expect(find.text('Harbor'), findsOneWidget);
 
-    await tapLink(tester, 'Open photo');
+    // Photo routes are reached by deep link until the photo grid (T8).
+    container.read(routerProvider).go(Routes.photo(p, i));
+    await tester.pumpAndSettle();
     expectTitle('Photo');
-    expect(location(container), Routes.photo(p, i));
 
     await tapLink(tester, 'Crop/rotate');
     expectTitle('Crop');
@@ -64,7 +65,7 @@ void main() {
 
     await tapBack(tester);
     await tapBack(tester);
-    expectTitle('Project');
+    expect(location(container), Routes.project(p));
     await tapBack(tester);
     expectTitle('Projects');
 

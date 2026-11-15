@@ -84,6 +84,10 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
 ### 3.3 Project screen
 
 - **Header**: name (tap to edit inline); size/ratio chip (tap opens the size picker); start notes (collapsed preview, tap to expand/edit). Edits save automatically.
+  - Name saves on Enter, on tapping outside, or on leaving the screen; a blank name restores the previous one.
+  - Start notes save 600 ms after typing stops and immediately on tapping outside or leaving the screen. Each save bumps `updatedAt`, so the project moves to the top of the list.
+  - **Delete project** (overflow) uses the same confirm + Undo flow as the list, then returns to the list where the snackbar appears.
+  - A missing or deleted project shows "This project no longer exists" with a way back.
 - **Reference slot**: empty state with **Add reference** (Take photo / Choose from device). When filled: thumbnail; tap opens the photo screen; menu has Replace and Remove. Remove clears the pointer but keeps the image in the project (it moves to the photo grid). Replace keeps the old image in the grid.
 - **Photos grid**: every live image except the current reference, newest first. Tap opens the photo screen.
 - **Add photo** (FAB): bottom sheet with Take photo / Choose from device (multi-select).
@@ -96,6 +100,11 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
 - Ratio presets: 1:1, 4:5, 3:4, 2:3, 5:7, 9:16; **Custom**.
 - Portrait/landscape toggle swaps width and height.
 - Stored already oriented (width and height as displayed).
+- Implementation notes (T5):
+  - Presets and **None** save and close in one tap; **Custom** saves on **Save**; closing the sheet otherwise changes nothing. The orientation toggle re-saves the current size immediately (squares are left alone) and also turns the preset chips.
+  - An **in / cm** toggle sits next to the orientation toggle in Size mode; it switches the preset list and the custom unit but doesn't save by itself.
+  - Custom values: 0.1–1000, decimals allowed (`,` or `.`), for sizes and ratio terms; invalid input shows an inline error and disables **Save**. A saved size that isn't a preset reopens as **Custom**, pre-filled.
+  - Default unit for new sizes: inches when the device region is US, LR, or MM, otherwise cm (`preferredLengthUnitProvider`; the Units setting in T14 overrides it). An existing size keeps its own unit.
 
 ### 3.5 Photo screen
 
