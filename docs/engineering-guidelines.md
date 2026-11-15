@@ -33,7 +33,8 @@ packages/       canvas_detect/ (M1), sync_engine/ (M3)
 - **Originals are immutable.** Crop/rotation/perspective live in `Image.edits` as parameters; renders are derived, cached locally, and never synced. Undo history is local only.
 - Designations like "the reference" live as a pointer on the project (`referenceImageId`), never as a flag on the image.
 - Viewing aids (grid, grayscale, limited colors, compare) are view state, not edits; they're applied on export only when selected.
-- Serialized records carry `schemaVersion`. Schema changes require a Drift migration and a migration test.
+- Serialized records carry `schemaVersion`. Schema changes require a Drift migration and a migration test (`dart run drift_dev make-migrations`; see m1-design §4.1).
+- Timestamps are UTC epoch milliseconds, read from the `Clock` provider; never call `DateTime.now()` in domain code.
 - Local-only sync bookkeeping (dirty flags, remote revisions) is never serialized.
 
 ## Code

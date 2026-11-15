@@ -21,7 +21,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* app launches on the emulator and navigates between placeholder screens; CI is green.
   - Depends on: —
 
-- [ ] **T2 — Core: ids, clock, device, database v1, edit model**
+- [x] **T2 — Core: ids, clock, device, database v1, edit model**
   - `IdGenerator` (UUIDv7), `Clock`, `DeviceInfo`; providers for each.
   - Drift database with all M1 tables (§4.1), schema v1 dump committed, migration test harness.
   - `Edits` model and JSON format (§4.2) with validation.

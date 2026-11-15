@@ -174,6 +174,16 @@ Plus a per-image cursor (`image_edit_cursor`: `image_id`, `seq`) for redo. Histo
 
 Drift schema version starts at 1. A migration test harness (Drift's schema dumps + `SchemaVerifier`) is set up in M1 even though there are no migrations yet.
 
+Implementation notes (T2):
+
+- Tables live in `lib/core/db/tables.dart`; generated data classes are `ProjectRecord`, `ImageRecord`, `ImageEditHistoryEntry`, `ImageEditCursorEntry`, `AppMetaEntry`.
+- Timestamps are `INTEGER` UTC epoch milliseconds (not Drift `DateTime` columns); repositories convert.
+- Enums are stored as text: `size_kind` and `source` by enum name; `unit` as `in` / `cm`.
+- **Relationships are declared but not enforced** (`PRAGMA foreign_keys` stays off); `images.project_id` is indexed. Sync can deliver an image before its project, and records are tombstoned rather than deleted, so repositories keep references consistent instead of SQLite.
+- `device_name` is left unset in M1; M3 decides how to fill it (it is only shown in sync conflict UI).
+- The device id is created on first launch and loaded in `main()` before `runApp`, then supplied as a `deviceInfoProvider` override so repositories read it synchronously.
+- Schema workflow: `build.yaml` configures `make-migrations`. After changing tables, bump `schemaVersion`, write the migration, then run `dart run drift_dev make-migrations` to add the new dump to `drift_schemas/` and generate step tests under `test/drift/`. `test/drift/app_database/migration_test.dart` fails if `schemaVersion` has no committed dump or the live schema differs from it.
+
 Sync bookkeeping is **not** added in M1. M3 adds it in a separate table keyed by record id, and the first sync uploads everything, so no change tracking is needed before then.
 
 ### 4.2 Edit state (`edits_json`)

@@ -4,7 +4,11 @@ import '../../app/placeholder_screen.dart';
 import '../../app/routes.dart';
 
 class PhotoScreen extends StatelessWidget {
-  const PhotoScreen({super.key, required this.projectId, required this.imageId});
+  const PhotoScreen({
+    super.key,
+    required this.projectId,
+    required this.imageId,
+  });
 
   final String projectId;
   final String imageId;
