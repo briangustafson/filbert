@@ -115,14 +115,14 @@ class $ImagesTable extends Images with TableInfo<$ImagesTable, ImageRecord> {
     requiredDuringInsert: true,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<ImageSource, String> source =
+  late final GeneratedColumnWithTypeConverter<ImageOrigin, String> source =
       GeneratedColumn<String>(
         'source',
         aliasedName,
         false,
         type: DriftSqlType.string,
         requiredDuringInsert: true,
-      ).withConverter<ImageSource>($ImagesTable.$convertersource);
+      ).withConverter<ImageOrigin>($ImagesTable.$convertersource);
   static const VerificationMeta _capturedAtMeta = const VerificationMeta(
     'capturedAt',
   );
@@ -336,8 +336,8 @@ class $ImagesTable extends Images with TableInfo<$ImagesTable, ImageRecord> {
     return $ImagesTable(attachedDatabase, alias);
   }
 
-  static JsonTypeConverter2<ImageSource, String, String> $convertersource =
-      const EnumNameConverter<ImageSource>(ImageSource.values);
+  static JsonTypeConverter2<ImageOrigin, String, String> $convertersource =
+      const EnumNameConverter<ImageOrigin>(ImageOrigin.values);
 }
 
 class ImageRecord extends DataClass implements Insertable<ImageRecord> {
@@ -353,7 +353,7 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
   /// Pixel size after EXIF orientation.
   final int width;
   final int height;
-  final ImageSource source;
+  final ImageOrigin source;
   final int? capturedAt;
 
   /// Current edit state (m1-design §4.2).
@@ -478,7 +478,7 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
     String? mimeType,
     int? width,
     int? height,
-    ImageSource? source,
+    ImageOrigin? source,
     Value<int?> capturedAt = const Value.absent(),
     String? editsJson,
   }) => ImageRecord(
@@ -584,7 +584,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
   final Value<String> mimeType;
   final Value<int> width;
   final Value<int> height;
-  final Value<ImageSource> source;
+  final Value<ImageOrigin> source;
   final Value<int?> capturedAt;
   final Value<String> editsJson;
   final Value<int> rowid;
@@ -615,7 +615,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
     required String mimeType,
     required int width,
     required int height,
-    required ImageSource source,
+    required ImageOrigin source,
     this.capturedAt = const Value.absent(),
     required String editsJson,
     this.rowid = const Value.absent(),
@@ -675,7 +675,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
     Value<String>? mimeType,
     Value<int>? width,
     Value<int>? height,
-    Value<ImageSource>? source,
+    Value<ImageOrigin>? source,
     Value<int?>? capturedAt,
     Value<String>? editsJson,
     Value<int>? rowid,
@@ -2381,7 +2381,7 @@ typedef $$ImagesTableCreateCompanionBuilder = ImagesCompanion Function({
   required String mimeType,
   required int width,
   required int height,
-  required ImageSource source,
+  required ImageOrigin source,
   Value<int?> capturedAt,
   required String editsJson,
   Value<int> rowid,
@@ -2397,7 +2397,7 @@ typedef $$ImagesTableUpdateCompanionBuilder = ImagesCompanion Function({
   Value<String> mimeType,
   Value<int> width,
   Value<int> height,
-  Value<ImageSource> source,
+  Value<ImageOrigin> source,
   Value<int?> capturedAt,
   Value<String> editsJson,
   Value<int> rowid,
@@ -2539,7 +2539,7 @@ class $$ImagesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<ImageSource, ImageSource, String> get source =>
+  ColumnWithTypeConverterFilters<ImageOrigin, ImageOrigin, String> get source =>
       $composableBuilder(
         column: $table.source,
         builder: (column) => ColumnWithTypeConverterFilters(column),
@@ -2785,7 +2785,7 @@ class $$ImagesTableAnnotationComposer
   GeneratedColumn<int> get height =>
       $composableBuilder(column: $table.height, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<ImageSource, String> get source =>
+  GeneratedColumnWithTypeConverter<ImageOrigin, String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
 
   GeneratedColumn<int> get capturedAt => $composableBuilder(
@@ -2938,7 +2938,7 @@ class $$ImagesTableTableManager
                 Value<String> mimeType = const Value.absent(),
                 Value<int> width = const Value.absent(),
                 Value<int> height = const Value.absent(),
-                Value<ImageSource> source = const Value.absent(),
+                Value<ImageOrigin> source = const Value.absent(),
                 Value<int?> capturedAt = const Value.absent(),
                 Value<String> editsJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2970,7 +2970,7 @@ class $$ImagesTableTableManager
                 required String mimeType,
                 required int width,
                 required int height,
-                required ImageSource source,
+                required ImageOrigin source,
                 Value<int?> capturedAt = const Value.absent(),
                 required String editsJson,
                 Value<int> rowid = const Value.absent(),

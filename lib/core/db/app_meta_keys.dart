@@ -4,4 +4,5 @@ abstract final class AppMetaKeys {
   static const deviceName = 'device_name';
   static const autoCropOnAdd = 'auto_crop_on_add';
   static const units = 'units';
+  static const lastPurgeAt = 'last_purge_at';
 }

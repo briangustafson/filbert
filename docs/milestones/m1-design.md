@@ -88,7 +88,7 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
   - Start notes save 600 ms after typing stops and immediately on tapping outside or leaving the screen. Each save bumps `updatedAt`, so the project moves to the top of the list.
   - **Delete project** (overflow) uses the same confirm + Undo flow as the list, then returns to the list where the snackbar appears.
   - A missing or deleted project shows "This project no longer exists" with a way back.
-- **Reference slot**: empty state with **Add reference** (Take photo / Choose from device). When filled: thumbnail; tap opens the photo screen; menu has Replace and Remove. Remove clears the pointer but keeps the image in the project (it moves to the photo grid). Replace keeps the old image in the grid.
+- **Reference slot**: empty state with **Add reference** (Take photo / Choose from device). When filled: thumbnail; tap opens the photo screen; menu has Replace and Remove. Remove clears the pointer but keeps the image in the project (it moves to the photo grid). Replace keeps the old image in the grid. Deleting the reference image keeps the pointer, so Undo restores it as the reference; while it is deleted the slot shows as empty, and setting a new reference in the meantime wins (the restored image then goes to the grid).
 - **Photos grid**: every live image except the current reference, newest first. Tap opens the photo screen.
 - **Add photo** (FAB): bottom sheet with Take photo / Choose from device (multi-select).
 - Overflow: Delete project.
@@ -183,7 +183,7 @@ Common columns on synced tables: `id TEXT PRIMARY KEY` (UUIDv7), `created_at`, `
 
 Plus a per-image cursor (`image_edit_cursor`: `image_id`, `seq`) for redo. History is capped at 50 entries per image; pushing a new state after undoing discards the redo tail.
 
-**`app_meta`** (local only, key/value): `device_id` (UUIDv7, created on first launch), `device_name`, `auto_crop_on_add`, `units`.
+**`app_meta`** (local only, key/value): `device_id` (UUIDv7, created on first launch), `device_name`, `auto_crop_on_add`, `units`, `last_purge_at` (epoch ms of the last purge run, §4.4).
 
 Drift schema version starts at 1. A migration test harness (Drift's schema dumps + `SchemaVerifier`) is set up in M1 even though there are no migrations yet.
 
@@ -248,6 +248,8 @@ The `Edits` Dart class (immutable, `toJson`/`fromJson`) lives in `lib/core/imagi
 - Writes go to a temp file and are renamed into place (no partial files).
 - Cache keys include a hash of `edits_json`, so changing an edit naturally invalidates them.
 - **Purge job** (on app start, at most daily): delete blob files and caches for images whose image or project has been tombstoned for over 30 days. Tombstoned *records* are kept (they're small and M3 needs them).
+  - Runs in the background after `runApp`; `app_meta.last_purge_at` enforces the daily limit. Exactly 30 days is not yet purged.
+  - A record restored after its files were purged would have no original. In M1 the only restore is the 6-second Undo, so this can't happen; M3 must handle it (e.g. re-download from Drive, or refuse restore).
 
 ---
 
@@ -281,6 +283,14 @@ All are interfaces exposed through Riverpod providers (overridable in tests).
 2. For each: generate `blobId`, copy bytes into `blobs/` atomically, read dimensions and EXIF (orientation, capture time), insert the `images` row with empty edits, in a transaction with the project's `updated_at`.
 3. Generate the thumbnail in the background; the grid shows a placeholder until it's ready.
 4. HEIC from the camera is stored as-is; decoding relies on Android's platform decoder (verify in task; fall back to converting to JPEG on import if OpenCV can't read it).
+
+Implementation notes (T6):
+
+- **Metadata** (`ImageMetadataReader`): format from magic bytes (JPEG, PNG, HEIC/HEIF, WebP; anything else is rejected); size from Flutter's `ImageDescriptor` (header parse, no full decode); orientation and `DateTimeOriginal` (+ `OffsetTimeOriginal`, else device-local) from EXIF via the `exif` package. **`ImageDescriptor` already applies EXIF orientation**, so its size is the displayed size and is stored as-is — verified with orientation-6/8 fixtures on the test host and on Android (API 37 emulator).
+- **HEIC (resolved for import):** the Android photo picker hands over HEIC files unchanged (byte-identical), and the platform decoder reads them. HEIC is stored as-is; no conversion at import. Whether OpenCV can decode it remains for T7 (if not, T7 decodes with the platform decoder and passes pixels to OpenCV).
+- **Photo picker:** `PhotoSource` uses its own `ImagePickerAndroid` instance with `useAndroidPhotoPicker = true` (Android 16+ always uses it). `retrieveLost()` can't tell camera from picker, so recovered photos are recorded as `camera`.
+- **Import** is per photo: a file that can't be read, or a failed insert, fails alone (its copied blob is removed) and the others continue; the picked temp file is always deleted. `asReference` (exactly one photo) sets the pointer in the same transaction. Import bumps the project's `updated_at`; deleting or restoring an image does not.
+- **Grid order:** newest first by `created_at` (when added), not `captured_at`.
 
 ---
 
@@ -343,7 +353,8 @@ When applying an auto-crop:
 
 - `flutter create` with org `com.example`, app name `filbert`; Android only (other platforms added in their milestones).
 - Pub workspace at the repo root: the app plus `packages/canvas_detect`.
-- Dependencies (latest stable at the time of the setup task; versions recorded in `pubspec.yaml`): `flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`, `build_runner`, `drift`, `drift_flutter`, `drift_dev`, `go_router`, `image_picker`, `uuid`, `path_provider`, `opencv_dart`, `flutter_lints`, `material_ui`. Any additional package needs confirmation.
+- Dependencies (latest stable at the time of the setup task; versions recorded in `pubspec.yaml`): `flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`, `build_runner`, `drift`, `drift_flutter`, `drift_dev`, `go_router`, `image_picker`, `uuid`, `path_provider`, `opencv_dart`, `flutter_lints`, `material_ui`, `exif`, `image_picker_android`. Any additional package needs confirmation.
+- `exif` (pure Dart; JPEG/HEIC/PNG/WebP) reads orientation and capture time without decoding pixels. `image_picker_android` is listed directly only to switch on Android's photo picker (it is already part of `image_picker`).
 - `material_ui` is Flutter's Material library, now shipped as a package; `package:flutter/material.dart` is deprecated since Flutter 3.47, and `flutter create` adds `material_ui` by default. Import `package:material_ui/material_ui.dart`, never `package:flutter/material.dart`.
 - `opencv_dart` is added in the rendering task (T7) rather than the setup task. It is a heavy native build, nothing uses it earlier, and the T7 spike decides whether it belongs in the app or in `packages/canvas_detect_opencv` (§6.1).
 - Flutter version: 3.50.0 stable, pinned in CI (`.github/workflows/ci.yml`); bump it there and locally together.
@@ -373,7 +384,7 @@ When applying an auto-crop:
 | Item | Resolve in |
 |---|---|
 | Does `opencv_dart` run under plain `dart test`? (affects §6.1 package split) | First auto-crop task |
-| Can OpenCV decode camera HEIC on Android, or should import convert to JPEG? | Import task |
+| ~~Can OpenCV decode camera HEIC on Android, or should import convert to JPEG?~~ Import: resolved in T6 — store as-is (§5.2). Still open: can OpenCV decode HEIC, or must rendering use the platform decoder? | Rendering task (T7) |
 | Preview-render latency on a mid-range phone; adjust preview size if needed | Rendering task |
 | Real application ID before the first Play Store upload | Before release |
 | If the repo becomes public: keep the painting fixtures in it, or move them out? | Before making the repo public |

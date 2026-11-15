@@ -1,7 +1,9 @@
 import 'package:drift/drift.dart';
 
+import '../imaging/image_origin.dart';
 import '../units/length_unit.dart';
 
+export '../imaging/image_origin.dart';
 export '../units/length_unit.dart';
 
 // Schema v1 (m1-design §4.1). Any change here needs a schema version bump,
@@ -13,8 +15,6 @@ export '../units/length_unit.dart';
 // not deleted. Repositories keep references consistent.
 
 enum SizeKind { none, ratio, physical }
-
-enum ImageSource { camera, device }
 
 class LengthUnitConverter extends TypeConverter<LengthUnit, String> {
   const LengthUnitConverter();
@@ -64,7 +64,7 @@ class Images extends Table with SyncedColumns {
   /// Pixel size after EXIF orientation.
   IntColumn get width => integer()();
   IntColumn get height => integer()();
-  TextColumn get source => textEnum<ImageSource>()();
+  TextColumn get source => textEnum<ImageOrigin>()();
   IntColumn get capturedAt => integer().nullable()();
 
   /// Current edit state (m1-design §4.2).
