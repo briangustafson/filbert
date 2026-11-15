@@ -28,7 +28,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* unit tests cover id format, `Edits` round-trip/version handling, and the schema dump; device id is created once and persists.
   - Depends on: T1
 
-- [ ] **T3 — ProjectRepository**
+- [x] **T3 — ProjectRepository**
   - `watchAll`, `watch`, `create` (defaults + default-name numbering, §4.3), `update` (clears `name_is_default` on rename), `delete`/`restore` (tombstones).
   - *Done when:* repository tests pass for naming, numbering, tombstone filtering, and restore.
   - Depends on: T2

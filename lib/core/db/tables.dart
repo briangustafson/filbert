@@ -1,5 +1,9 @@
 import 'package:drift/drift.dart';
 
+import '../units/length_unit.dart';
+
+export '../units/length_unit.dart';
+
 // Schema v1 (m1-design §4.1). Any change here needs a schema version bump,
 // a migration, and `dart run drift_dev make-migrations`.
 //
@@ -9,21 +13,6 @@ import 'package:drift/drift.dart';
 // not deleted. Repositories keep references consistent.
 
 enum SizeKind { none, ratio, physical }
-
-enum LengthUnit {
-  inches('in'),
-  centimeters('cm');
-
-  const LengthUnit(this.code);
-
-  /// Stored value.
-  final String code;
-
-  static LengthUnit fromCode(String code) => values.firstWhere(
-    (u) => u.code == code,
-    orElse: () => throw ArgumentError.value(code, 'code', 'Unknown unit'),
-  );
-}
 
 enum ImageSource { camera, device }
 

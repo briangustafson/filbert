@@ -213,6 +213,16 @@ The `Edits` Dart class (immutable, `toJson`/`fromJson`) lives in `lib/core/imagi
 - Format: ISO date `yyyy-MM-dd` (sorts correctly, locale-neutral).
 - If a live project already has that name, append ` (2)`, ` (3)`, …
 - `name_is_default` is true until the user edits the name.
+- The date is the device's **local** calendar date. The suffix is the lowest free number ≥ 2 among live projects (a freed number is reused). The check and insert run in one transaction.
+- Names are **not unique**: restoring a deleted project, renaming, or sync can produce duplicates, which is allowed. Numbering only applies when generating a default name.
+
+### 4.3a Project repository behavior (T3)
+
+- The UI sees a domain `Project` (`lib/features/projects/domain/`) with a sealed `ProjectSize` (`NoSize` / `RatioSize` / `PhysicalSize`), never Drift's `ProjectRecord`.
+- `update` changes only the fields passed; any name change clears `name_is_default`; blank names and non-positive sizes are rejected; an update that changes nothing writes nothing.
+- `delete` / `restore` set or clear `deleted_at` and also bump `updated_at` / `updated_by_device_id` (needed for sync). Consequence: a project restored with Undo moves to the top of the list.
+- Deleting a project does not tombstone its images; they are unreachable while the project is deleted and return with it. The purge job (§4.4) handles both cases.
+- `referenceImageId` is changed only by `ImageRepository.setAsReference` (T6), not by `ProjectRepository.update`.
 
 ### 4.4 Files
 
