@@ -141,19 +141,25 @@ void main() {
       expect(project.referenceImageId, isNull);
     });
 
-    test(
-      'keeps the format: PNG and HEIC stored with their extension',
-      () async {
-        final png = await importOne('plain.png');
-        final heic = await importOne('landscape.heic');
-        expect(png.mimeType, 'image/png');
-        expect(heic.mimeType, 'image/heic');
-        expect(
-          blobFiles(),
-          unorderedEquals(['${png.blobId}.png', '${heic.blobId}.heic']),
-        );
-      },
-    );
+    test('keeps the format: stored with its extension', () async {
+      final png = await importOne('plain.png');
+      final jpg = await importOne('no_exif.jpg');
+      expect(png.mimeType, 'image/png');
+      expect(jpg.mimeType, 'image/jpeg');
+      expect(
+        blobFiles(),
+        unorderedEquals(['${png.blobId}.png', '${jpg.blobId}.jpg']),
+      );
+    });
+
+    test('HEIC is stored as-is', () async {
+      final heic = await importOne('landscape.heic');
+      expect(heic.mimeType, 'image/heic');
+      expect(
+        files.blobFile(heic.blobId, 'heic').readAsBytesSync(),
+        fixtureImage('landscape.heic').readAsBytesSync(),
+      );
+    }, skip: heicSkip);
 
     test('a bad file fails alone; others still import', () async {
       final bad = photo('not_an_image.txt');
@@ -225,7 +231,7 @@ void main() {
       tick();
       final b = await importOne('plain.png');
       tick();
-      final c = await importOne('landscape.heic');
+      final c = await importOne('orientation_1_offset.jpg');
       await images.delete(b.id);
 
       final other = (await projects.create()).id;

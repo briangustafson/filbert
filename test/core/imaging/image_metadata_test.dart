@@ -56,7 +56,7 @@ void main() {
       final m = await reader.read(fixtureImage('landscape.heic'));
       expect(m.mimeType, 'image/heic');
       expect((m.width, m.height), (40, 30));
-    });
+    }, skip: heicSkip);
 
     test('non-images are rejected', () async {
       await expectLater(

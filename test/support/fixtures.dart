@@ -7,3 +7,10 @@ File fixtureImage(String name) => File('test/fixtures/images/$name');
 /// Copies a fixture into [dir] as a fresh "picked" temp file.
 File copyFixture(String name, Directory dir, [String? as]) =>
     fixtureImage(name).copySync('${dir.path}/${as ?? name}');
+
+/// Skip reason for tests that decode HEIC: Flutter's test host can decode it
+/// on macOS but not on Linux (CI). Android decoding is verified on a device
+/// (m1-design §5.2).
+final Object heicSkip = Platform.isMacOS
+    ? false
+    : 'HEIC decoding is not available in the flutter test host on this OS';
