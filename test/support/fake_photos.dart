@@ -30,8 +30,12 @@ class FakeImageRepository implements ImageRepository {
   final failingPaths = <String>{};
 
   /// Adds a live image directly, without recording a call.
-  ProjectImage seed(String projectId, {bool asReference = false}) {
-    final image = _newImage(projectId, ImageOrigin.device);
+  ProjectImage seed(
+    String projectId, {
+    bool asReference = false,
+    Edits edits = Edits.none,
+  }) {
+    final image = _newImage(projectId, ImageOrigin.device).withEdits(edits);
     _images[image.id] = image;
     if (asReference) projects.setReference(projectId, image.id);
     _changes.add(null);
@@ -145,11 +149,15 @@ class FakeImageRenderer implements ImageRenderer {
   final requests = <String>[];
 
   @override
-  Future<File> preview(ProjectImage image) => _request('preview ${image.id}');
+  Future<File> preview(ProjectImage image) =>
+      _request('preview ${image.id}${image.edits.isNone ? '' : ' edited'}');
 
   @override
   Future<File> thumbnail(ProjectImage image, int px) =>
       _request('thumbnail ${image.id} $px');
+
+  @override
+  Future<File> detail(ProjectImage image) => _request('detail ${image.id}');
 
   Future<File> _request(String what) {
     requests.add(what);
