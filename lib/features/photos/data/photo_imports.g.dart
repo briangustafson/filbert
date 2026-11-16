@@ -56,7 +56,7 @@ final class PhotoImportsProvider
   }
 }
 
-String _$photoImportsHash() => r'39938a6ca3cda6ffaeb5f41671a94c737a8a7418';
+String _$photoImportsHash() => r'e5b603c8edccf2e9b98090957c7568b3805c91e3';
 
 /// Adding photos to projects (m1-design §3.2, §3.3, §3.6): camera and picker,
 /// import with progress, and rendering each new photo's thumbnail and preview

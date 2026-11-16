@@ -39,6 +39,22 @@ class ProjectImage {
   final DateTime updatedAt;
   final String updatedByDeviceId;
 
+  /// The same image with other edits (e.g. [Edits.none] for the original).
+  ProjectImage withEdits(Edits edits) => ProjectImage(
+    id: id,
+    projectId: projectId,
+    blobId: blobId,
+    mimeType: mimeType,
+    width: width,
+    height: height,
+    origin: origin,
+    capturedAt: capturedAt,
+    edits: edits,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    updatedByDeviceId: updatedByDeviceId,
+  );
+
   @override
   bool operator ==(Object other) =>
       other is ProjectImage &&

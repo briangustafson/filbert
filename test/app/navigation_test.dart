@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:filbert/features/photo_viewer/photo_screen.dart';
+
+import '../support/fake_photos.dart';
 import '../support/fake_project_repository.dart';
 import '../support/pump_app.dart';
 
@@ -14,11 +17,6 @@ void main() {
 
   String location(ProviderContainer container) =>
       container.read(routerProvider).state.uri.toString();
-
-  Future<void> tapLink(WidgetTester tester, String label) async {
-    await tester.tap(find.widgetWithText(FilledButton, label));
-    await tester.pumpAndSettle();
-  }
 
   Future<void> tapBack(WidgetTester tester) async {
     await tester.tap(find.byType(BackButton));
@@ -38,33 +36,47 @@ void main() {
 
   testWidgets('navigates down to every M1 route and back', (tester) async {
     final project = projects.seed('Harbor');
-    final container = await pumpFilbertApp(tester, projects: projects);
+    final images = FakeImageRepository(projects);
+    final i = images.seed(project.id).id;
+    final container = await pumpFilbertApp(
+      tester,
+      projects: projects,
+      images: images,
+    );
     final p = project.id;
-    const i = 'sample-image';
 
     await tester.tap(find.text('Harbor'));
     await tester.pumpAndSettle();
     expect(location(container), Routes.project(p));
     expect(find.text('Harbor'), findsOneWidget);
 
-    // Photo routes are reached by deep link until the photo grid (T8).
-    container.read(routerProvider).go(Routes.photo(p, i));
+    await tester.tap(
+      find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == 'Photo',
+      ),
+    );
     await tester.pumpAndSettle();
-    expectTitle('Photo');
+    expect(location(container), Routes.photo(p, i));
+    expect(find.byType(PhotoScreen), findsOneWidget);
 
-    await tapLink(tester, 'Crop/rotate');
+    // Crop and auto-crop are reached by deep link until their menu items
+    // arrive (T11, T12).
+    container.read(routerProvider).go(Routes.crop(p, i));
+    await tester.pumpAndSettle();
     expectTitle('Crop');
-    expect(location(container), Routes.crop(p, i));
-
     await tapBack(tester);
-    expectTitle('Photo');
+    expect(find.byType(PhotoScreen), findsOneWidget);
 
-    await tapLink(tester, 'Auto-crop');
+    container.read(routerProvider).go(Routes.autocrop(p, i));
+    await tester.pumpAndSettle();
     expectTitle('Auto-crop');
-    expect(location(container), Routes.autocrop(p, i));
+    await tapBack(tester);
+    expect(location(container), Routes.photo(p, i));
 
-    await tapBack(tester);
-    await tapBack(tester);
+    // Android's system back (the photo screen's own chrome may have hidden
+    // itself by now; its Back button is tested in photo_screen_test).
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
     expect(location(container), Routes.project(p));
     await tapBack(tester);
     expectTitle('Projects');
@@ -90,6 +102,6 @@ void main() {
     expect(find.text('Image: i1'), findsOneWidget);
 
     await tapBack(tester);
-    expectTitle('Photo');
+    expect(find.byType(PhotoScreen), findsOneWidget);
   });
 }

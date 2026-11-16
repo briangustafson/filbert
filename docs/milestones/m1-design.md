@@ -121,6 +121,14 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
 - Tap toggles minimal chrome: back button and a menu button. Chrome auto-hides.
 - **Press and hold** shows the original (unedited) image while held.
 - Menu: Crop/rotate · Auto-crop · Undo · Redo · Revert to original · Set as reference · Delete. Undo/Redo/Revert appear only when applicable.
+- Implementation notes (T9):
+  - Swiping doesn't change the route: it stays on the photo that was opened, and Back returns to the project. Menu actions apply to the photo shown.
+  - Each page shows the thumbnail scaled up at once, then the 2048 px preview. Fitted to the screen, images are decoded at screen size (less GPU and memory while swiping); once zoomed, at full resolution.
+  - Zoom: `InteractiveViewer` per page; swiping is off while zoomed. Double-tap toggles fit ↔ 100% of the full-resolution edited view (at least 2×), centred on the tap. Zooming past the preview's resolution requests a **detail** render (up to 4096 px, cached as `previews/<imageId>-<editsHash>-4096.jpg`) and swaps it in.
+  - Press and hold shows the original (a preview rendered with no edits) with an "Original" label; for an unedited photo nothing changes.
+  - Chrome (back, menu) hides after 3 s and with it Android's system bars (immersive mode); a tap toggles both. Android shows its own one-time "Viewing full screen" notice the first time. The background is always black.
+  - Menu so far: **Set as reference** (hidden for the reference) and **Delete**. Delete moves to the next photo (else the previous, else back to the project) and shows a snackbar with **Undo** for 6 s; a deleted reference returns as the reference.
+  - Smoothness on the emulator (profile mode, performance overlay): the UI thread averages < 1 ms per frame; raster time is dominated by the emulator's GPU (the plain project screen is slower than the photo screen), so frame pacing needs a real phone (T15).
 
 ### 3.6 Add-photo flow
 

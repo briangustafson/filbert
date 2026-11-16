@@ -28,6 +28,10 @@ abstract interface class ImageRenderer {
 
   /// Small render, at most [px] on the long edge.
   Future<File> thumbnail(ProjectImage image, int px);
+
+  /// Sharper render for zooming in, at most
+  /// [OpenCvImageRenderer.detailLongEdge] px on the long edge.
+  Future<File> detail(ProjectImage image);
 }
 
 /// Decodes with the platform decoder (handles HEIC, applies EXIF
@@ -39,6 +43,10 @@ class OpenCvImageRenderer implements ImageRenderer {
   OpenCvImageRenderer({required this._files, this.maxConcurrent = 2});
 
   static const previewLongEdge = 2048;
+
+  /// Matches the decode cap (`RenderPlan.defaultMaxDecodeLongEdge`): going
+  /// higher would only upscale.
+  static const detailLongEdge = 4096;
 
   /// Renders running at once. Each holds a decoded photo in memory, so a
   /// screen full of uncached thumbnails queues instead of decoding them all
@@ -56,6 +64,16 @@ class OpenCvImageRenderer implements ImageRenderer {
     previewLongEdge,
     File(
       '${_files.previewsDir.path}/${image.id}-${editsHash(image.edits)}.jpg',
+    ),
+  );
+
+  @override
+  Future<File> detail(ProjectImage image) => _render(
+    image,
+    detailLongEdge,
+    File(
+      '${_files.previewsDir.path}/'
+      '${image.id}-${editsHash(image.edits)}-$detailLongEdge.jpg',
     ),
   );
 

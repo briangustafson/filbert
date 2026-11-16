@@ -78,7 +78,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* widget tests for the reference slot rules; adding from camera and picker works on a device.
   - Depends on: T5, T6, T7
 
-- [ ] **T9 — Photo screen**
+- [x] **T9 — Photo screen**
   - Full-screen edited view, pinch/double-tap zoom, swipe through the project's photos (reference first).
   - While a preview renders, show the thumbnail scaled up.
   - Auto-hiding chrome; press and hold to show the original.
@@ -135,3 +135,6 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 ## Notes and later ideas
 
 (Add ideas that come up during M1 but belong to a later milestone here, rather than building them now.)
+
+- Photo screen polish: when zoomed, panning can reach the black letterbox around the photo; clamp panning to the photo's edges as photo viewers usually do (T9).
+- Photo screen: check frame pacing (swipe, zoom) on a real mid-range phone in profile mode; the emulator's GPU made raster timing meaningless (T15).

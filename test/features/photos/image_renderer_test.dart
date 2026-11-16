@@ -116,6 +116,18 @@ void main() {
     expect(await sizeOf(thumb), (11, 16));
   });
 
+  test('detail: its own file in the previews cache, never upscaled', () async {
+    final image = await stored('no_exif.jpg');
+    final detail = await renderer.detail(image);
+    expect(
+      detail.path,
+      '${files.previewsDir.path}/${image.id}-${editsHash(Edits.none)}'
+      '-${OpenCvImageRenderer.detailLongEdge}.jpg',
+    );
+    expect(detail.path, isNot((await renderer.preview(image)).path));
+    expect(await sizeOf(detail), (40, 30));
+  });
+
   test('reuses the cached file; new edits render a new one', () async {
     final image = await stored('no_exif.jpg');
     final first = await renderer.preview(image);
