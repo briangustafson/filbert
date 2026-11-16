@@ -1,5 +1,8 @@
-/// Canvas (painting) corner detection.
+/// Canvas (painting) corner detection (m1-design §6).
 ///
-/// The `CanvasDetector` interface and its implementations arrive in M1 T12–T13
-/// (see docs/milestones/m1-design.md §6).
+/// The [CanvasDetector] interface is pure Dart; the OpenCV implementation
+/// arrives in M1 T13.
 library;
+
+export 'src/detector.dart';
+export 'src/stub_detector.dart';
