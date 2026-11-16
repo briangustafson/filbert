@@ -127,7 +127,7 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
   - Zoom: `InteractiveViewer` per page; swiping is off while zoomed. Double-tap toggles fit ↔ 100% of the full-resolution edited view (at least 2×), centred on the tap. Zooming past the preview's resolution requests a **detail** render (up to 4096 px, cached as `previews/<imageId>-<editsHash>-4096.jpg`) and swaps it in.
   - Press and hold shows the original (a preview rendered with no edits) with an "Original" label; for an unedited photo nothing changes.
   - Chrome (back, menu) hides after 3 s and with it Android's system bars (immersive mode); a tap toggles both. Android shows its own one-time "Viewing full screen" notice the first time. The background is always black.
-  - Menu so far: **Set as reference** (hidden for the reference) and **Delete**. Delete moves to the next photo (else the previous, else back to the project) and shows a snackbar with **Undo** for 6 s; a deleted reference returns as the reference.
+  - Menu so far: **Undo** · **Redo** · **Revert to original** (each only when it applies, T10) · **Set as reference** (hidden for the reference) · **Delete**. Revert shows a snackbar with **Undo**; Undo and Redo show nothing, since the photo visibly changes. Delete moves to the next photo (else the previous, else back to the project) and shows a snackbar with **Undo** for 6 s; a deleted reference returns as the reference.
   - Smoothness on the emulator (profile mode, performance overlay): the UI thread averages < 1 ms per frame; raster time is dominated by the emulator's GPU (the plain project screen is slower than the photo screen), so frame pacing needs a real phone (T15).
 
 ### 3.6 Add-photo flow
@@ -206,6 +206,14 @@ Common columns on synced tables: `id TEXT PRIMARY KEY` (UUIDv7), `created_at`, `
 | `edits_json` | TEXT | Edit state at that position |
 
 Plus a per-image cursor (`image_edit_cursor`: `image_id`, `seq`) for redo. History is capped at 50 entries per image; pushing a new state after undoing discards the redo tail.
+
+Implementation notes (T10):
+
+- Rows are successive edit states; the cursor points at the row matching the image's current `edits_json`. The first edit records the state before it (seq 0), so it can be undone. **Cap: 50 undo steps** (51 rows); older rows are dropped.
+- `setEdits` is a no-op for unchanged edits and discards rows above the cursor. If the image's edits no longer match the row at the cursor (e.g. changed by a future sync), the current edits are recorded first, so undo returns to what the user last saw.
+- `revert` is `setEdits(Edits.none)`, so it is undoable; reverting an unedited image does nothing.
+- Every change to `edits_json` stamps the image (`updated_at`, `updated_by_device_id`) but not the project, so editing doesn't reorder the project list (as with deleting a photo).
+- History survives deleting and restoring the image. Rows of purged images are not removed yet (local-only and small).
 
 **`app_meta`** (local only, key/value): `device_id` (UUIDv7, created on first launch), `device_name`, `auto_crop_on_add`, `units`, `last_purge_at` (epoch ms of the last purge run, §4.4), `pending_capture` (JSON target of an open camera session, §3.6).
 

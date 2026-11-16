@@ -14,3 +14,8 @@ Stream<List<ProjectImage>> projectImages(Ref ref, String projectId) =>
 @riverpod
 Stream<Map<String, ProjectImage>> projectCovers(Ref ref) =>
     ref.watch(imageRepositoryProvider).watchCovers();
+
+/// Whether an image's edits can be undone or redone, live.
+@riverpod
+Stream<EditHistory> editHistory(Ref ref, String imageId) =>
+    ref.watch(imageRepositoryProvider).watchHistory(imageId);

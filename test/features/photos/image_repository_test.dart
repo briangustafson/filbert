@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:filbert/core/clock/clock.dart';
 import 'package:filbert/core/db/app_database.dart';
@@ -347,6 +348,160 @@ void main() {
 
       expect(await referenceId(), replacement.id);
       expect(await live(), hasLength(2));
+    });
+  });
+
+  group('edit history', () {
+    /// A distinct crop for each n.
+    Edits crop(int n) => Edits(
+      crop: CropEdit(
+        quad: [
+          NormPoint(0.001 * n, 0),
+          const NormPoint(1, 0),
+          const NormPoint(1, 1),
+          const NormPoint(0, 1),
+        ],
+      ),
+    );
+
+    late ProjectImage image;
+    setUp(() async => image = await importOne('no_exif.jpg'));
+
+    Future<Edits> edits() async =>
+        (await live()).singleWhere((i) => i.id == image.id).edits;
+    Future<EditHistory> history() => images.watchHistory(image.id).first;
+
+    test('a new image has nothing to undo or redo', () async {
+      expect(await history(), EditHistory.empty);
+    });
+
+    test('push, undo, redo', () async {
+      await images.setEdits(image.id, crop(1));
+      await images.setEdits(image.id, crop(2));
+      expect(await edits(), crop(2));
+      expect(await history(), const EditHistory(canUndo: true, canRedo: false));
+
+      await images.undo(image.id);
+      expect(await edits(), crop(1));
+      expect(await history(), const EditHistory(canUndo: true, canRedo: true));
+
+      await images.undo(image.id);
+      expect(await edits(), Edits.none);
+      expect(await history(), const EditHistory(canUndo: false, canRedo: true));
+
+      await images.undo(image.id); // nothing left: no-op
+      expect(await edits(), Edits.none);
+
+      await images.redo(image.id);
+      await images.redo(image.id);
+      expect(await edits(), crop(2));
+      await images.redo(image.id); // nothing left: no-op
+      expect(await edits(), crop(2));
+      expect(await history(), const EditHistory(canUndo: true, canRedo: false));
+    });
+
+    test('a new edit after undoing discards the redo tail', () async {
+      await images.setEdits(image.id, crop(1));
+      await images.setEdits(image.id, crop(2));
+      await images.undo(image.id);
+      await images.setEdits(image.id, crop(3));
+
+      expect(await history(), const EditHistory(canUndo: true, canRedo: false));
+      await images.undo(image.id);
+      expect(await edits(), crop(1), reason: 'crop(2) is gone');
+    });
+
+    test('keeps the last ${DriftImageRepository.maxUndoSteps} steps', () async {
+      const n = DriftImageRepository.maxUndoSteps + 10;
+      for (var i = 1; i <= n; i++) {
+        await images.setEdits(image.id, crop(i));
+      }
+      var undone = 0;
+      while ((await history()).canUndo) {
+        await images.undo(image.id);
+        undone++;
+      }
+      expect(undone, DriftImageRepository.maxUndoSteps);
+      expect(await edits(), crop(n - DriftImageRepository.maxUndoSteps));
+      final rows = await (db.select(
+        db.imageEditHistory,
+      )..where((h) => h.imageId.equals(image.id))).get();
+      expect(rows, hasLength(DriftImageRepository.maxUndoSteps + 1));
+    });
+
+    test('revert is an edit that can be undone', () async {
+      await images.setEdits(image.id, crop(1));
+      await images.revert(image.id);
+      expect(await edits(), Edits.none);
+
+      await images.undo(image.id);
+      expect(await edits(), crop(1));
+      await images.redo(image.id);
+      expect(await edits(), Edits.none);
+    });
+
+    test('unchanged edits and reverting an original are no-ops', () async {
+      await images.revert(image.id);
+      expect(await history(), EditHistory.empty);
+      await images.setEdits(image.id, crop(1));
+      await images.setEdits(image.id, crop(1));
+      await images.undo(image.id);
+      expect(await history(), const EditHistory(canUndo: false, canRedo: true));
+    });
+
+    test('edits stamp the image but not the project', () async {
+      tick();
+      await images.setEdits(image.id, crop(1));
+      final row = await (db.select(
+        db.images,
+      )..where((i) => i.id.equals(image.id))).getSingle();
+      expect(
+        row.updatedAt,
+        start.add(const Duration(minutes: 1)).millisecondsSinceEpoch,
+      );
+      final project = (await projects.watch(projectId).first)!;
+      expect(project.updatedAt, isNot(start.add(const Duration(minutes: 1))));
+    });
+
+    test('edits changed outside the history are kept for undo', () async {
+      await images.setEdits(image.id, crop(1));
+      // As a future sync might: change the edits without history.
+      await (db.update(db.images)..where((i) => i.id.equals(image.id))).write(
+        ImagesCompanion(editsJson: Value(crop(7).toJsonString())),
+      );
+      await images.setEdits(image.id, crop(2));
+      await images.undo(image.id);
+      expect(await edits(), crop(7));
+      await images.undo(image.id);
+      expect(await edits(), crop(1));
+    });
+
+    test('deleted or missing images throw', () async {
+      await images.delete(image.id);
+      await expectLater(
+        images.setEdits(image.id, crop(1)),
+        throwsA(isA<ImageNotFoundException>()),
+      );
+      await expectLater(
+        images.undo('missing'),
+        throwsA(isA<ImageNotFoundException>()),
+      );
+    });
+
+    test('history updates live', () async {
+      final states = <EditHistory>[];
+      final sub = images.watchHistory(image.id).listen(states.add);
+      await pumpEventQueue();
+      await images.setEdits(image.id, crop(1));
+      await pumpEventQueue();
+      await images.undo(image.id);
+      await pumpEventQueue();
+      await sub.cancel();
+      expect(states, [
+        EditHistory.empty,
+        const EditHistory(canUndo: true, canRedo: false),
+        const EditHistory(canUndo: false, canRedo: true),
+      ]);
     });
   });
 
