@@ -6,7 +6,7 @@ The rules every change must follow. Rationale lives in [high-level-design.md](hi
 
 - Flutter (Dart), Riverpod with `riverpod_generator`, Drift (SQLite), `go_router`.
 - Images as files on disk (OPFS on web); metadata in SQLite.
-- Auto-crop: OpenCV (`opencv_dart` FFI; OpenCV.js on web) behind a `CanvasDetector` interface.
+- Auto-crop and rendering: OpenCV via `dartcv4` (FFI, pure Dart; OpenCV.js on web), with auto-crop behind a `CanvasDetector` interface.
 - Sync (M3+): user's Google Drive `appDataFolder`; Google Photos via the Photos Picker API.
 - AI: hand-off via share sheet only, behind an `AiProvider` interface (API-key mode is future work).
 - Adding a package not listed in the design docs requires confirmation.

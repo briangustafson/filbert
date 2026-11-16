@@ -40,7 +40,7 @@ This document captures the architecture, technology choices, integration approac
 | Conflicts | Images merged as a union; deletions as tombstones; same-record conflicts prompt the user, preselecting the newest |
 | Sign-in | Google Sign-In, requested only when the user enables sync or Google Photos import |
 | Google Photos | **Google Photos Picker API** (the Library API no longer allows reading a user's library) |
-| Auto-crop | **OpenCV** (FFI via `opencv_dart`; OpenCV.js on web) + own corner-adjust UI + perspective correction |
+| Auto-crop | **OpenCV** (FFI via `dartcv4`, the pure-Dart core of `opencv_dart`; OpenCV.js on web) + own corner-adjust UI + perspective correction |
 | Live viewing aids | GPU: Flutter color filters / fragment shaders |
 | Export rendering | `image` package + OpenCV, full resolution, to temp JPEG/PNG/PDF |
 | Ask AI | **Hand-off** via share sheet (+ clipboard/URL fallback), behind an `AiProvider` interface for a future API-key mode |
@@ -103,7 +103,7 @@ The sync engine and canvas detector are separate packages so they can be tested 
 
 ### 3.3 Key packages (to be validated per milestone)
 
-`flutter_riverpod`, `riverpod_generator`, `drift`, `drift_flutter`, `go_router`, `camera` / `image_picker`, `file_picker`, `desktop_drop` (macOS), `google_sign_in`, `googleapis` (Drive v3), `http` (Photos Picker REST), `share_plus`, `printing`, `pdf`, `opencv_dart`, `image`, `path_provider`, `workmanager` (Android background sync), `uuid`.
+`flutter_riverpod`, `riverpod_generator`, `drift`, `drift_flutter`, `go_router`, `camera` / `image_picker`, `file_picker`, `desktop_drop` (macOS), `google_sign_in`, `googleapis` (Drive v3), `http` (Photos Picker REST), `share_plus`, `printing`, `pdf`, `dartcv4`, `image`, `path_provider`, `workmanager` (Android background sync), `uuid`.
 
 ---
 
@@ -184,7 +184,7 @@ original blob + edits + selected viewing aids ──▶ full-res render ──�
 
 ### 5.4 Auto-crop
 
-- `CanvasDetector` interface → OpenCV implementation (FFI on Android/macOS/iOS via `opencv_dart`; OpenCV.js on web).
+- `CanvasDetector` interface → OpenCV implementation (FFI on Android/macOS/iOS via `dartcv4`; OpenCV.js on web).
 - Pipeline (initial): downscale → blur → edge detection + contour/line finding → choose the best convex quadrilateral (scored by area, rectangularity, and match to the project's aspect ratio when known) → return four corners plus a confidence score.
 - UI: show detected corners as draggable handles with a magnifier loupe; user confirms; result is stored as the `crop` quad. Perspective correction happens at render time.
 - Works on any image in a project (new camera shots or imported photos), not just at capture time.

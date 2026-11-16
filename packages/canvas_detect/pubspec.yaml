@@ -10,3 +10,5 @@ resolution: workspace
 dev_dependencies:
   lints: ^6.1.0
   test: ^1.32.0
+dependencies:
+  dartcv4: ^2.3.1

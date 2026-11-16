@@ -12,7 +12,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # OpenCV's native build (dartcv4 hooks) runs per target: Linux for the
+    # tests, three Android ABIs for the APK.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
 

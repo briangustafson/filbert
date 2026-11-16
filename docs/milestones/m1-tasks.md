@@ -15,7 +15,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 - [x] **T1 — Project skeleton and CI**
   - `flutter create` (org `com.example`, name `filbert`, Android only); Pub workspace with an empty `packages/canvas_detect`.
-  - Add M1 dependencies (m1-design §7) at latest stable, except `opencv_dart` (added in T7); `flutter_lints`; `build_runner` working.
+  - Add M1 dependencies (m1-design §7) at latest stable, except OpenCV (added in T7 as `dartcv4`); `flutter_lints`; `build_runner` working.
   - App shell: `go_router` with placeholder screens for every M1 route (§3.1); Material 3 neutral-gray theme, light/dark following system.
   - GitHub Actions: pub get → build_runner → analyze → test → Android debug build.
   - *Done when:* app launches on the emulator and navigates between placeholder screens; CI is green.
@@ -60,9 +60,9 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* import, reference-rule, and purge tests pass; HEIC decision recorded in m1-design.
   - Depends on: T3
 
-- [ ] **T7 — OpenCV integration and ImageRenderer**
-  - Add `opencv_dart` (deferred from T1: heavy native build, and the spike decides which package it lives in).
-  - Spike first: confirm `opencv_dart` works in the app and whether it runs under plain `dart test`; record the outcome in m1-design §6.1 (resolves open item).
+- [x] **T7 — OpenCV integration and ImageRenderer**
+  - Add OpenCV (deferred from T1: heavy native build, and the spike decides which package it lives in). Done as `dartcv4`, the pure-Dart package behind `opencv_dart` (m1-design §7).
+  - Spike first: confirm OpenCV works in the app and whether it runs under plain `dart test`; record the outcome in m1-design §6.1 (resolves open item).
   - `ImageRenderer` in a background isolate: decode, apply edits via homography + `warpPerspective`, quarter turns, encode; preview and thumbnail caches keyed by edits hash.
   - *Done when:* golden tests for axis-aligned crop, straightened crop, perspective quad, and quarter turns; preview latency measured on a device and recorded.
   - Depends on: T2, T6
@@ -72,6 +72,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - **Add photo** sheet (take photo / choose from device, multi-select) with import progress.
   - **Take photo** on the project list (new project + photo in one step); add its line to the empty state.
   - Project-list cards show real thumbnails.
+  - Render each new photo's thumbnail and preview in the background right after import, so they're ready before they're shown (cold previews take ≈ 0.3–0.9 s, m1-design §5.1).
   - Call `PhotoSource.retrieveLost()` on start-up and import what it returns (photos taken while Android killed the app).
   - The picker leaves an empty folder per pick in the app cache after import deletes the file; clear `image_picker`'s cache folders (e.g. on start-up).
   - *Done when:* widget tests for the reference slot rules; adding from camera and picker works on a device.
@@ -79,6 +80,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 - [ ] **T9 — Photo screen**
   - Full-screen edited view, pinch/double-tap zoom, swipe through the project's photos (reference first).
+  - While a preview renders, show the thumbnail scaled up.
   - Auto-hiding chrome; press and hold to show the original.
   - Menu: Set as reference, Delete (with undo).
   - *Done when:* widget tests for menu visibility and swipe order; smooth on a device.
@@ -124,7 +126,8 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 - [ ] **T15 — Integration test and M1 wrap-up**
   - Emulator integration test: new project → add photo → auto-crop review → apply → undo → revert.
-  - Check M1 exit criteria (HLD §11) on a real phone; fix polish issues found.
+  - Check M1 exit criteria (HLD §11) on a real phone; fix polish issues found. Run `tool/render_benchmark.dart` on it and record preview latency (m1-design §5.1).
+  - Try `dartcv4`'s `treeshake: true` in a release build and record the APK size.
   - Update docs for anything that changed during M1; resolve or carry forward remaining open items.
   - *Done when:* integration test passes in CI; exit criteria confirmed by you.
   - Depends on: T14

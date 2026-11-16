@@ -277,6 +277,24 @@ All are interfaces exposed through Riverpod providers (overridable in tests).
 - This makes the GPU viewing aids in M2 simple: they apply on top of an already-cropped preview.
 - Full-resolution export rendering arrives with M2's export features, using the same code path at full size.
 
+Implementation notes (T7):
+
+- **Split:** `RenderPlan` (`lib/core/imaging/render_geometry.dart`, pure arithmetic) sizes the render; `render_pipeline.dart` (OpenCV, no Flutter) warps, turns and encodes; `OpenCvImageRenderer` (`lib/features/photos/data/image_renderer.dart`) decodes, runs the pipeline in `Isolate.run`, and caches. The renderer lives in the photos feature because it takes a `ProjectImage`.
+- **Decoding uses Flutter's platform decoder, not OpenCV.** OpenCV 4.13 (as built by `dartcv4`) cannot decode HEIC, and the platform decoder applies EXIF orientation exactly as the stored dimensions do (§5.2). The decoder only runs on the root isolate; it decodes off the UI thread, and the RGBA pixels are handed to the isolate as `TransferableTypedData`.
+- **Sizes:** output size comes from `output` (same area as the quad estimate, at that aspect) or the quad's average opposite edges (§6.3); it is fitted to the long edge (2048 px for previews, the requested px for thumbnails) and never upscaled past the original. The original is decoded at the scale the output needs, so the warp runs near 1:1, capped at 4096 px on the long edge (bounds memory for a small crop of a large photo).
+- **Geometry:** normalized 0 and 1 are the image's outer edges; OpenCV corners use pixel-edge coordinates (−0.5 … size − 0.5), so an empty edit reproduces the source exactly. Warp is bilinear with replicated borders; quarter turns are clockwise, applied after the warp. JPEG quality 90.
+- **Cache:** files are named by `editsHash` (64-bit FNV-1a of the canonical edits JSON; stable across runs, unlike `String.hashCode`). An existing file is reused; concurrent requests for the same file share one render; writes are temp-file-then-rename.
+- **Goldens** (`test/core/imaging/render_pipeline_test.dart`, PNGs in `test/goldens/render/`) render a synthetic test pattern, so input is identical on every OS, and compare the warped pixels before JPEG encoding with a small tolerance (max channel diff 8, mean < 0.5). Update with `flutter test --update-goldens <file>`. The perspective case also checks that a pattern projected onto a quad comes back flat.
+- **Latency** (`tool/render_benchmark.dart`, profile mode, arm64 emulator API 37 on an Apple-silicon Mac, synthetic photos; not yet measured on a mid-range phone):
+
+  | Original | No edits | Perspective crop |
+  |---|---|---|
+  | 12 MP | ≈ 0.3–0.45 s | ≈ 0.4–0.6 s |
+  | 48 MP | ≈ 0.5–0.6 s | ≈ 0.5–0.85 s |
+
+  Platform decoding is about half of it (≈ 0.35 s at 48 MP). One-time costs per launch: ≈ 0.4–0.6 s for the first OpenCV call (library load) and ≈ 2.8 s for the first platform decode on the emulator. Preview size stays at 2048 px. Because a cold preview is noticeably slow, T8/T9 should render previews and thumbnails in the background right after import or an edit, and show the thumbnail while a preview renders.
+- On Android, OpenCV logs `could not open directory …base.apk!/lib/…` errors once at load while looking for optional plugins; they are harmless.
+
 ### 5.2 Import
 
 1. `PhotoSource` returns temp files.
@@ -287,7 +305,7 @@ All are interfaces exposed through Riverpod providers (overridable in tests).
 Implementation notes (T6):
 
 - **Metadata** (`ImageMetadataReader`): format from magic bytes (JPEG, PNG, HEIC/HEIF, WebP; anything else is rejected); size from Flutter's `ImageDescriptor` (header parse, no full decode); orientation and `DateTimeOriginal` (+ `OffsetTimeOriginal`, else device-local) from EXIF via the `exif` package. **`ImageDescriptor` already applies EXIF orientation**, so its size is the displayed size and is stored as-is — verified with orientation-6/8 fixtures on the test host and on Android (API 37 emulator).
-- **HEIC (resolved for import):** the Android photo picker hands over HEIC files unchanged (byte-identical), and the platform decoder reads them. HEIC is stored as-is; no conversion at import. (Flutter's test host decodes HEIC on macOS but not on Linux, so the two HEIC-decoding tests are skipped in CI; format detection is tested everywhere.) Whether OpenCV can decode it remains for T7 (if not, T7 decodes with the platform decoder and passes pixels to OpenCV).
+- **HEIC (resolved for import):** the Android photo picker hands over HEIC files unchanged (byte-identical), and the platform decoder reads them. HEIC is stored as-is; no conversion at import. (Flutter's test host decodes HEIC on macOS but not on Linux, so the two HEIC-decoding tests are skipped in CI; format detection is tested everywhere.) OpenCV can't decode HEIC, so rendering decodes with the platform decoder (§5.1, T7).
 - **Photo picker:** `PhotoSource` uses its own `ImagePickerAndroid` instance with `useAndroidPhotoPicker = true` (Android 16+ always uses it). `retrieveLost()` can't tell camera from picker, so recovered photos are recorded as `camera`.
 - **Import** is per photo: a file that can't be read, or a failed insert, fails alone (its copied blob is removed) and the others continue; the picked temp file is always deleted. `asReference` (exactly one photo) sets the pointer in the same transaction. Import bumps the project's `updated_at`; deleting or restoring an image does not.
 - **Grid order:** newest first by `created_at` (when added), not `captured_at`.
@@ -307,7 +325,7 @@ packages/canvas_detect/
   test/fixtures/                photos + expected.json
 ```
 
-If `opencv_dart` cannot run under plain `dart test` (to verify in the first auto-crop task), the OpenCV implementation moves to a small Flutter package `packages/canvas_detect_opencv`, and the evaluation runs as a Flutter test instead of a CLI. The interface and scoring stay pure Dart.
+**Resolved in T7:** OpenCV runs under plain `dart test`, so everything stays in `packages/canvas_detect` (no `canvas_detect_opencv` split) and the evaluation can be a CLI. The package depends on `dartcv4` — the pure-Dart bindings that `opencv_dart` wraps for Flutter — which builds its native library through Dart build hooks, so the same dependency works in `dart test`, `flutter test`, and the app. `packages/canvas_detect/test/opencv_smoke_test.dart` keeps this checked in CI.
 
 ### 6.2 Algorithm (initial)
 
@@ -353,10 +371,11 @@ When applying an auto-crop:
 
 - `flutter create` with org `com.example`, app name `filbert`; Android only (other platforms added in their milestones).
 - Pub workspace at the repo root: the app plus `packages/canvas_detect`.
-- Dependencies (latest stable at the time of the setup task; versions recorded in `pubspec.yaml`): `flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`, `build_runner`, `drift`, `drift_flutter`, `drift_dev`, `go_router`, `image_picker`, `uuid`, `path_provider`, `opencv_dart`, `flutter_lints`, `material_ui`, `exif`, `image_picker_android`. Any additional package needs confirmation.
+- Dependencies (latest stable at the time of the setup task; versions recorded in `pubspec.yaml`): `flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`, `build_runner`, `drift`, `drift_flutter`, `drift_dev`, `go_router`, `image_picker`, `uuid`, `path_provider`, `dartcv4`, `flutter_lints`, `material_ui`, `exif`, `image_picker_android`. Any additional package needs confirmation.
 - `exif` (pure Dart; JPEG/HEIC/PNG/WebP) reads orientation and capture time without decoding pixels. `image_picker_android` is listed directly only to switch on Android's photo picker (it is already part of `image_picker`).
 - `material_ui` is Flutter's Material library, now shipped as a package; `package:flutter/material.dart` is deprecated since Flutter 3.47, and `flutter create` adds `material_ui` by default. Import `package:material_ui/material_ui.dart`, never `package:flutter/material.dart`.
-- `opencv_dart` is added in the rendering task (T7) rather than the setup task. It is a heavy native build, nothing uses it earlier, and the T7 spike decides whether it belongs in the app or in `packages/canvas_detect_opencv` (§6.1).
+- OpenCV is added in the rendering task (T7) rather than the setup task: it is a heavy native build and nothing uses it earlier.
+- OpenCV comes from `dartcv4` (the pure-Dart package behind `opencv_dart`), used by both the app and `packages/canvas_detect`. Its build hook compiles a small C wrapper with CMake and links OpenCV static libraries that it downloads prebuilt from the maintainer's GitHub releases (`rainyl/opencv.full`); the first build per target takes a few minutes, later builds are cached in `.dart_tool/hooks_runner`. Settings live under `hooks: user_defines: dartcv4:` in the root `pubspec.yaml`: the default modules (core, imgproc, imgcodecs) cover M1 including T13; CMake and Ninja come from the Android SDK (`prefer_android_cmake` / `prefer_android_ninja`); macOS uses the Ninja generator (the default, Xcode, isn't needed). Size: `libdartcv.so` is ≈ 9.5 MB per ABI uncompressed (arm64, debug); the arm64 profile APK is 32.8 MB. Tree-shaking (`treeshake: true`) can be tried before release.
 - Flutter version: 3.50.0 stable, pinned in CI (`.github/workflows/ci.yml`); bump it there and locally together.
 - CI (GitHub Actions, using `subosito/flutter-action`): `flutter pub get` → `build_runner` → `flutter analyze` → `flutter test` (app, then `dart test` in `packages/canvas_detect`) → `canvas_detect` evaluation (from T13) → Android debug build.
 
@@ -383,8 +402,8 @@ When applying an auto-crop:
 
 | Item | Resolve in |
 |---|---|
-| Does `opencv_dart` run under plain `dart test`? (affects §6.1 package split) | First auto-crop task |
-| ~~Can OpenCV decode camera HEIC on Android, or should import convert to JPEG?~~ Import: resolved in T6 — store as-is (§5.2). Still open: can OpenCV decode HEIC, or must rendering use the platform decoder? | Rendering task (T7) |
-| Preview-render latency on a mid-range phone; adjust preview size if needed | Rendering task |
+| ~~Does `opencv_dart` run under plain `dart test`?~~ Resolved in T7: yes, via `dartcv4`; no package split (§6.1). | — |
+| ~~Can OpenCV decode camera HEIC?~~ Resolved: import stores HEIC as-is (T6); OpenCV can't decode it, so rendering uses the platform decoder (T7, §5.1). | — |
+| Preview-render latency on a mid-range phone: measured on the emulator in T7 (§5.1); a real-phone run of `tool/render_benchmark.dart` is still to do | T15 (exit-criteria check on a real phone) |
 | Real application ID before the first Play Store upload | Before release |
 | If the repo becomes public: keep the painting fixtures in it, or move them out? | Before making the repo public |

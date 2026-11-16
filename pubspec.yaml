@@ -10,6 +10,7 @@ workspace:
   - packages/canvas_detect
 
 dependencies:
+  dartcv4: ^2.3.1
   drift: ^2.35.4
   drift_flutter: ^0.3.1
   exif: ^3.3.0
@@ -34,3 +35,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+# Native build settings for OpenCV (dartcv4). Default modules (core, imgproc,
+# imgcodecs) are all M1 needs. CMake and Ninja come from the Android SDK.
+hooks:
+  user_defines:
+    dartcv4:
+      prefer_android_cmake: true
+      prefer_android_ninja: true
+      macos:
+        generator: Ninja
