@@ -28,7 +28,7 @@ void main() {
     mimeType: 'image/jpeg',
     width: 4000,
     height: 3000,
-    source: ImageSource.camera,
+    source: ImageOrigin.camera,
     editsJson: '{"v":1,"quarterTurns":0}',
   );
 
@@ -74,7 +74,7 @@ void main() {
     await db.into(db.images).insert(image('i1', 'p1'));
     final row = await db.select(db.images).getSingle();
     expect(row.projectId, 'p1');
-    expect(row.source, ImageSource.camera);
+    expect(row.source, ImageOrigin.camera);
     expect(row.capturedAt, isNull);
     final raw = await db.customSelect('SELECT source FROM images').getSingle();
     expect(raw.read<String>('source'), 'camera');

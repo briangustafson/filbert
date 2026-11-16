@@ -51,7 +51,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 ### Photos
 
-- [ ] **T6 — File store, photo source, import**
+- [x] **T6 — File store, photo source, import**
   - `FileStore`: blob storage with atomic writes; cache directories.
   - `PhotoSource` wrapping `image_picker` (camera and multi-select picker).
   - `ImageRepository.import`, `watchForProject`, `delete`/`restore`, `setAsReference` (reference rules, §3.3).
@@ -72,6 +72,8 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - **Add photo** sheet (take photo / choose from device, multi-select) with import progress.
   - **Take photo** on the project list (new project + photo in one step); add its line to the empty state.
   - Project-list cards show real thumbnails.
+  - Call `PhotoSource.retrieveLost()` on start-up and import what it returns (photos taken while Android killed the app).
+  - The picker leaves an empty folder per pick in the app cache after import deletes the file; clear `image_picker`'s cache folders (e.g. on start-up).
   - *Done when:* widget tests for the reference slot rules; adding from camera and picker works on a device.
   - Depends on: T5, T6, T7
 
