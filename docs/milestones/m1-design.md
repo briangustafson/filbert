@@ -79,7 +79,10 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
 - Implementation notes (T4):
   - Card date is `MaterialLocalizations.formatShortDate` of `updatedAt` (e.g. "Nov 15, 2026"); no `intl` dependency.
   - Long-press opens a small menu (currently just **Delete**) so later actions can join it; Delete → confirm dialog → tombstone → snackbar with **Undo** that disappears after 6 s.
-  - The empty state mentions only **New project** until **Take photo** ships (T8).
+  - The empty state has one line per action (**New project**, **Take photo**).
+- Implementation notes (T8):
+  - **Take photo** opens the camera first and creates the project only once there is a photo, so cancelling leaves no empty project. If the photo can't be imported, the new project is deleted again and a snackbar says so.
+  - Covers come from one query (`ImageRepository.watchCovers`): per live project, the newest live photo other than the reference, else the live reference.
 
 ### 3.3 Project screen
 
@@ -92,6 +95,12 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
 - **Photos grid**: every live image except the current reference, newest first. Tap opens the photo screen.
 - **Add photo** (FAB): bottom sheet with Take photo / Choose from device (multi-select).
 - Overflow: Delete project.
+- Implementation notes (T8):
+  - The reference tile has the edited view's proportions (up to 280 dp tall); a "⋮" button on it holds **Replace** and **Remove**. Replace opens the same sheet as Add reference; the reference is always a single photo (the picker opens in single mode).
+  - Grid tiles are square and cropped to fill; the grid shows "No photos yet…" when empty.
+  - While importing, the Photos heading shows "Adding 2 of 5…" with a progress bar; photos are imported one at a time, so each tile appears as it lands. Failures are summed in one snackbar ("2 photos couldn't be added.").
+  - Thumbnails: one size everywhere, 512 px on the long edge (`standardThumbnailPx`), so each image has one cached thumbnail. A tile shows a small spinner while its thumbnail renders and a broken-image icon if rendering fails.
+  - After each import, the photo's thumbnail is rendered in the background, then (once all thumbnails are queued) its preview. The renderer runs at most two renders at once (each holds a decoded photo), queueing the rest.
 
 ### 3.4 Size picker
 
@@ -119,6 +128,13 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
 2. Each is imported (§5.2); thumbnails appear immediately with a progress indicator.
 3. If added to the **grid** and "auto-crop on add" is on: the auto-crop review screen opens for each new photo in turn (queue with "1 of 3"; **Skip** leaves it uncropped).
 4. If added to the **reference slot** and the project has a size/ratio: manual crop opens locked to that ratio (**Skip** allowed).
+
+Implementation notes (T8):
+
+- `PhotoImports` (a keep-alive Riverpod notifier in `features/photos/data/`) runs every add: camera, picker, import with progress, background renders, and start-up recovery. Its state is the imports in progress, by project.
+- **Photos taken while Android killed the app:** before the camera opens, the target (project + grid or reference, or "new project") is saved in `app_meta.pending_capture`, and cleared when the camera returns. On start-up, `retrieveLost()` photos are imported into that target (a new project if it is gone or none was saved), and a snackbar offers **Open**. Verified on the emulator by killing the app process while the camera was open.
+- **Picker leftovers:** `image_picker` copies each picked photo into `<cache>/<uuid>/` and writes camera photos as `<cache>/<uuid><digits>.<ext>`; import deletes the photo but not the folder. On start-up, after recovery, entries with exactly those names are deleted; nothing else in the cache (the render caches live there too).
+- The Android photo picker shows **Done** even in single-photo mode, but allows only one selection.
 
 ### 3.7 Manual crop
 
@@ -183,7 +199,7 @@ Common columns on synced tables: `id TEXT PRIMARY KEY` (UUIDv7), `created_at`, `
 
 Plus a per-image cursor (`image_edit_cursor`: `image_id`, `seq`) for redo. History is capped at 50 entries per image; pushing a new state after undoing discards the redo tail.
 
-**`app_meta`** (local only, key/value): `device_id` (UUIDv7, created on first launch), `device_name`, `auto_crop_on_add`, `units`, `last_purge_at` (epoch ms of the last purge run, §4.4).
+**`app_meta`** (local only, key/value): `device_id` (UUIDv7, created on first launch), `device_name`, `auto_crop_on_add`, `units`, `last_purge_at` (epoch ms of the last purge run, §4.4), `pending_capture` (JSON target of an open camera session, §3.6).
 
 Drift schema version starts at 1. A migration test harness (Drift's schema dumps + `SchemaVerifier`) is set up in M1 even though there are no migrations yet.
 
@@ -263,10 +279,12 @@ All are interfaces exposed through Riverpod providers (overridable in tests).
 | `Clock` | Current time (fakeable) |
 | `DeviceInfo` | Device id and name from `app_meta` |
 | `ProjectRepository` | `watchAll`, `watch(id)`, `create`, `update`, `delete`, `restore`; default-name logic |
-| `ImageRepository` | `watchForProject`, `import`, `setEdits` (pushes history), `undo`, `redo`, `revert`, `setAsReference`, `delete`, `restore` |
-| `PhotoSource` | `takePhoto()`, `pickFromDevice({multiple})` → temp files (wraps `image_picker`) |
+| `ImageRepository` | `watchForProject`, `watchCovers`, `import`, `setEdits` (pushes history), `undo`, `redo`, `revert`, `setAsReference`, `delete`, `restore` |
+| `PhotoSource` | `takePhoto()`, `pickFromDevice({multiple})` → temp files, `retrieveLost()`, `clearLeftovers()` (wraps `image_picker`) |
 | `FileStore` | Blob storage, atomic writes, purge |
 | `ImageRenderer` | Produces previews and thumbnails from original + edits, off the UI isolate |
+| `PhotoImports` | Adding photos: camera/picker, import progress, background renders, lost-photo recovery (§3.6) |
+| `PendingCaptureStore` | Where an open camera session's photo goes (`app_meta.pending_capture`) |
 | `CanvasDetector` | From `packages/canvas_detect`: `detect(image) → Detection(quad, confidence)` |
 | `SettingsRepository` | `app_meta` settings as a stream |
 

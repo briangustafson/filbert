@@ -25,6 +25,11 @@ abstract interface class ImageRepository {
   /// `Project.referenceImageId`.
   Stream<List<ProjectImage>> watchForProject(String projectId);
 
+  /// The cover image of every live project that has one, by project id
+  /// (m1-design §3.2): its newest live photo other than the reference, else
+  /// its live reference.
+  Stream<Map<String, ProjectImage>> watchCovers();
+
   /// Copies each photo into the blob store and adds it to the project with
   /// no edits, then deletes the photo's temporary file. Photos are imported
   /// independently; results are in input order. With [asReference] (one
@@ -106,6 +111,41 @@ class DriftImageRepository implements ImageRepository {
         (i) => OrderingTerm.desc(i.id),
       ]);
     return query.watch().map((rows) => rows.map(toProjectImage).toList());
+  }
+
+  @override
+  Stream<Map<String, ProjectImage>> watchCovers() {
+    final query =
+        _db.select(_db.images).join([
+            innerJoin(
+              _db.projects,
+              _db.projects.id.equalsExp(_db.images.projectId),
+            ),
+          ])
+          ..where(
+            _db.images.deletedAt.isNull() & _db.projects.deletedAt.isNull(),
+          )
+          ..orderBy([
+            OrderingTerm.desc(_db.images.createdAt),
+            OrderingTerm.desc(_db.images.id),
+          ]);
+    return query.watch().map((rows) {
+      final covers = <String, ProjectImage>{};
+      final references = <String, ProjectImage>{};
+      for (final row in rows) {
+        final image = row.readTable(_db.images);
+        final project = row.readTable(_db.projects);
+        if (image.id == project.referenceImageId) {
+          references[project.id] = toProjectImage(image);
+        } else {
+          covers.putIfAbsent(project.id, () => toProjectImage(image));
+        }
+      }
+      for (final MapEntry(:key, :value) in references.entries) {
+        covers.putIfAbsent(key, () => value);
+      }
+      return covers;
+    });
   }
 
   @override

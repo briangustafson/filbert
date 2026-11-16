@@ -3,6 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/routes.dart';
+import '../../photos/data/image_providers.dart';
+import '../../photos/data/photo_imports.dart';
+import '../../photos/domain/project_image.dart';
+import '../../photos/ui/add_photos.dart';
+import '../../photos/ui/image_thumbnail.dart';
 import '../data/project_providers.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
@@ -15,10 +20,16 @@ class ProjectListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projects = ref.watch(projectListProvider);
+    final covers = ref.watch(projectCoversProvider).value ?? const {};
     return Scaffold(
       appBar: AppBar(
         title: const Text('Projects'),
         actions: [
+          IconButton(
+            tooltip: 'Take photo',
+            icon: const Icon(Icons.photo_camera_outlined),
+            onPressed: () => _takePhoto(context, ref),
+          ),
           PopupMenuButton<void>(
             tooltip: 'More',
             itemBuilder: (context) => [
@@ -39,6 +50,7 @@ class ProjectListScreen extends ConsumerWidget {
         AsyncData(:final value) when value.isEmpty => const _EmptyState(),
         AsyncData(:final value) => _ProjectGrid(
           projects: value,
+          covers: covers,
           onOpen: (p) => context.go(Routes.project(p.id)),
           onDelete: (p) => confirmAndDeleteProject(context, ref, p),
         ),
@@ -51,6 +63,29 @@ class ProjectListScreen extends ConsumerWidget {
   Future<void> _createProject(BuildContext context, WidgetRef ref) async {
     final project = await ref.read(projectRepositoryProvider).create();
     if (context.mounted) context.go(Routes.project(project.id));
+  }
+
+  /// Camera first: a project is created only once there's a photo for it.
+  Future<void> _takePhoto(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final created = await ref
+          .read(photoImportsProvider.notifier)
+          .takePhotoForNewProject();
+      if (created == null) return;
+      if (created.result.added.isEmpty) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(failedMessage(created.result.failed))),
+        );
+      } else if (context.mounted) {
+        context.go(Routes.project(created.projectId));
+      }
+    } on Exception catch (e) {
+      debugPrint('Take photo failed: $e');
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Couldn't open the camera.")),
+      );
+    }
   }
 }
 
@@ -74,13 +109,17 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text('No projects yet', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
-            Text(
+            for (final line in const [
               'Tap New project to start one.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              'Or take a photo to start a project with it.',
+            ])
+              Text(
+                line,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       ),
@@ -91,11 +130,13 @@ class _EmptyState extends StatelessWidget {
 class _ProjectGrid extends StatelessWidget {
   const _ProjectGrid({
     required this.projects,
+    required this.covers,
     required this.onOpen,
     required this.onDelete,
   });
 
   final List<Project> projects;
+  final Map<String, ProjectImage> covers;
   final ValueChanged<Project> onOpen;
   final ValueChanged<Project> onDelete;
 
@@ -114,6 +155,7 @@ class _ProjectGrid extends StatelessWidget {
       itemBuilder: (context, i) => ProjectCard(
         key: ValueKey(projects[i].id),
         project: projects[i],
+        cover: covers[projects[i].id],
         onOpen: () => onOpen(projects[i]),
         onDelete: () => onDelete(projects[i]),
       ),
@@ -125,11 +167,15 @@ class ProjectCard extends StatefulWidget {
   const ProjectCard({
     super.key,
     required this.project,
+    this.cover,
     required this.onOpen,
     required this.onDelete,
   });
 
   final Project project;
+
+  /// Latest photo, else the reference; null shows a placeholder.
+  final ProjectImage? cover;
   final VoidCallback onOpen;
   final VoidCallback onDelete;
 
@@ -175,15 +221,16 @@ class _ProjectCardState extends State<ProjectCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              // Placeholder until real thumbnails arrive (M1 T8).
-              child: ColoredBox(
-                color: theme.colorScheme.surfaceContainerHighest,
-                child: Icon(
-                  Icons.image_outlined,
-                  size: 40,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
+              child: widget.cover == null
+                  ? ColoredBox(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: Icon(
+                        Icons.image_outlined,
+                        size: 40,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    )
+                  : ImageThumbnail(image: widget.cover!),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),

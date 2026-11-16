@@ -1,0 +1,217 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:filbert/features/photos/data/image_renderer.dart';
+import 'package:filbert/features/photos/data/image_repository.dart';
+import 'package:filbert/features/photos/data/pending_capture.dart';
+import 'package:filbert/features/photos/data/photo_source.dart';
+import 'package:filbert/features/photos/domain/project_image.dart';
+import 'package:filbert/features/projects/data/project_repository.dart';
+
+import 'fake_project_repository.dart';
+
+/// In-memory [ImageRepository] for widget tests (see
+/// [FakeProjectRepository] for why). Reference pointers live on [projects].
+class FakeImageRepository implements ImageRepository {
+  FakeImageRepository(this.projects);
+
+  final FakeProjectRepository projects;
+
+  final _images = <String, ProjectImage>{};
+  final _deleted = <String>{};
+  final _changes = StreamController<void>.broadcast();
+  var _nextId = 1;
+  var _clock = 0;
+
+  /// Mutating calls made through the [ImageRepository] interface.
+  final calls = <String>[];
+
+  /// Paths whose import fails.
+  final failingPaths = <String>{};
+
+  /// Adds a live image directly, without recording a call.
+  ProjectImage seed(String projectId, {bool asReference = false}) {
+    final image = _newImage(projectId, ImageOrigin.device);
+    _images[image.id] = image;
+    if (asReference) projects.setReference(projectId, image.id);
+    _changes.add(null);
+    return image;
+  }
+
+  bool isDeleted(String id) => _deleted.contains(id);
+
+  List<ProjectImage> _live(String projectId) =>
+      _images.values
+          .where((i) => i.projectId == projectId && !_deleted.contains(i.id))
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+  Stream<T> _watch<T>(T Function() read) async* {
+    yield read();
+    await for (final _ in _changes.stream) {
+      yield read();
+    }
+  }
+
+  @override
+  Stream<List<ProjectImage>> watchForProject(String projectId) =>
+      _watch(() => _live(projectId));
+
+  @override
+  Stream<Map<String, ProjectImage>> watchCovers() => _watch(() {
+    final covers = <String, ProjectImage>{};
+    for (final project in projects.live) {
+      final images = _live(project.id);
+      final cover =
+          images.where((i) => i.id != project.referenceImageId).firstOrNull ??
+          images.where((i) => i.id == project.referenceImageId).firstOrNull;
+      if (cover != null) covers[project.id] = cover;
+    }
+    return covers;
+  });
+
+  @override
+  Future<List<ImportResult>> import(
+    String projectId,
+    List<PickedPhoto> photos, {
+    bool asReference = false,
+  }) async {
+    calls.add('import $projectId ${photos.length}${asReference ? ' ref' : ''}');
+    if (projects.byId(projectId) == null || projects.isDeleted(projectId)) {
+      throw ProjectNotFoundException(projectId);
+    }
+    final results = <ImportResult>[];
+    for (final photo in photos) {
+      if (failingPaths.contains(photo.path)) {
+        results.add(ImportFailure(photo, Exception('bad photo')));
+        continue;
+      }
+      final image = _newImage(projectId, photo.origin);
+      _images[image.id] = image;
+      if (asReference) projects.setReference(projectId, image.id);
+      results.add(ImportSuccess(photo, image));
+    }
+    _changes.add(null);
+    return results;
+  }
+
+  @override
+  Future<void> setAsReference(String projectId, String? imageId) async {
+    calls.add('setAsReference $projectId $imageId');
+    projects.setReference(projectId, imageId);
+    _changes.add(null);
+  }
+
+  @override
+  Future<void> delete(String imageId) async {
+    calls.add('delete $imageId');
+    _deleted.add(imageId);
+    _changes.add(null);
+  }
+
+  @override
+  Future<void> restore(String imageId) async {
+    calls.add('restore $imageId');
+    _deleted.remove(imageId);
+    _changes.add(null);
+  }
+
+  ProjectImage _newImage(String projectId, ImageOrigin origin) {
+    final at = DateTime.utc(2026, 11, 15, 12).add(Duration(seconds: _clock++));
+    return ProjectImage(
+      id: 'img${_nextId++}',
+      projectId: projectId,
+      blobId: 'blob$_nextId',
+      mimeType: 'image/jpeg',
+      width: 40,
+      height: 30,
+      origin: origin,
+      capturedAt: null,
+      edits: Edits.none,
+      createdAt: at,
+      updatedAt: at,
+      updatedByDeviceId: 'test-device',
+    );
+  }
+}
+
+/// Records requests and fails them at once, so tiles show their "broken"
+/// state and nothing animates (which would keep `pumpAndSettle` waiting).
+/// With [hang], requests never finish instead (the loading state).
+class FakeImageRenderer implements ImageRenderer {
+  FakeImageRenderer({this.hang = false});
+
+  final bool hang;
+  final requests = <String>[];
+
+  @override
+  Future<File> preview(ProjectImage image) => _request('preview ${image.id}');
+
+  @override
+  Future<File> thumbnail(ProjectImage image, int px) =>
+      _request('thumbnail ${image.id} $px');
+
+  Future<File> _request(String what) {
+    requests.add(what);
+    return hang
+        ? Completer<File>().future
+        : Future.error(UnsupportedError('FakeImageRenderer renders nothing'));
+  }
+}
+
+/// Camera and picker that return queued results.
+class FakePhotoSource implements PhotoSource {
+  /// Next camera result; null means the user cancels.
+  PickedPhoto? nextPhoto;
+
+  /// Next picker result; empty means the user cancels.
+  List<PickedPhoto> nextPicks = [];
+
+  /// Returned once by [retrieveLost].
+  List<PickedPhoto> lost = [];
+
+  /// Called while the camera is "open", to observe what's saved meanwhile.
+  FutureOr<void> Function()? whileCameraOpen;
+
+  final calls = <String>[];
+
+  @override
+  Future<PickedPhoto?> takePhoto() async {
+    calls.add('takePhoto');
+    await whileCameraOpen?.call();
+    return nextPhoto;
+  }
+
+  @override
+  Future<List<PickedPhoto>> pickFromDevice({bool multiple = true}) async {
+    calls.add('pickFromDevice multiple=$multiple');
+    return nextPicks;
+  }
+
+  @override
+  Future<List<PickedPhoto>> retrieveLost() async {
+    calls.add('retrieveLost');
+    final photos = lost;
+    lost = [];
+    return photos;
+  }
+
+  @override
+  Future<void> clearLeftovers() async => calls.add('clearLeftovers');
+}
+
+class FakePendingCaptureStore implements PendingCaptureStore {
+  PendingCapture? value;
+
+  @override
+  Future<void> save(PendingCapture capture) async => value = capture;
+
+  @override
+  Future<PendingCapture?> read() async => value;
+
+  @override
+  Future<void> clear() async => value = null;
+}
+
+PickedPhoto picked(String name, {ImageOrigin origin = ImageOrigin.device}) =>
+    PickedPhoto(path: '/picked/$name', origin: origin);

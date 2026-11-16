@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
@@ -13,6 +14,10 @@ import '../../../core/imaging/render_pipeline.dart';
 import '../domain/project_image.dart';
 
 part 'image_renderer.g.dart';
+
+/// Thumbnail size used everywhere in M1 (grid tiles, project cards, the
+/// reference slot), so each image has one cached thumbnail.
+const standardThumbnailPx = 512;
 
 /// Produces the edited view of an image as cached JPEG files
 /// (m1-design §4.4, §5.1). Originals are never modified.
@@ -31,12 +36,19 @@ abstract interface class ImageRenderer {
 /// Cached files are reused; concurrent requests for the same file share one
 /// render.
 class OpenCvImageRenderer implements ImageRenderer {
-  OpenCvImageRenderer({required this._files});
+  OpenCvImageRenderer({required this._files, this.maxConcurrent = 2});
 
   static const previewLongEdge = 2048;
 
+  /// Renders running at once. Each holds a decoded photo in memory, so a
+  /// screen full of uncached thumbnails queues instead of decoding them all
+  /// together.
+  final int maxConcurrent;
+
   final FileStore _files;
   final _inFlight = <String, Future<File>>{};
+  final _waiting = <Completer<void>>[];
+  var _running = 0;
 
   @override
   Future<File> preview(ProjectImage image) => _render(
@@ -79,7 +91,37 @@ class OpenCvImageRenderer implements ImageRenderer {
     File target,
   ) async {
     if (await target.exists()) return target;
+    await _acquire();
+    try {
+      return await _renderNow(image, maxLongEdge, target);
+    } finally {
+      _release();
+    }
+  }
 
+  Future<void> _acquire() async {
+    if (_running < maxConcurrent) {
+      _running++;
+      return;
+    }
+    final turn = Completer<void>();
+    _waiting.add(turn);
+    await turn.future; // _release hands its slot over.
+  }
+
+  void _release() {
+    if (_waiting.isNotEmpty) {
+      _waiting.removeAt(0).complete();
+    } else {
+      _running--;
+    }
+  }
+
+  Future<File> _renderNow(
+    ProjectImage image,
+    int maxLongEdge,
+    File target,
+  ) async {
     final extension = extensionForMimeType[image.mimeType];
     if (extension == null) {
       throw UnsupportedImageException('Unknown type ${image.mimeType}');

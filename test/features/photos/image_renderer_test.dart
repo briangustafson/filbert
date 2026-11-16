@@ -144,6 +144,21 @@ void main() {
     expect((await a).path, (await b).path);
   });
 
+  test('with one render at a time, queued renders all finish', () async {
+    final serial = OpenCvImageRenderer(files: files, maxConcurrent: 1);
+    final image = await stored('no_exif.jpg');
+    final rendered = await Future.wait([
+      serial.preview(image),
+      serial.thumbnail(image, 16),
+      serial.thumbnail(image, 8),
+      serial.preview(await stored('plain.png', mimeType: 'image/png')),
+    ]);
+    for (final f in rendered) {
+      expect(f.existsSync(), isTrue);
+    }
+    expect(await sizeOf(rendered[2]), (8, 6));
+  });
+
   test('HEIC renders via the platform decoder', () async {
     final image = await stored('landscape.heic', mimeType: 'image/heic');
     expect(await sizeOf(await renderer.preview(image)), (40, 30));
