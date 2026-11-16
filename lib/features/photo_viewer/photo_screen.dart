@@ -111,6 +111,21 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
     );
   }
 
+  Future<void> _revert(ProjectImage image) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final repository = ref.read(imageRepositoryProvider);
+    await repository.revert(image.id);
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Reverted to the original.'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => repository.undo(image.id),
+        ),
+      ),
+    );
+  }
+
   /// Shows the next photo (else the previous one, else returns to the
   /// project), then deletes, with Undo.
   Future<void> _delete(ProjectImage image) async {
@@ -185,6 +200,9 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
 
     final isReference =
         current != null && current.id == project.value?.referenceImageId;
+    final history = current == null
+        ? EditHistory.empty
+        : ref.watch(editHistoryProvider(current.id)).value ?? EditHistory.empty;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -197,9 +215,17 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
             menu: current == null
                 ? null
                 : _PhotoMenu(
+                    canUndo: history.canUndo,
+                    canRedo: history.canRedo,
+                    canRevert: !current.edits.isNone,
                     isReference: isReference,
                     onOpened: _hideTimer?.cancel,
                     onClosed: _showChrome,
+                    onUndo: () =>
+                        ref.read(imageRepositoryProvider).undo(current!.id),
+                    onRedo: () =>
+                        ref.read(imageRepositoryProvider).redo(current!.id),
+                    onRevert: () => _revert(current!),
                     onSetAsReference: () => _setAsReference(current!),
                     onDelete: () => _delete(current!),
                   ),
@@ -263,18 +289,31 @@ class _Chrome extends StatelessWidget {
   }
 }
 
+/// Items appear only when they apply (m1-design §3.5).
 class _PhotoMenu extends StatelessWidget {
   const _PhotoMenu({
+    required this.canUndo,
+    required this.canRedo,
+    required this.canRevert,
     required this.isReference,
     required this.onOpened,
     required this.onClosed,
+    required this.onUndo,
+    required this.onRedo,
+    required this.onRevert,
     required this.onSetAsReference,
     required this.onDelete,
   });
 
+  final bool canUndo;
+  final bool canRedo;
+  final bool canRevert;
   final bool isReference;
   final VoidCallback? onOpened;
   final VoidCallback onClosed;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
+  final VoidCallback onRevert;
   final VoidCallback onSetAsReference;
   final VoidCallback onDelete;
 
@@ -288,6 +327,12 @@ class _PhotoMenu extends StatelessWidget {
       onSelected: (action) {
         onClosed();
         switch (action) {
+          case _PhotoAction.undo:
+            onUndo();
+          case _PhotoAction.redo:
+            onRedo();
+          case _PhotoAction.revert:
+            onRevert();
           case _PhotoAction.setAsReference:
             onSetAsReference();
           case _PhotoAction.delete:
@@ -295,6 +340,15 @@ class _PhotoMenu extends StatelessWidget {
         }
       },
       itemBuilder: (_) => [
+        if (canUndo)
+          const PopupMenuItem(value: _PhotoAction.undo, child: Text('Undo')),
+        if (canRedo)
+          const PopupMenuItem(value: _PhotoAction.redo, child: Text('Redo')),
+        if (canRevert)
+          const PopupMenuItem(
+            value: _PhotoAction.revert,
+            child: Text('Revert to original'),
+          ),
         if (!isReference)
           const PopupMenuItem(
             value: _PhotoAction.setAsReference,
@@ -306,7 +360,7 @@ class _PhotoMenu extends StatelessWidget {
   }
 }
 
-enum _PhotoAction { setAsReference, delete }
+enum _PhotoAction { undo, redo, revert, setAsReference, delete }
 
 class _Missing extends StatelessWidget {
   const _Missing();

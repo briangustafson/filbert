@@ -195,6 +195,52 @@ void main() {
       expect(await menuItems(tester), ['Delete']);
     });
 
+    testWidgets('Undo, Redo, Revert appear only when they apply', (
+      tester,
+    ) async {
+      const turned = Edits(quarterTurns: 1);
+      await images.setEdits(c.id, turned);
+      await open(tester, c.id);
+      expect(await menuItems(tester), [
+        'Undo',
+        'Revert to original',
+        'Set as reference',
+        'Delete',
+      ]);
+
+      await choose(tester, 'Undo');
+      expect(images.calls.last, 'undo ${c.id}');
+      expect(await menuItems(tester), ['Redo', 'Set as reference', 'Delete']);
+
+      await choose(tester, 'Redo');
+      expect(images.calls.last, 'redo ${c.id}');
+      expect(await menuItems(tester), [
+        'Undo',
+        'Revert to original',
+        'Set as reference',
+        'Delete',
+      ]);
+    });
+
+    testWidgets('Revert can be undone from its snackbar', (tester) async {
+      await images.setEdits(c.id, const Edits(quarterTurns: 1));
+      await open(tester, c.id);
+      await menuItems(tester);
+      await choose(tester, 'Revert to original');
+
+      expect(images.calls.last, 'revert ${c.id}');
+      expect(find.text('Reverted to the original.'), findsOneWidget);
+      // Back at the original: Undo, but nothing to revert or redo.
+      expect(await menuItems(tester), ['Undo', 'Set as reference', 'Delete']);
+      await tester.tapAt(Offset.zero); // close the menu
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(SnackBarAction, 'Undo'));
+      await tester.pumpAndSettle();
+      expect(images.calls.last, 'undo ${c.id}');
+      expect(shown(tester), c.id);
+    });
+
     testWidgets('Set as reference keeps showing the photo', (tester) async {
       await open(tester, b.id);
       await menuItems(tester);

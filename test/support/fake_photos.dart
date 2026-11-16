@@ -18,6 +18,9 @@ class FakeImageRepository implements ImageRepository {
   final FakeProjectRepository projects;
 
   final _images = <String, ProjectImage>{};
+
+  /// Per image: edit states and the index of the current one.
+  final _history = <String, ({List<Edits> states, int cursor})>{};
   final _deleted = <String>{};
   final _changes = StreamController<void>.broadcast();
   var _nextId = 1;
@@ -97,6 +100,61 @@ class FakeImageRepository implements ImageRepository {
     }
     _changes.add(null);
     return results;
+  }
+
+  @override
+  Future<void> setEdits(String imageId, Edits edits) async {
+    calls.add('setEdits $imageId');
+    final image = _images[imageId]!;
+    if (image.edits == edits) return;
+    final h = _history[imageId];
+    final kept = h == null ? [image.edits] : h.states.sublist(0, h.cursor + 1);
+    _history[imageId] = (states: [...kept, edits], cursor: kept.length);
+    _setImageEdits(imageId, edits);
+  }
+
+  @override
+  Future<void> undo(String imageId) async {
+    calls.add('undo $imageId');
+    _step(imageId, -1);
+  }
+
+  @override
+  Future<void> redo(String imageId) async {
+    calls.add('redo $imageId');
+    _step(imageId, 1);
+  }
+
+  @override
+  Future<void> revert(String imageId) async {
+    calls.add('revert $imageId');
+    final before = calls.length;
+    await setEdits(imageId, Edits.none);
+    calls.removeRange(before, calls.length); // not a separate call
+  }
+
+  @override
+  Stream<EditHistory> watchHistory(String imageId) => _watch(() {
+    final h = _history[imageId];
+    if (h == null) return EditHistory.empty;
+    return EditHistory(
+      canUndo: h.cursor > 0,
+      canRedo: h.cursor < h.states.length - 1,
+    );
+  });
+
+  void _step(String imageId, int direction) {
+    final h = _history[imageId];
+    if (h == null) return;
+    final target = h.cursor + direction;
+    if (target < 0 || target >= h.states.length) return;
+    _history[imageId] = (states: h.states, cursor: target);
+    _setImageEdits(imageId, h.states[target]);
+  }
+
+  void _setImageEdits(String imageId, Edits edits) {
+    _images[imageId] = _images[imageId]!.withEdits(edits);
+    _changes.add(null);
   }
 
   @override

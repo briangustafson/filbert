@@ -88,7 +88,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 ### Editing
 
-- [ ] **T10 — Undo, redo, revert**
+- [x] **T10 — Undo, redo, revert**
   - `ImageRepository.setEdits`, `undo`, `redo`, `revert` backed by `image_edit_history` (50-entry cap, redo-tail discard).
   - Photo screen menu items appear only when applicable.
   - *Done when:* history tests pass (push, undo, redo, discard, cap, revert-then-undo).
@@ -98,6 +98,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - Crop rectangle with aspect lock (project ratio default, presets, freeform, orientation toggle).
   - Straighten slider (±45°) and Rotate 90°; output stored as a quad + `quarterTurns`.
   - Cancel / Reset / Apply (Apply pushes an undoable edit).
+  - On a device, also check undo / redo / revert from the photo menu (T10 couldn't: nothing created edits before this task).
   - *Done when:* widget tests for handles and aspect lock; quad math unit-tested; apply → undo works on a device.
   - Depends on: T10
 
