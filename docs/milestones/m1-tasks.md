@@ -102,7 +102,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* widget tests for handles and aspect lock; quad math unit-tested; apply → undo works on a device.
   - Depends on: T10
 
-- [ ] **T12 — Auto-crop review screen (with stub detector)**
+- [x] **T12 — Auto-crop review screen (with stub detector)**
   - `CanvasDetector` interface in `packages/canvas_detect` with a stub implementation (inset full-image quad, low confidence).
   - Review screen (§3.8): draggable corner handles, magnifier loupe, low-confidence hint, Full image / Reset / Apply.
   - Debug-only **Copy corners as JSON**.
@@ -111,7 +111,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - Depends on: T11
 
 - [ ] **T13 — Canvas detection and evaluation set**
-  - **You + Claude:** annotate the collected photos using Copy corners as JSON; commit downscaled fixtures and `expected.json` (§6.4).
+  - **You + Claude:** annotate the collected photos using Copy corners as JSON (debug build; the copied `file` is `<imageId>.<ext>`, renamed to the fixture's name); commit downscaled fixtures and `expected.json` (§6.4).
   - OpenCV detector (§6.2) with pure-Dart scoring; runs in an isolate.
   - Evaluation tool (§6.5) and CI step that fails below the committed baseline.
   - *Done when:* success rate ≥ 80% on the set (or the achieved rate and plan agreed with you), baseline committed, detection < 500 ms on a mid-range phone.

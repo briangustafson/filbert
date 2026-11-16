@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:canvas_detect/canvas_detect.dart';
+import 'package:filbert/features/autocrop/canvas_detection.dart';
 import 'package:filbert/features/photos/data/image_renderer.dart';
 import 'package:filbert/features/photos/data/image_repository.dart';
 import 'package:filbert/features/photos/data/pending_capture.dart';
@@ -287,3 +289,31 @@ class FakePendingCaptureStore implements PendingCaptureStore {
 
 PickedPhoto picked(String name, {ImageOrigin origin = ImageOrigin.device}) =>
     PickedPhoto(path: '/picked/$name', origin: origin);
+
+/// Returns [result] (default: the stub detector's low-confidence guess), or
+/// throws [error].
+class FakeCanvasDetection implements CanvasDetection {
+  FakeCanvasDetection({Detection? result, this.error})
+    : result =
+          result ??
+          Detection(
+            quad: Quad(const [
+              Corner(0.05, 0.05),
+              Corner(0.95, 0.05),
+              Corner(0.95, 0.95),
+              Corner(0.05, 0.95),
+            ]),
+            confidence: 0,
+          );
+
+  final Detection result;
+  final Object? error;
+  final requests = <String>[];
+
+  @override
+  Future<Detection> detect(ProjectImage image, {double? aspectHint}) async {
+    requests.add('${image.id} hint=$aspectHint');
+    if (error != null) throw error!;
+    return result;
+  }
+}

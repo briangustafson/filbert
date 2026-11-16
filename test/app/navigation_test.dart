@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:filbert/features/autocrop/autocrop_review_screen.dart';
 import 'package:filbert/features/crop/crop_screen.dart';
 import 'package:filbert/features/photo_viewer/photo_screen.dart';
 
@@ -60,8 +61,8 @@ void main() {
     expect(location(container), Routes.photo(p, i));
     expect(find.byType(PhotoScreen), findsOneWidget);
 
-    // Crop is in the photo menu (tested in crop_screen_test); auto-crop is
-    // reached by deep link until its menu item arrives (T12).
+    // Both are in the photo menu (tested in their own screen tests); here
+    // they're reached by deep link.
     container.read(routerProvider).go(Routes.crop(p, i));
     await tester.pumpAndSettle();
     expect(find.byType(CropScreen), findsOneWidget);
@@ -71,8 +72,9 @@ void main() {
 
     container.read(routerProvider).go(Routes.autocrop(p, i));
     await tester.pumpAndSettle();
-    expectTitle('Auto-crop');
-    await tapBack(tester);
+    expect(find.byType(AutocropReviewScreen), findsOneWidget);
+    await tester.tap(find.byTooltip('Cancel'));
+    await tester.pumpAndSettle();
     expect(location(container), Routes.photo(p, i));
 
     // Android's system back (the photo screen's own chrome may have hidden
@@ -94,16 +96,16 @@ void main() {
     expectTitle('Projects');
   });
 
-  testWidgets('deep links open with route ids', (tester) async {
+  testWidgets('deep links to a missing photo offer a way back', (tester) async {
+    final project = projects.seed('Harbor');
     final container = await pumpFilbertApp(tester, projects: projects);
-    container.read(routerProvider).go(Routes.autocrop('p1', 'i1'));
+    container.read(routerProvider).go(Routes.autocrop(project.id, 'gone'));
     await tester.pumpAndSettle();
 
-    expectTitle('Auto-crop');
-    expect(find.text('Project: p1'), findsOneWidget);
-    expect(find.text('Image: i1'), findsOneWidget);
-
-    await tapBack(tester);
-    expect(find.byType(PhotoScreen), findsOneWidget);
+    expect(find.byType(AutocropReviewScreen), findsOneWidget);
+    expect(find.text('This photo no longer exists.'), findsOneWidget);
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    expect(location(container), Routes.project(project.id));
   });
 }

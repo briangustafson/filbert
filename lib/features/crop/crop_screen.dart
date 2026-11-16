@@ -37,10 +37,10 @@ class CropScreen extends ConsumerWidget {
     final Widget body;
     if (!project.hasValue || !images.hasValue) {
       body = project.hasError || images.hasError
-          ? const _Message('This photo no longer exists.')
+          ? _Missing(projectId: projectId)
           : const Center(child: CircularProgressIndicator());
     } else if (project.value == null || image == null) {
-      body = const _Message('This photo no longer exists.');
+      body = _Missing(projectId: projectId);
     } else {
       body = _CropView(
         key: ValueKey(image.id),
@@ -447,6 +447,28 @@ String ratioLabel(double w, double h) => '${_trim(w)}:${_trim(h)}';
 
 String _trim(double v) =>
     v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+
+/// The photo (or its project) is gone: say so, with a way back.
+class _Missing extends StatelessWidget {
+  const _Missing({required this.projectId});
+
+  final String projectId;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('This photo no longer exists.'),
+        const SizedBox(height: 16),
+        FilledButton.tonal(
+          onPressed: () => context.go(Routes.project(projectId)),
+          child: const Text('Back'),
+        ),
+      ],
+    ),
+  );
+}
 
 class _Message extends StatelessWidget {
   const _Message(this.text);

@@ -6,6 +6,7 @@ import 'package:filbert/features/projects/data/project_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:filbert/features/autocrop/canvas_detection.dart';
 import 'package:filbert/features/photos/data/image_renderer.dart';
 import 'package:filbert/features/photos/data/image_repository.dart';
 import 'package:filbert/features/photos/data/pending_capture.dart';
@@ -22,6 +23,7 @@ Future<ProviderContainer> pumpFilbertApp(
   FakeImageRenderer? renderer,
   FakePhotoSource? photoSource,
   FakePendingCaptureStore? pendingCapture,
+  FakeCanvasDetection? detection,
   LengthUnit preferredUnit = LengthUnit.inches,
   String? initialLocation,
 }) async {
@@ -36,6 +38,9 @@ Future<ProviderContainer> pumpFilbertApp(
       photoSourceProvider.overrideWithValue(photoSource ?? FakePhotoSource()),
       pendingCaptureStoreProvider.overrideWithValue(
         pendingCapture ?? FakePendingCaptureStore(),
+      ),
+      canvasDetectionProvider.overrideWithValue(
+        detection ?? FakeCanvasDetection(),
       ),
       preferredLengthUnitProvider.overrideWithValue(preferredUnit),
     ],

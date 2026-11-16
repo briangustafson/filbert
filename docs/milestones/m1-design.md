@@ -165,6 +165,13 @@ Implementation notes (T8):
 - If detection confidence is low, the quad starts slightly inset from the image edges and a hint says "Couldn't find the canvas edges — drag the corners."
 - Buttons: Cancel, **Full image**, **Reset** (to detected), **Apply**. Apply pushes a new edit state with perspective correction.
 - Debug builds only: **Copy corners as JSON**, used to create fixture entries for the evaluation set (§6.4).
+- Implementation notes (T12):
+  - The photo is shown turned by the image's `quarterTurns` (kept on Apply), so corners are dragged on the photo as seen; they're stored in the unturned original, ordered as the warp sees them (`review_geometry.dart`).
+  - Starting corners: the photo's existing crop if it has one (manual or auto), else the detection. A low-confidence or failed detection starts 5% inset from the edges, with the hint. **Reset** returns to the detection (or the inset guess); **Full image** puts the corners on the photo's corners, and Apply then removes the crop (keeping the turn). Apply stores the project's ratio as `output` when the project has a size or ratio (§6.3).
+  - Drags that would make the quad invalid (outside the photo, crossed, concave, degenerate) are refused. A 2.5× magnifier loupe (Flutter's `RawMagnifier`) floats 110 dp above the finger (below it near the top, kept on screen sideways).
+  - Detection decodes the original with the platform decoder (HEIC, EXIF orientation) at ≤ 1000 px and passes RGBA pixels to the detector, with the project's ratio as an aspect hint.
+  - **Copy corners as JSON** writes one `expected.json` entry: `{"file": "<imageId>.<ext>", "corners": [[x, y] × 4], "notes": ""}` (corners in the EXIF-oriented original, 4 decimals). Rename `file` to the fixture's name.
+  - Verified on the emulator: hint with the stub, dragging with the loupe, Apply on a trapezoid renders it as a rectangle.
 
 ### 3.9 Settings
 
@@ -367,6 +374,8 @@ packages/canvas_detect/
   test/fixtures/                photos + expected.json
 ```
 
+API (T12): `CanvasDetector.detect(DetectorImage, {aspectHint})` → `Detection(quad, confidence)`; `DetectorImage` is 8-bit RGBA, EXIF-oriented (the app decodes, since OpenCV can't read HEIC); corners are normalized `Corner`s in a `Quad` (TL, TR, BR, BL); `Detection.isLowConfidence` below 0.5. `StubCanvasDetector` (5% inset, confidence 0) stands in until T13; the app reaches the detector through `canvasDetectorProvider`.
+
 **Resolved in T7:** OpenCV runs under plain `dart test`, so everything stays in `packages/canvas_detect` (no `canvas_detect_opencv` split) and the evaluation can be a CLI. The package depends on `dartcv4` — the pure-Dart bindings that `opencv_dart` wraps for Flutter — which builds its native library through Dart build hooks, so the same dependency works in `dart test`, `flutter test`, and the app. `packages/canvas_detect/test/opencv_smoke_test.dart` keeps this checked in CI.
 
 ### 6.2 Algorithm (initial)
@@ -420,6 +429,7 @@ When applying an auto-crop:
 - OpenCV comes from `dartcv4` (the pure-Dart package behind `opencv_dart`), used by both the app and `packages/canvas_detect`. Its build hook compiles a small C wrapper with CMake and links OpenCV static libraries that it downloads prebuilt from the maintainer's GitHub releases (`rainyl/opencv.full`); the first build per target takes a few minutes, later builds are cached in `.dart_tool/hooks_runner`. Settings live under `hooks: user_defines: dartcv4:` in the root `pubspec.yaml`: the default modules (core, imgproc, imgcodecs) cover M1 including T13; CMake and Ninja come from the Android SDK (`prefer_android_cmake` / `prefer_android_ninja`); macOS uses the Ninja generator (the default, Xcode, isn't needed). Size: `libdartcv.so` is ≈ 9.5 MB per ABI uncompressed (arm64, debug); the arm64 profile APK is 32.8 MB. Tree-shaking (`treeshake: true`) can be tried before release.
 - Flutter version: 3.50.0 stable, pinned in CI (`.github/workflows/ci.yml`); bump it there and locally together.
 - CI (GitHub Actions, using `subosito/flutter-action`): `flutter pub get` → `build_runner` → `flutter analyze` → `flutter test` (app, then `dart test` in `packages/canvas_detect`) → `canvas_detect` evaluation (from T13) → Android debug build.
+  - Runs on `main` are never cancelled (superseded PR runs are), because only caches saved on `main` are shared with PRs.
   - Since OpenCV (T7), CI frees disk space first (each native OpenCV build takes ~1 GB and the runner has ~14 GB free; without this the APK build ran out of space), caches `.dart_tool/hooks_runner` keyed on the pubspec files so OpenCV is rebuilt only when dependencies change, and builds the debug APK for arm64 only.
 
 ---
