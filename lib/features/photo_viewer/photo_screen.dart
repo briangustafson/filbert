@@ -215,6 +215,8 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
             menu: current == null
                 ? null
                 : _PhotoMenu(
+                    onCrop: () =>
+                        context.go(Routes.crop(widget.projectId, current!.id)),
                     canUndo: history.canUndo,
                     canRedo: history.canRedo,
                     canRevert: !current.edits.isNone,
@@ -292,6 +294,7 @@ class _Chrome extends StatelessWidget {
 /// Items appear only when they apply (m1-design §3.5).
 class _PhotoMenu extends StatelessWidget {
   const _PhotoMenu({
+    required this.onCrop,
     required this.canUndo,
     required this.canRedo,
     required this.canRevert,
@@ -305,6 +308,7 @@ class _PhotoMenu extends StatelessWidget {
     required this.onDelete,
   });
 
+  final VoidCallback onCrop;
   final bool canUndo;
   final bool canRedo;
   final bool canRevert;
@@ -327,6 +331,8 @@ class _PhotoMenu extends StatelessWidget {
       onSelected: (action) {
         onClosed();
         switch (action) {
+          case _PhotoAction.crop:
+            onCrop();
           case _PhotoAction.undo:
             onUndo();
           case _PhotoAction.redo:
@@ -340,6 +346,10 @@ class _PhotoMenu extends StatelessWidget {
         }
       },
       itemBuilder: (_) => [
+        const PopupMenuItem(
+          value: _PhotoAction.crop,
+          child: Text('Crop/rotate'),
+        ),
         if (canUndo)
           const PopupMenuItem(value: _PhotoAction.undo, child: Text('Undo')),
         if (canRedo)
@@ -360,7 +370,7 @@ class _PhotoMenu extends StatelessWidget {
   }
 }
 
-enum _PhotoAction { undo, redo, revert, setAsReference, delete }
+enum _PhotoAction { crop, undo, redo, revert, setAsReference, delete }
 
 class _Missing extends StatelessWidget {
   const _Missing();

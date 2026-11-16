@@ -186,13 +186,17 @@ void main() {
   group('menu', () {
     testWidgets('grid photo: Set as reference and Delete', (tester) async {
       await open(tester, c.id);
-      expect(await menuItems(tester), ['Set as reference', 'Delete']);
+      expect(await menuItems(tester), [
+        'Crop/rotate',
+        'Set as reference',
+        'Delete',
+      ]);
     });
 
     testWidgets('the reference: Delete only', (tester) async {
       await images.setAsReference(projectId, a.id);
       await open(tester, a.id);
-      expect(await menuItems(tester), ['Delete']);
+      expect(await menuItems(tester), ['Crop/rotate', 'Delete']);
     });
 
     testWidgets('Undo, Redo, Revert appear only when they apply', (
@@ -202,6 +206,7 @@ void main() {
       await images.setEdits(c.id, turned);
       await open(tester, c.id);
       expect(await menuItems(tester), [
+        'Crop/rotate',
         'Undo',
         'Revert to original',
         'Set as reference',
@@ -210,11 +215,17 @@ void main() {
 
       await choose(tester, 'Undo');
       expect(images.calls.last, 'undo ${c.id}');
-      expect(await menuItems(tester), ['Redo', 'Set as reference', 'Delete']);
+      expect(await menuItems(tester), [
+        'Crop/rotate',
+        'Redo',
+        'Set as reference',
+        'Delete',
+      ]);
 
       await choose(tester, 'Redo');
       expect(images.calls.last, 'redo ${c.id}');
       expect(await menuItems(tester), [
+        'Crop/rotate',
         'Undo',
         'Revert to original',
         'Set as reference',
@@ -231,7 +242,12 @@ void main() {
       expect(images.calls.last, 'revert ${c.id}');
       expect(find.text('Reverted to the original.'), findsOneWidget);
       // Back at the original: Undo, but nothing to revert or redo.
-      expect(await menuItems(tester), ['Undo', 'Set as reference', 'Delete']);
+      expect(await menuItems(tester), [
+        'Crop/rotate',
+        'Undo',
+        'Set as reference',
+        'Delete',
+      ]);
       await tester.tapAt(Offset.zero); // close the menu
       await tester.pumpAndSettle();
 
