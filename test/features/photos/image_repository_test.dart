@@ -241,6 +241,40 @@ void main() {
     });
   });
 
+  group('watchCovers', () {
+    Future<Map<String, String>> covers() async => {
+      for (final MapEntry(:key, :value)
+          in (await images.watchCovers().first).entries)
+        key: value.id,
+    };
+
+    test('newest non-reference photo, else the reference', () async {
+      final ref = await importOne('no_exif.jpg', asReference: true);
+      expect(await covers(), {projectId: ref.id}, reason: 'only the reference');
+
+      tick();
+      final older = await importOne('plain.png');
+      tick();
+      final newer = await importOne('orientation_1_offset.jpg');
+      expect(await covers(), {projectId: newer.id});
+
+      await images.delete(newer.id);
+      expect(await covers(), {projectId: older.id});
+    });
+
+    test('skips deleted projects and projects without photos', () async {
+      final empty = (await projects.create()).id;
+      final other = (await projects.create()).id;
+      await images.import(other, [photo('plain.png')]);
+      await importOne('no_exif.jpg');
+      await projects.delete(projectId);
+
+      final result = await covers();
+      expect(result.keys, [other]);
+      expect(result.containsKey(empty), isFalse);
+    });
+  });
+
   group('reference rules', () {
     test('set, replace, and remove keep images in the project', () async {
       final first = await importOne('no_exif.jpg');

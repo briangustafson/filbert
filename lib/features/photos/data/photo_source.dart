@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:image_picker_android/image_picker_android.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/imaging/image_origin.dart';
@@ -32,6 +33,10 @@ abstract interface class PhotoSource {
   /// Photos from a camera or picker session that finished after Android
   /// killed the app (call on start-up; M1 T8).
   Future<List<PickedPhoto>> retrieveLost();
+
+  /// Deletes what the picker and camera leave in the app cache after their
+  /// photos were imported (or abandoned). Call after [retrieveLost].
+  Future<void> clearLeftovers();
 }
 
 class ImagePickerPhotoSource implements PhotoSource {
@@ -89,7 +94,43 @@ class ImagePickerPhotoSource implements PhotoSource {
         PickedPhoto(path: f.path, origin: ImageOrigin.camera),
     ];
   }
+
+  @override
+  Future<void> clearLeftovers() async {
+    await deletePickerLeftovers(await getApplicationCacheDirectory());
+  }
 }
+
+/// `image_picker` (Android) copies each picked photo into a new
+/// `<cache>/<uuid>/` folder and writes camera photos to
+/// `<cache>/<uuid><digits>.<ext>`. Import deletes the photo itself, which
+/// leaves the folders behind. Deletes those folders and files, and nothing
+/// else (the render caches share this directory). Returns how many entries
+/// were deleted.
+Future<int> deletePickerLeftovers(Directory cacheDir) async {
+  if (!await cacheDir.exists()) return 0;
+  var deleted = 0;
+  await for (final entity in cacheDir.list()) {
+    final name = entity.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+    final matches = switch (entity) {
+      Directory() => _pickerFolder.hasMatch(name),
+      File() => _cameraFile.hasMatch(name),
+      _ => false,
+    };
+    if (!matches) continue;
+    try {
+      await entity.delete(recursive: true);
+      deleted++;
+    } on FileSystemException {
+      // Best effort; tried again next launch.
+    }
+  }
+  return deleted;
+}
+
+const _uuid = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+final _pickerFolder = RegExp('^$_uuid\$');
+final _cameraFile = RegExp('^$_uuid-?[0-9]*\\.[A-Za-z0-9]+\$');
 
 @Riverpod(keepAlive: true)
 PhotoSource photoSource(Ref ref) => ImagePickerPhotoSource();

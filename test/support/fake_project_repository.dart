@@ -47,6 +47,26 @@ class FakeProjectRepository implements ProjectRepository {
 
   bool isDeleted(String id) => _deleted.contains(id);
 
+  Project? byId(String id) => _projects[id];
+
+  /// Sets the reference pointer, as `ImageRepository.setAsReference` does in
+  /// the real database. Used by `FakeImageRepository`.
+  void setReference(String projectId, String? imageId) {
+    final p = _get(projectId);
+    _projects[projectId] = Project(
+      id: p.id,
+      name: p.name,
+      nameIsDefault: p.nameIsDefault,
+      size: p.size,
+      startNotes: p.startNotes,
+      referenceImageId: imageId,
+      createdAt: p.createdAt,
+      updatedAt: now,
+      updatedByDeviceId: p.updatedByDeviceId,
+    );
+    _changes.add(null);
+  }
+
   @override
   Stream<List<Project>> watchAll() async* {
     yield live;

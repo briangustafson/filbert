@@ -5,4 +5,5 @@ abstract final class AppMetaKeys {
   static const autoCropOnAdd = 'auto_crop_on_add';
   static const units = 'units';
   static const lastPurgeAt = 'last_purge_at';
+  static const pendingCapture = 'pending_capture';
 }

@@ -4,6 +4,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../app/routes.dart';
 import '../../../core/units/unit_preference.dart';
+import '../../photos/ui/add_photos.dart';
+import '../../photos/ui/project_photos.dart';
 import '../data/project_providers.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
@@ -13,8 +15,8 @@ import 'project_name_field.dart';
 import 'size_picker.dart';
 import 'start_notes_field.dart';
 
-/// A project: header (name, size, start notes) now; reference slot and
-/// photo grid arrive in M1 T8 (m1-design §3.3).
+/// A project: header (name, size, start notes), reference slot, and photo
+/// grid (m1-design §3.3).
 class ProjectScreen extends ConsumerWidget {
   const ProjectScreen({super.key, required this.projectId});
 
@@ -62,35 +64,49 @@ class _ProjectView extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        children: [
-          ProjectNameField(
-            key: ValueKey('name-${project.id}'),
-            name: project.name,
-            onSave: (name) => repository.update(project.id, name: name),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: ActionChip(
-              avatar: const Icon(Icons.aspect_ratio, size: 18),
-              label: Text(sizeLabel(project.size)),
-              tooltip: 'Canvas size',
-              onPressed: () => showSizePicker(
-                context,
-                initial: project.size,
-                defaultUnit: ref.read(preferredLengthUnitProvider),
-                onChanged: (size) => repository.update(project.id, size: size),
-              ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => addPhotos(context, ref, project.id),
+        icon: const Icon(Icons.add_a_photo_outlined),
+        label: const Text('Add photo'),
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverList.list(
+              children: [
+                ProjectNameField(
+                  key: ValueKey('name-${project.id}'),
+                  name: project.name,
+                  onSave: (name) => repository.update(project.id, name: name),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: ActionChip(
+                    avatar: const Icon(Icons.aspect_ratio, size: 18),
+                    label: Text(sizeLabel(project.size)),
+                    tooltip: 'Canvas size',
+                    onPressed: () => showSizePicker(
+                      context,
+                      initial: project.size,
+                      defaultUnit: ref.read(preferredLengthUnitProvider),
+                      onChanged: (size) =>
+                          repository.update(project.id, size: size),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                StartNotesField(
+                  key: ValueKey('notes-${project.id}'),
+                  notes: project.startNotes,
+                  onSave: (notes) =>
+                      repository.update(project.id, startNotes: notes),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          StartNotesField(
-            key: ValueKey('notes-${project.id}'),
-            notes: project.startNotes,
-            onSave: (notes) => repository.update(project.id, startNotes: notes),
-          ),
+          ...projectPhotoSlivers(context, ref, project),
         ],
       ),
     );

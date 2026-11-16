@@ -67,7 +67,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* golden tests for axis-aligned crop, straightened crop, perspective quad, and quarter turns; preview latency measured on a device and recorded.
   - Depends on: T2, T6
 
-- [ ] **T8 — Reference slot, photo grid, adding photos**
+- [x] **T8 — Reference slot, photo grid, adding photos**
   - Project screen reference slot (add / replace / remove) and photo grid with thumbnails.
   - **Add photo** sheet (take photo / choose from device, multi-select) with import progress.
   - **Take photo** on the project list (new project + photo in one step); add its line to the empty state.
