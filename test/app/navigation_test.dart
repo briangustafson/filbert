@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:filbert/features/crop/crop_screen.dart';
 import 'package:filbert/features/photo_viewer/photo_screen.dart';
 
 import '../support/fake_photos.dart';
@@ -59,13 +60,14 @@ void main() {
     expect(location(container), Routes.photo(p, i));
     expect(find.byType(PhotoScreen), findsOneWidget);
 
-    // Crop and auto-crop are reached by deep link until their menu items
-    // arrive (T11, T12).
+    // Crop is in the photo menu (tested in crop_screen_test); auto-crop is
+    // reached by deep link until its menu item arrives (T12).
     container.read(routerProvider).go(Routes.crop(p, i));
     await tester.pumpAndSettle();
-    expectTitle('Crop');
-    await tapBack(tester);
-    expect(find.byType(PhotoScreen), findsOneWidget);
+    expect(find.byType(CropScreen), findsOneWidget);
+    await tester.tap(find.byTooltip('Cancel'));
+    await tester.pumpAndSettle();
+    expect(location(container), Routes.photo(p, i));
 
     container.read(routerProvider).go(Routes.autocrop(p, i));
     await tester.pumpAndSettle();

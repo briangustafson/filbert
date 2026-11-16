@@ -94,7 +94,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* history tests pass (push, undo, redo, discard, cap, revert-then-undo).
   - Depends on: T9
 
-- [ ] **T11 — Manual crop screen**
+- [x] **T11 — Manual crop screen**
   - Crop rectangle with aspect lock (project ratio default, presets, freeform, orientation toggle).
   - Straighten slider (±45°) and Rotate 90°; output stored as a quad + `quarterTurns`.
   - Cancel / Reset / Apply (Apply pushes an undoable edit).
@@ -138,4 +138,5 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 (Add ideas that come up during M1 but belong to a later milestone here, rather than building them now.)
 
 - Photo screen polish: when zoomed, panning can reach the black letterbox around the photo; clamp panning to the photo's edges as photo viewers usually do (T9).
+- Manual crop: pinch/pan the photo under the crop for precise placement (§3.7 mentions it; deferred in T11). Handles alone work for canvas-sized crops.
 - Photo screen: check frame pacing (swipe, zoom) on a real mid-range phone in profile mode; the emulator's GPU made raster timing meaningless (T15).

@@ -47,6 +47,9 @@ class FakeImageRepository implements ImageRepository {
 
   bool isDeleted(String id) => _deleted.contains(id);
 
+  /// The image as currently stored.
+  ProjectImage byId(String id) => _images[id]!;
+
   List<ProjectImage> _live(String projectId) =>
       _images.values
           .where((i) => i.projectId == projectId && !_deleted.contains(i.id))
@@ -199,11 +202,13 @@ class FakeImageRepository implements ImageRepository {
 
 /// Records requests and fails them at once, so tiles show their "broken"
 /// state and nothing animates (which would keep `pumpAndSettle` waiting).
-/// With [hang], requests never finish instead (the loading state).
+/// With [hang], requests never finish instead (the loading state); with
+/// [file], they all return that file.
 class FakeImageRenderer implements ImageRenderer {
-  FakeImageRenderer({this.hang = false});
+  FakeImageRenderer({this.hang = false, this.file});
 
   final bool hang;
+  final File? file;
   final requests = <String>[];
 
   @override
@@ -219,6 +224,7 @@ class FakeImageRenderer implements ImageRenderer {
 
   Future<File> _request(String what) {
     requests.add(what);
+    if (file != null) return Future.value(file);
     return hang
         ? Completer<File>().future
         : Future.error(UnsupportedError('FakeImageRenderer renders nothing'));
