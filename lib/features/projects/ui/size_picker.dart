@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../domain/project.dart';
 import '../domain/size_presets.dart';
+import 'proportion_shape.dart';
 
 /// Opens the size picker (m1-design §3.4). Presets and None save and close in
 /// one tap; Custom saves on **Save**; the orientation toggle re-saves the
@@ -157,6 +158,11 @@ class _SizePickerSheetState extends State<SizePickerSheet> {
         : '${formatDimension(a)} × ${formatDimension(b)}';
   }
 
+  Widget _shapeOf((double, double) dims) {
+    final (w, h) = orient(dims, _orientation);
+    return ProportionShape(width: w, height: h);
+  }
+
   String? _errorFor(TextEditingController c) =>
       c.text.trim().isEmpty || parseDimension(c.text) != null
       ? null
@@ -243,12 +249,22 @@ class _SizePickerSheetState extends State<SizePickerSheet> {
                 ],
               ),
               const SizedBox(height: 16),
+              // Presets are shown turned to the orientation: width first.
+              Text(
+                _mode == SizeMode.ratio ? 'Width : height' : 'Width × height',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
                   for (final preset in _presets)
                     ChoiceChip(
+                      avatar: _shapeOf(preset),
+                      showCheckmark: false,
                       label: Text(_dimsLabel(preset)),
                       selected:
                           !_custom &&

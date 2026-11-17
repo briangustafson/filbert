@@ -20,7 +20,7 @@ Flutter app for oil painters. Android first, then macOS, iOS, web. App only — 
 
 ```bash
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 flutter analyze
 flutter test
 ```
