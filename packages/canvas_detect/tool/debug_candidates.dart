@@ -6,6 +6,7 @@
 // left).
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:canvas_detect/canvas_detect.dart';
 import 'package:canvas_detect/src/geometry.dart';
@@ -16,7 +17,11 @@ void main(List<String> args) {
   final bgr = cv.imread('test/fixtures/${args[0]}', flags: cv.IMREAD_COLOR);
   final rgba = cv.cvtColor(bgr, cv.COLOR_BGR2RGBA);
   final (scored, scale) = const OpenCvCanvasDetector().debugCandidates(
-    DetectorImage(width: rgba.cols, height: rgba.rows, rgba: rgba.data),
+    DetectorImage(
+      width: rgba.cols,
+      height: rgba.rows,
+      rgba: Uint8List.fromList(rgba.data),
+    ),
   );
   for (final s in scored.take(count)) {
     final corners = [

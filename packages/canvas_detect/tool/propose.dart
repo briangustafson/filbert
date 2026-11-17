@@ -5,6 +5,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:canvas_detect/canvas_detect.dart';
 import 'package:dartcv4/dartcv.dart' as cv;
@@ -24,7 +25,11 @@ void main(List<String> args) {
     final rgba = cv.cvtColor(bgr, cv.COLOR_BGR2RGBA);
     final sw = Stopwatch()..start();
     final d = detector.detectSync(
-      DetectorImage(width: rgba.cols, height: rgba.rows, rgba: rgba.data),
+      DetectorImage(
+        width: rgba.cols,
+        height: rgba.rows,
+        rgba: Uint8List.fromList(rgba.data),
+      ),
     );
     final name = f.uri.pathSegments.last;
     stdout.writeln(

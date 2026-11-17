@@ -14,11 +14,12 @@
 // different invisible ±1 noise. The detector is sensitive to tiny pixel
 // differences (another platform's JPEG decoder, Android's decoder in the
 // app), so one run per photo would measure luck. The success rate is over
-// all runs.
+// all runs. "Stable" counts noisy runs that agree with the clean run.
 
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:canvas_detect/canvas_detect.dart';
 import 'package:dartcv4/dartcv.dart' as cv;
@@ -32,6 +33,10 @@ const _appLongEdge = 1000;
 
 /// Success threshold: max corner error, % of the diagonal.
 const _successPercent = 2.0;
+
+/// A noisy run agrees with the clean one if no corner moved further (% of
+/// the diagonal).
+const _stablePercent = 0.5;
 
 /// --check passes down to this far below the baseline rate: decoders differ
 /// between platforms (CI runs on Linux, the baseline is recorded on a Mac).
@@ -64,16 +69,21 @@ void main(List<String> args) {
         _maxErrorPercent(detection.quad, truth, image.width, image.height),
       );
       result.confidences.add(detection.confidence);
+      result.quads.add(detection.quad);
+      result.width = image.width;
+      result.height = image.height;
     }
     results.add(result);
   }
 
   stdout.writeln(
-    'photo          passed  median error %  worst error %  confidence    ms',
+    'photo          passed  stable  median error %  worst error %  '
+    'confidence    ms',
   );
   for (final r in results) {
     stdout.writeln(
       '${r.file.padRight(14)} ${'${r.passes}/$runs'.padLeft(6)}'
+      '${'${r.stable}/${runs - 1}'.padLeft(8)}'
       '${_median(r.errors).toStringAsFixed(2).padLeft(16)}'
       '${r.errors.reduce(math.max).toStringAsFixed(2).padLeft(15)}'
       '${_mean(r.confidences).toStringAsFixed(2).padLeft(12)}'
@@ -84,11 +94,23 @@ void main(List<String> args) {
   final total = results.length * runs;
   final rate = passes / total;
   final medianError = _median([for (final r in results) ..._sorted(r.errors)]);
+  final stable = results.map((r) => r.stable).reduce((a, b) => a + b);
+  final noisy = results.length * (runs - 1);
+  final flaky = [
+    for (final r in results)
+      if (r.errors.first <= _successPercent && r.passes < runs)
+        r.file.replaceAll('.jpg', ''),
+  ];
   stdout.writeln(
     '\n$passes / $total runs within $_successPercent% '
     '(${(100 * rate).toStringAsFixed(1)}%), '
     'median error ${medianError.toStringAsFixed(2)}%, '
     'mean ${_mean([for (final r in results) ...r.ms]).round()} ms',
+  );
+  stdout.writeln(
+    'Stable: $stable / $noisy noisy runs agree with the clean run within '
+    '$_stablePercent% (${(100 * stable / math.max(1, noisy)).toStringAsFixed(1)}%). '
+    'Pass clean but fail with noise: ${flaky.isEmpty ? 'none' : flaky.join(', ')}.',
   );
 
   if (writeBaseline) {
@@ -126,7 +148,23 @@ class _Result {
   final confidences = <double>[];
   final ms = <int>[];
 
+  final quads = <Quad>[];
+  int width = 0, height = 0;
+
   int get passes => errors.where((e) => e <= _successPercent).length;
+
+  /// Noisy runs whose answer is within [_stablePercent] of the clean run's.
+  int get stable => [
+    for (final q in quads.skip(1))
+      if (_maxErrorPercent(
+            q,
+            [for (final c in quads.first.corners) (c.x, c.y)],
+            width,
+            height,
+          ) <=
+          _stablePercent)
+        q,
+  ].length;
 }
 
 double _mean(List<num> v) => v.fold<double>(0, (a, b) => a + b) / v.length;
@@ -159,7 +197,11 @@ DetectorImage _load(String path, {int? noiseSeed}) {
       if (i % 4 != 3) d[i] = (d[i] + r.nextInt(3) - 1).clamp(0, 255);
     }
   }
-  return DetectorImage(width: rgba.cols, height: rgba.rows, rgba: rgba.data);
+  return DetectorImage(
+    width: rgba.cols,
+    height: rgba.rows,
+    rgba: Uint8List.fromList(rgba.data),
+  );
 }
 
 double _maxErrorPercent(

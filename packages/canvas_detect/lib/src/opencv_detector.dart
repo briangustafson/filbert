@@ -11,7 +11,7 @@ import 'refine.dart';
 import 'scoring.dart';
 
 /// Canvas detection with OpenCV (m1-design §6.2): edge maps from brightness
-/// and saturation, candidate quads from contours and from detected lines,
+/// and chroma, candidate quads from contours and from detected lines,
 /// pure-Dart scoring, then sides refined to the edges at full resolution.
 ///
 /// [detect] runs in a background isolate; [detectSync] runs here.
@@ -100,7 +100,10 @@ class OpenCvCanvasDetector implements CanvasDetector {
         image.width * image.width + image.height * image.height.toDouble(),
       );
       var corners = [for (final p in best.candidate.corners) p * (1 / scale)];
-      for (final search in [diag * 0.008, diag * 0.003]) {
+      for (final search in [
+        diag * params.coarseSearch,
+        diag * params.fineSearch,
+      ]) {
         corners = refineQuad(
           fullEdges,
           corners,
@@ -147,13 +150,13 @@ class OpenCvCanvasDetector implements CanvasDetector {
     return bgr;
   }
 
-  /// Gradients of brightness and saturation; per pixel, the stronger one.
+  /// Gradients of brightness and chroma; per pixel, the stronger one.
   static EdgeMap edgeMapOf(cv.Mat bgr) {
-    final (gray, sat) = _channels(bgr);
+    final (gray, chroma) = _channels(bgr);
     final (gx1, gy1) = _gradients(gray);
-    final (gx2, gy2) = _gradients(sat);
+    final (gx2, gy2) = _gradients(chroma);
     gray.dispose();
-    sat.dispose();
+    chroma.dispose();
     final n = gx1.length;
     final gx = Float32List(n), gy = Float32List(n);
     for (var i = 0; i < n; i++) {
@@ -170,16 +173,22 @@ class OpenCvCanvasDetector implements CanvasDetector {
     return EdgeMap(width: bgr.cols, height: bgr.rows, gx: gx, gy: gy);
   }
 
-  /// Blurred grayscale and saturation channels.
+  /// Blurred grayscale and chroma channels.
   static (cv.Mat, cv.Mat) _channels(cv.Mat bgr) {
     final grayRaw = cv.cvtColor(bgr, cv.COLOR_BGR2GRAY);
-    final hsv = cv.cvtColor(bgr, cv.COLOR_BGR2HSV);
-    final parts = cv.split(hsv);
+    // Chroma (max − min of B, G, R) rather than HSV saturation, which
+    // divides by the brightness: in dark areas a ±1 change swings
+    // saturation wildly and turns noise into edges (T13b).
+    final parts = cv.split(bgr);
+    final hi = cv.max(cv.max(parts[0], parts[1]), parts[2]);
+    final lo = cv.min(cv.min(parts[0], parts[1]), parts[2]);
+    final chromaRaw = cv.subtract(hi, lo);
     final gray = cv.gaussianBlur(grayRaw, (5, 5), 0);
-    final sat = cv.gaussianBlur(parts[1], (5, 5), 0);
-    grayRaw.dispose();
-    hsv.dispose();
-    return (gray, sat);
+    final chroma = cv.gaussianBlur(chromaRaw, (5, 5), 0);
+    for (final m in [grayRaw, ...parts, hi, lo, chromaRaw]) {
+      m.dispose();
+    }
+    return (gray, chroma);
   }
 
   /// Sobel gradients (scaled to roughly 0–255 for a full-contrast step).
@@ -194,21 +203,21 @@ class OpenCvCanvasDetector implements CanvasDetector {
     return (read(1, 0), read(0, 1));
   }
 
-  /// Canny edges of brightness and saturation (median-based thresholds),
+  /// Canny edges of brightness and chroma (median-based thresholds),
   /// combined and slightly dilated.
   static cv.Mat _binaryEdges(cv.Mat bgr) {
-    final (gray, sat) = _channels(bgr);
+    final (gray, chroma) = _channels(bgr);
     cv.Mat cannyOf(cv.Mat m) {
       final med = _median(m);
       final lo = math.max(10.0, 0.66 * med), hi = math.max(30.0, 1.33 * med);
       return cv.canny(m, math.min(lo, 60), math.min(hi, 150));
     }
 
-    final e1 = cannyOf(gray), e2 = cannyOf(sat);
+    final e1 = cannyOf(gray), e2 = cannyOf(chroma);
     final both = cv.bitwiseOR(e1, e2);
     final kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3));
     final dilated = cv.dilate(both, kernel);
-    for (final m in [gray, sat, e1, e2, both, kernel]) {
+    for (final m in [gray, chroma, e1, e2, both, kernel]) {
       m.dispose();
     }
     return dilated;

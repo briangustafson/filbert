@@ -16,11 +16,12 @@ class ScoringParams {
     this.cornerSkip = 0.08,
     this.edgeQuantile = 0.80,
     this.areaExponent = 0.3,
-    this.consistencyWeight = 0,
-    this.nestedTolerance = 0.06,
+    this.nestedTolerance = 0.10,
     this.nestedMinArea = 0.8,
     this.rectangleTolerance = 3,
     this.inset = 0.001,
+    this.coarseSearch = 0.016,
+    this.fineSearch = 0.003,
   });
 
   /// Candidates smaller than this fraction of the image are rejected.
@@ -52,11 +53,6 @@ class ScoringParams {
   /// not win on size alone.
   final double areaExponent;
 
-  /// How much a side's support drops when its contrast flips direction
-  /// along it (0: not at all). Partial, because a real canvas edge flips
-  /// too where the background behind it changes.
-  final double consistencyWeight;
-
   /// A quad nested just inside the best one wins if it scores within this
   /// fraction of it: the outer one is usually a ledge, the canvas's side or
   /// a frame, and a crop slightly inside the canvas beats one outside it.
@@ -75,6 +71,13 @@ class ScoringParams {
   /// the detected edges: a crop showing a sliver of background looks worse
   /// than one missing a sliver of canvas.
   final double inset;
+
+  /// Refinement searches this fraction of the diagonal either side of each
+  /// side, then [fineSearch]. Wide enough to reach the canvas from a ledge
+  /// a little below it; the inner-edge rule keeps it from jumping outward.
+  final double coarseSearch;
+
+  final double fineSearch;
 }
 
 /// A candidate quad (TL, TR, BR, BL, pixels) and how it was found.
@@ -163,35 +166,27 @@ class Scorer {
     );
   }
 
-  /// Fraction of points along a→b (ends skipped) lying on an edge running
-  /// the same way, discounted when the edge's contrast flips direction along
-  /// the side: a canvas edge is one boundary between two surfaces, while a
-  /// line through background clutter alternates.
+  /// How much of side a→b (ends skipped) lies on an edge running the same
+  /// way, 0–1. Each point counts gradually, from nothing at half the edge
+  /// threshold to fully at 1.5×, so a tiny change in the image changes the
+  /// support a little instead of flipping points in or out.
   double sideSupport(V a, V b) {
     final dir = b - a;
     final length = dir.length;
     if (length < 4) return 0;
     final n = dir.unit.perp;
     final samples = math.max(12, (length / 4).round());
-    var positive = 0, negative = 0, total = 0;
+    var sum = 0.0;
     for (var i = 0; i <= samples; i++) {
       final t = params.cornerSkip + (1 - 2 * params.cornerSkip) * i / samples;
       final p = a + dir * t;
       var best = 0.0;
       for (var o = -params.supportSearch; o <= params.supportSearch; o++) {
-        final v = edges.signedAcross(p + n * o.toDouble(), n);
-        if (v.abs() > best.abs()) best = v;
+        best = math.max(best, edges.across(p + n * o.toDouble(), n));
       }
-      total++;
-      if (best >= _threshold) positive++;
-      if (best <= -_threshold) negative++;
+      sum += ((best - 0.5 * _threshold) / _threshold).clamp(0.0, 1.0);
     }
-    if (total == 0) return 0;
-    final hits = positive + negative;
-    if (hits == 0) return 0;
-    final consistency = (positive - negative).abs() / hits;
-    final w = params.consistencyWeight;
-    return hits / total * (1 - w + w * consistency);
+    return sum / (samples + 1);
   }
 }
 
