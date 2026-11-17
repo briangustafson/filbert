@@ -28,15 +28,6 @@ class EdgeMap {
     return (gx[i] * n.x + gy[i] * n.y).abs();
   }
 
-  /// Signed gradient across the line (positive: brighter / more saturated
-  /// on the normal's side).
-  double signedAcross(V p, V n) {
-    final x = p.x.round(), y = p.y.round();
-    if (x < 1 || y < 1 || x >= width - 1 || y >= height - 1) return 0;
-    final i = y * width + x;
-    return gx[i] * n.x + gy[i] * n.y;
-  }
-
   /// The [q]-quantile of gradient magnitude, sampled on a grid.
   double magnitudeQuantile(double q) {
     final samples = <double>[];

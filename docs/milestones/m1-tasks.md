@@ -119,11 +119,12 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Result (agreed with you):* 72.8% of runs within 2%, measured over 10 runs per photo with invisible noise because the detector is unstable (§6.5); stability is T13b. 15 references are approved detector proposals, 3 hand-marked (§6.4). ~120 ms per photo on a Mac; the mid-range-phone timing moves to T15's real-phone checks.
   - *Later:* calibrate confidence (wrong answers can score high), dark canvases on busy backgrounds, more evaluation photos (hand-marked).
 
-- [ ] **T13b — Detection stability**
+- [x] **T13b — Detection stability**
   - Make the detector's answer stable under tiny pixel differences: near-ties between candidates are currently decided by hard cut-offs (nested-quad tolerance, thresholded edge counts, the inner-edge rule). Candidates: smooth scoring instead of thresholds; a consensus across slightly varied inputs.
   - Judge every change by the noise-averaged evaluation (§6.5).
   - *Done when:* ≥ 80% of runs within 2% (or the achieved rate agreed with you), no photo that passes on its clean run failing on noisy ones, baseline updated.
   - Depends on: T13
+  - *Result (agreed with you):* 78.3% of runs within 2% (was 72.8%), 78.4% of noisy runs agree with the clean run (was 61%), ~110 ms on a Mac. Chroma instead of saturation, gradual edge support, 10% nested-quad tolerance, wider first refinement search (m1-design §6.2). 06 and 15 still flip occasionally: consensus would fix that but triples the time, so it's left out. References for 03, 08 and 10 corrected with your approval (§6.4). Also fixed: the tools passed the detector a view of OpenCV memory the garbage collector could free (the app wasn't affected).
 
 ### Flows and wrap-up
 

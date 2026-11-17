@@ -385,17 +385,18 @@ API (T12): `CanvasDetector.detect(DetectorImage, {aspectHint})` → `Detection(q
 
 ### 6.2 Algorithm
 
-As built in T13 (`OpenCvCanvasDetector`; the app passes a copy ≤ 1000 px on the long edge, §3.8):
+As built in T13, made stable in T13b (`OpenCvCanvasDetector`; the app passes a copy ≤ 1000 px on the long edge, §3.8):
 
 1. Work on a copy ≤ 1000 px on the long edge.
-2. **Binary edges:** Gaussian blur of grayscale and saturation → Canny with median-based thresholds → OR → 3×3 dilation. (Canvas vs. wall often differ more in saturation than brightness.) *Tried and dropped:* Lab-channel edges after a bilateral filter (the auto-crop prototype's approach) picked up too much background clutter.
+2. **Binary edges:** Gaussian blur of grayscale and **chroma** (max − min of R, G, B) → Canny with median-based thresholds → OR → 3×3 dilation. (Canvas vs. wall often differ more in colour than brightness.) Chroma replaced HSV saturation in T13b: saturation divides by brightness, so in dark areas a ±1 pixel change swings it wildly and turns noise into edges and spurious candidates. *Tried and dropped:* Lab-channel edges after a bilateral filter (the auto-crop prototype's approach) picked up too much background clutter; Canny thresholds from a gradient-strength percentile were worse at every setting tried.
 3. **Contour candidates:** `findContours` → convex hull → `approxPolyDP` (several tolerances) → quadrilaterals.
 4. **Line candidates** (edges broken by clamps, hands, frames): `HoughLinesP` segments clustered into near-horizontal and near-vertical lines, plus the strongest standard-Hough lines (finds long faint edges), plus the photo's borders (canvases running off the photo); every pair × pair is a candidate.
-5. **Score** (`scoring.dart`, tunables in `ScoringParams`): edge support per side (fraction of points on a strong gradient, ends skipped), as 0.5·mean + 0.5·weakest side; × area^0.3 (rejected < 15%); × corner-angle term; × a **rectangle-plausibility** term: the quad must be the image of a rectangle through a camera with a focal length 0.6–1.6× the long edge (Zhang & He's whiteboard method; > 3° from a right angle in 3D is penalised); × aspect match when the project has a ratio; × a penalty per side on the photo border (at most one).
-6. **Choose:** the best, unless a quad **nested just inside it** (≥ 80% of its area) scores within 6% — the outer one is then usually a ledge, the canvas's side or a frame (from the prototype, limited to thin steps so shapes painted in the picture don't win).
-7. **Refine** at the input resolution, coarse then fine (search 0.8%, then 0.3% of the diagonal): each side is fitted (robust line fit, sub-pixel peaks) to the edge it lies on, and corners are the intersections of neighbouring sides — more reliable than refining corners alone, which clamps and the easel often cover. Where a side has two strong edges close together (face and side of the canvas), the innermost one at least 0.6× as strong wins.
+5. **Score** (`scoring.dart`, tunables in `ScoringParams`): edge support per side (ends skipped; each point counts gradually, from 0 at half the edge threshold to 1 at 1.5×, so tiny image changes move the score a little instead of flipping points in or out), as 0.5·mean + 0.5·weakest side; × area^0.3 (rejected < 15%); × corner-angle term; × a **rectangle-plausibility** term: the quad must be the image of a rectangle through a camera with a focal length 0.6–1.6× the long edge (Zhang & He's whiteboard method; > 3° from a right angle in 3D is penalised); × aspect match when the project has a ratio; × a penalty per side on the photo border (at most one).
+6. **Choose:** the best, unless a quad **nested just inside it** (≥ 80% of its area) scores within 10% — the outer one is then usually a ledge, the canvas's side or a frame (from the prototype, limited to thin steps so shapes painted in the picture don't win).
+7. **Refine** at the input resolution, coarse then fine (search 1.6%, then 0.3% of the diagonal; wide enough to reach the canvas from a ledge a little below it): each side is fitted (robust line fit, sub-pixel peaks) to the edge it lies on, and corners are the intersections of neighbouring sides — more reliable than refining corners alone, which clamps and the easel often cover. Where a side has two strong edges close together (face and side of the canvas), the innermost one at least 0.6× as strong wins.
 8. **Inset** every side by 0.1% of the diagonal: a crop missing a sliver of canvas looks better than one showing background.
-9. **Confidence** = min(normalized score, weakest side's support). *Not calibrated:* on the evaluation set no signal (score, weakest side, margin over a different quad) separated right from wrong answers, so wrong detections can score high; revisit with more photos (§9).
+9. **Not used: consensus.** Detecting on three slightly varied copies (as is, lightly blurred, 85% size) and taking each corner's median removed the last run-to-run flips in T13b but tripled the time (~305 ms on a Mac) without passing more photos, so it was left out. If stability matters more later, run the copies in parallel isolates, or only for close calls.
+10. **Confidence** = min(normalized score, weakest side's support). *Not calibrated:* on the evaluation set no signal (score, weakest side, margin over a different quad) separated right from wrong answers, so wrong detections can score high; revisit with more photos (§9).
 
 Performance target: under 500 ms on a mid-range phone, run in an isolate.
 
@@ -412,6 +413,7 @@ When applying an auto-crop:
 - Photos: 20–40 real shots covering an easel, a wall, an angled view, a busy studio, framed and unframed work, poor lighting, partial occlusion. Downscaled to ~1600 px; EXIF stripped except orientation.
 - Corners are created with the debug **Copy corners as JSON** action (§3.8) after manual adjustment.
 - **How the T13 set was made:** 18 photos (`tool/make_eval_fixtures.dart` downscales originals kept in the git-ignored `eval-originals/` and strips all metadata). For 15, the detector's proposals were reviewed on zoomed review sheets (`tool/annotation_sheets.dart`) and approved as the reference; the 3 it gets wrong (14, 16, 17: dark canvas against a dark, busy yard) were marked by hand in the app. `notes` says which. So the set measures the detector honestly on those 3 and guards against regressions on the other 15; new photos should be hand-marked.
+- **Corrections (T13b):** three approved proposals had corners outside the canvas that the review missed: 03's top-left (57 px above), 08's bottom (20–35 px below), 10's right side (20–37 px outside). The improved detector found the true corners; after checking zoomed sheets the user approved the corrections, and `notes` records each. Detector-proposed references can share the detector's mistakes, another reason to hand-mark new photos.
 - **Repo visibility**: these are the user's paintings. If the repository is ever made public, decide whether to keep them (see §9).
 
 ### 6.5 Metrics
@@ -420,9 +422,10 @@ When applying an auto-crop:
 - Success = max corner error ≤ 2% of the diagonal.
 - Report success rate and mean error; the CLI prints a table and exits non-zero if the success rate drops below the committed baseline.
 - Initial target: ≥ 80% success on the set; tuned during M1 and recorded as the baseline.
-- As built (T13): `dart run bin/evaluate.dart [--runs N] [--check | --write-baseline]` downscales each fixture to the app's 1000 px and runs it N times (default 10): once as decoded, then with different invisible ±1 pixel noise. It prints passes, median and worst error, confidence and time per photo; the success rate is over all runs. `--check` fails if the rate drops more than 0.05 below `test/fixtures/baseline.json` (decoders differ between the Mac that records the baseline and CI's Linux); CI runs it.
-- **Why several runs:** the detector is unstable. Near-ties between candidates are decided by hard cut-offs, so a ±1 pixel difference (another platform's JPEG decoder, Android's decoder in the app) can change the answer: on one run per photo the Mac got 15 / 18 and CI 14 / 18, with different photos failing. One run measures luck.
-- Baseline (T13): 72.8% of runs (131 / 180), median error 0.41%, ~120 ms per photo on an M-series Mac. Stable on 04–06, 08–11, 13, 15; flips on 01, 02, 03, 07, 12, 18; mostly wrong on 14, 16, 17. Below the 80% target; stability is T13b. Verified in the app on the emulator.
+- As built (T13, T13b): `dart run bin/evaluate.dart [--runs N] [--check | --write-baseline]` downscales each fixture to the app's 1000 px and runs it N times (default 10): once as decoded, then with different invisible ±1 pixel noise. It prints passes, **stable** runs (noisy runs within 0.5% of the clean run's answer), median and worst error, confidence and time per photo, and lists photos that pass clean but fail with noise; the success rate is over all runs. `--check` fails if the rate drops more than 0.05 below `test/fixtures/baseline.json` (decoders differ between the Mac that records the baseline and CI's Linux); CI runs it.
+- **Why several runs:** in T13 the detector was unstable: near-ties between candidates decided by hard cut-offs, and saturation noise in dark areas, meant a ±1 pixel difference (another platform's JPEG decoder, Android's decoder in the app) could change the answer. On one run per photo the Mac got 15 / 18 and CI 14 / 18, with different photos failing. T13b reduced this (below); the evaluation keeps several runs so it stays honest.
+- T13 baseline: 72.8% of runs (131 / 180); 61% of noisy runs agreed with the clean run.
+- **Baseline (T13b, agreed):** 78.3% of runs (141 / 180), 78.4% stable, median error 0.24%, ~110 ms per photo on an M-series Mac. 13 photos pass every run; 06 fails 2 of 10 runs, 15 (bottom on the ledge) 7 of 10; 14, 16, 17 (dark canvas against a dark, busy yard) fail. Below the 80% target; agreed with the user rather than adding consensus (§6.2). Verified in the app on the emulator (T13).
 
 ---
 
@@ -467,7 +470,6 @@ When applying an auto-crop:
 | ~~Can OpenCV decode camera HEIC?~~ Resolved: import stores HEIC as-is (T6); OpenCV can't decode it, so rendering uses the platform decoder (T7, §5.1). | — |
 | Preview-render latency on a mid-range phone: measured on the emulator in T7 (§5.1); a real-phone run of `tool/render_benchmark.dart` is still to do | T15 (exit-criteria check on a real phone) |
 | Detection time on a mid-range phone (target < 500 ms; ~120 ms on a Mac) | T15 (real-phone check) |
-| Detection stability (near-ties flip with ±1 pixel noise, §6.5) | T13b |
-| Detection confidence calibration (wrong answers can score high, §6.2) and dark canvases on busy backgrounds; needs more evaluation photos | After M1 |
+| Detection confidence calibration (wrong answers can score high, §6.2), dark canvases on busy backgrounds, the remaining flips (06, 15); needs more evaluation photos | After M1 |
 | Real application ID before the first Play Store upload | Before release |
 | If the repo becomes public: keep the painting fixtures in it, or move them out? | Before making the repo public |
