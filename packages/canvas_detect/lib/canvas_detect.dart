@@ -5,4 +5,6 @@
 library;
 
 export 'src/detector.dart';
+export 'src/opencv_detector.dart';
+export 'src/scoring.dart' show ScoringParams;
 export 'src/stub_detector.dart';

@@ -8,17 +8,17 @@ part of 'canvas_detection.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// The detector in use: a stub until the OpenCV one (M1 T13).
+/// The detector in use (runs in a background isolate).
 
 @ProviderFor(canvasDetector)
 final canvasDetectorProvider = CanvasDetectorProvider._();
 
-/// The detector in use: a stub until the OpenCV one (M1 T13).
+/// The detector in use (runs in a background isolate).
 
 final class CanvasDetectorProvider
     extends $FunctionalProvider<CanvasDetector, CanvasDetector, CanvasDetector>
     with $Provider<CanvasDetector> {
-  /// The detector in use: a stub until the OpenCV one (M1 T13).
+  /// The detector in use (runs in a background isolate).
   CanvasDetectorProvider._()
     : super(
         from: null,
@@ -52,7 +52,7 @@ final class CanvasDetectorProvider
   }
 }
 
-String _$canvasDetectorHash() => r'754b2975f5dbb7c41d46c12c1b21f0163fc37a8e';
+String _$canvasDetectorHash() => r'9f52ab9213928ac12b3ccb6992e420754c540daa';
 
 @ProviderFor(canvasDetection)
 final canvasDetectionProvider = CanvasDetectionProvider._();

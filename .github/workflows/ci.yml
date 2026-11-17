@@ -66,6 +66,11 @@ jobs:
         working-directory: packages/canvas_detect
         run: dart test
 
+      # Fails if detection gets worse on the evaluation set (m1-design §6.5).
+      - name: Evaluate canvas detection
+        working-directory: packages/canvas_detect
+        run: dart run bin/evaluate.dart --check
+
       # Proves the Android app compiles; one ABI is enough for that (release
       # builds include all of them).
       - name: Android debug build
