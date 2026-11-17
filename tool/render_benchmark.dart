@@ -2,18 +2,28 @@
 //
 //   flutter run --profile -d <device> -t tool/render_benchmark.dart
 //
+// It replaces the Filbert app installed on the device (same app, this file as
+// the entry point); reinstall the app afterwards with `flutter run --release`.
+// Being a profile build, it leaves a dartcv4 keep-list behind: clear it
+// afterwards (m1-design §7).
+//
 // Prints timings to the console, then shows "done" on screen. Synthetic
-// photos (12 MP and 48 MP JPEGs) are generated on the device first.
+// photos (12 MP and 48 MP JPEGs) are generated on the device first. Also
+// times canvas detection (m1-design §6.2, target < 500 ms).
 
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
+import 'package:canvas_detect/canvas_detect.dart';
 import 'package:dartcv4/dartcv.dart' as cv;
 import 'package:filbert/core/files/file_store.dart';
+import 'package:filbert/features/autocrop/canvas_detection.dart';
 import 'package:filbert/features/photos/data/image_renderer.dart';
 import 'package:filbert/features/photos/domain/project_image.dart';
 import 'package:flutter/widgets.dart';
+
+import '../test/support/synthetic_canvas.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -87,9 +97,72 @@ Future<void> main() async {
       );
     }
   }
+  await _benchmarkDetection(root, files);
   debugPrint('BENCH done');
   runApp(const Center(child: Text('done', textDirection: TextDirection.ltr)));
 }
+
+/// Canvas detection as the review screen runs it: platform decode and
+/// downscale, then the detector in an isolate. The photo is the synthetic
+/// canvas scaled up, so the detector sees a canvas-like scene.
+Future<void> _benchmarkDetection(Directory root, FileStore files) async {
+  const detector = OpenCvCanvasDetector();
+  final detection = PlatformCanvasDetection(files: files, detector: detector);
+  final canvas = SyntheticCanvas.write('${root.path}/canvas.jpg');
+  for (final (label, w, h) in [('12 MP', 4000, 3000), ('48 MP', 8000, 6000)]) {
+    final blobId = 'canvas-$w';
+    final source = File('${root.path}/$blobId.jpg');
+    final original = cv.imread(canvas.path);
+    final scaled = cv.resize(original, (w, h), interpolation: cv.INTER_CUBIC);
+    final (ok, bytes) = cv.imencode(
+      '.jpg',
+      scaled,
+      params: cv.VecI32.fromList([cv.IMWRITE_JPEG_QUALITY, 92]),
+    );
+    if (!ok) throw StateError('encode failed');
+    original.dispose();
+    scaled.dispose();
+    source.writeAsBytesSync(bytes);
+    await files.putBlob(blobId, 'jpg', source);
+
+    final total = <int>[];
+    for (var run = 0; run < 5; run++) {
+      final sw = Stopwatch()..start();
+      final result = await detection.detect(_image(blobId, Edits.none, run));
+      total.add(sw.elapsedMilliseconds);
+      if (run == 0) {
+        debugPrint(
+          'BENCH detect $label confidence ${result.confidence.toStringAsFixed(2)}',
+        );
+      }
+    }
+
+    // The detector alone, on the downscaled pixels detection works on.
+    final small = cv.resize(cv.imread(canvas.path), (
+      PlatformCanvasDetection.maxLongEdge,
+      PlatformCanvasDetection.maxLongEdge * 3 ~/ 4,
+    ), interpolation: cv.INTER_AREA);
+    final rgba = cv.cvtColor(small, cv.COLOR_BGR2RGBA);
+    final pixels = DetectorImage(
+      width: rgba.cols,
+      height: rgba.rows,
+      rgba: Uint8List.fromList(rgba.data),
+    );
+    final detectorOnly = <int>[];
+    for (var run = 0; run < 5; run++) {
+      final sw = Stopwatch()..start();
+      await detector.detect(pixels);
+      detectorOnly.add(sw.elapsedMilliseconds);
+    }
+    debugPrint(
+      'BENCH detect $label: median ${_median(total)} ms with decode, '
+      '${_median(detectorOnly)} ms detector only '
+      '(runs $total / $detectorOnly)',
+    );
+  }
+}
+
+int _median(List<int> times) => (times.toList()..sort())[times.length ~/ 2];
 
 ProjectImage _image(String blobId, Edits edits, int run) => ProjectImage(
   id: '$blobId-$run',

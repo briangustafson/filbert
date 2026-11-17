@@ -4,8 +4,14 @@ A Flutter app for oil painters. See [docs/](docs/) for the product description, 
 
 ```bash
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 flutter analyze
 flutter test
 (cd packages/canvas_detect && dart test)
+```
+
+The end-to-end test runs on an Android emulator. Afterwards it uninstalls the app, which deletes the app's data on that device, so never point it at a phone you use:
+
+```bash
+flutter test integration_test -d emulator-5554
 ```

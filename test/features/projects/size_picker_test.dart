@@ -1,4 +1,5 @@
 import 'package:filbert/features/projects/domain/project.dart';
+import 'package:filbert/features/projects/ui/proportion_shape.dart';
 import 'package:filbert/features/projects/ui/size_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -48,6 +49,32 @@ void main() {
     await open(tester);
     expect(find.textContaining('No size set'), findsOneWidget);
     expect(find.byType(ChoiceChip), findsNothing);
+  });
+
+  testWidgets('presets say which number is the width', (tester) async {
+    await open(tester);
+    await tapText(tester, 'Size');
+    expect(find.text('Width × height'), findsOneWidget);
+    await tapText(tester, 'Aspect ratio');
+    expect(find.text('Width : height'), findsOneWidget);
+  });
+
+  testWidgets('each preset shows its shape, turned with the orientation', (
+    tester,
+  ) async {
+    ProportionShape shapeOf(String label) => tester.widget(
+      find.descendant(of: chip(label), matching: find.byType(ProportionShape)),
+    );
+    await open(tester);
+    await tapText(tester, 'Size');
+    expect(
+      (shapeOf('9 × 12').width, shapeOf('9 × 12').height),
+      (9, 12),
+      reason: 'portrait: taller than wide',
+    );
+
+    await tapText(tester, 'Landscape');
+    expect((shapeOf('12 × 9').width, shapeOf('12 × 9').height), (12, 9));
   });
 
   testWidgets('tapping a size preset saves it and closes', (tester) async {

@@ -12,6 +12,7 @@ import '../domain/project.dart';
 import '../domain/size_presets.dart';
 import 'delete_project.dart';
 import 'project_name_field.dart';
+import 'proportion_shape.dart';
 import 'size_picker.dart';
 import 'start_notes_field.dart';
 
@@ -84,7 +85,13 @@ class _ProjectView extends ConsumerWidget {
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: ActionChip(
-                    avatar: const Icon(Icons.aspect_ratio, size: 18),
+                    avatar: switch (dimsOf(project.size)) {
+                      (final w, final h) => ProportionShape(
+                        width: w,
+                        height: h,
+                      ),
+                      null => const Icon(Icons.aspect_ratio, size: 18),
+                    },
                     label: Text(sizeLabel(project.size)),
                     tooltip: 'Canvas size',
                     onPressed: () => showSizePicker(

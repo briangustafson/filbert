@@ -141,6 +141,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - Update docs for anything that changed during M1; resolve or carry forward remaining open items.
   - *Done when:* integration test passes in CI; exit criteria confirmed by you.
   - Depends on: T14
+  - *Result:* exit criteria confirmed by you on a Pixel 11 (2026-11-17). Integration test `integration_test/m1_flow_test.dart` (CI job `integration`). On the Pixel 11: preview ≈ 0.1–0.4 s, detection ≈ 0.14–0.21 s with decode (m1-design §5.1, §9). Treeshake measured but not enabled because of a dartcv4 keep-list bug (§7). Polish: the size picker shows width × height and each size's shape (§3.4).
 
 ## Notes and later ideas
 
@@ -148,4 +149,4 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 - Photo screen polish: when zoomed, panning can reach the black letterbox around the photo; clamp panning to the photo's edges as photo viewers usually do (T9).
 - Manual crop: pinch/pan the photo under the crop for precise placement (§3.7 mentions it; deferred in T11). Handles alone work for canvas-sized crops.
-- Photo screen: check frame pacing (swipe, zoom) on a real mid-range phone in profile mode; the emulator's GPU made raster timing meaningless (T15).
+- Photo screen: check frame pacing (swipe, zoom) on a real mid-range phone in profile mode; the emulator's GPU made raster timing meaningless. T15 had only a high-end Pixel 11, so this and a mid-range run of `tool/render_benchmark.dart` carry over (m1-design §9).

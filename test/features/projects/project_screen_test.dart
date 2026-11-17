@@ -2,6 +2,7 @@ import 'package:filbert/app/router.dart';
 import 'package:filbert/app/routes.dart';
 import 'package:filbert/features/projects/domain/project.dart';
 import 'package:filbert/features/projects/ui/project_list_screen.dart';
+import 'package:filbert/features/projects/ui/proportion_shape.dart';
 import 'package:filbert/features/projects/ui/size_picker.dart';
 import 'package:filbert/features/projects/ui/start_notes_field.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -109,6 +110,13 @@ void main() {
 
       expect(current().size, const PhysicalSize(16, 20, LengthUnit.inches));
       expect(find.widgetWithText(ActionChip, '16 × 20 in'), findsOneWidget);
+      final shape = tester.widget<ProportionShape>(
+        find.descendant(
+          of: find.byType(ActionChip),
+          matching: find.byType(ProportionShape),
+        ),
+      );
+      expect((shape.width, shape.height), (16, 20), reason: 'portrait shape');
     });
 
     testWidgets('picker uses the region unit for new sizes', (tester) async {

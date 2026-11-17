@@ -113,6 +113,7 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
   - Presets and **None** save and close in one tap; **Custom** saves on **Save**; closing the sheet otherwise changes nothing. The orientation toggle re-saves the current size immediately (squares are left alone) and also turns the preset chips.
   - An **in / cm** toggle sits next to the orientation toggle in Size mode; it switches the preset list and the custom unit but doesn't save by itself.
   - Custom values: 0.1–1000, decimals allowed (`,` or `.`), for sizes and ratio terms; invalid input shows an inline error and disables **Save**. A saved size that isn't a preset reopens as **Custom**, pre-filled.
+  - Width comes first everywhere (T15): a "Width × height" ("Width : height" for ratios) caption sits above the presets, and each preset chip, like the project screen's size chip, shows a small rectangle drawn at the size's proportions (`ProportionShape`), so "9 × 12" visibly stands tall and "12 × 9" lies wide.
   - Default unit for new sizes: inches when the device region is US, LR, or MM, otherwise cm (`preferredLengthUnitProvider`), unless the Units setting picks one (§3.9). An existing size keeps its own unit.
 
 ### 3.5 Photo screen
@@ -344,14 +345,14 @@ Implementation notes (T7):
 - **Geometry:** normalized 0 and 1 are the image's outer edges; OpenCV corners use pixel-edge coordinates (−0.5 … size − 0.5), so an empty edit reproduces the source exactly. Warp is bilinear with replicated borders; quarter turns are clockwise, applied after the warp. JPEG quality 90.
 - **Cache:** files are named by `editsHash` (64-bit FNV-1a of the canonical edits JSON; stable across runs, unlike `String.hashCode`). An existing file is reused; concurrent requests for the same file share one render; writes are temp-file-then-rename.
 - **Goldens** (`test/core/imaging/render_pipeline_test.dart`, PNGs in `test/goldens/render/`) render a synthetic test pattern, so input is identical on every OS, and compare the warped pixels before JPEG encoding with a small tolerance (max channel diff 8, mean < 0.5). Update with `flutter test --update-goldens <file>`. The perspective case also checks that a pattern projected onto a quad comes back flat.
-- **Latency** (`tool/render_benchmark.dart`, profile mode, arm64 emulator API 37 on an Apple-silicon Mac, synthetic photos; not yet measured on a mid-range phone):
+- **Latency** (`tool/render_benchmark.dart`, profile mode, synthetic photos; median of warm runs). Emulator: arm64 API 37 on an Apple-silicon Mac (T7). Phone: Pixel 11, a high-end phone (T15); a mid-range phone is not measured yet:
 
-  | Original | No edits | Perspective crop |
-  |---|---|---|
-  | 12 MP | ≈ 0.3–0.45 s | ≈ 0.4–0.6 s |
-  | 48 MP | ≈ 0.5–0.6 s | ≈ 0.5–0.85 s |
+  | Original | No edits (emulator) | Perspective crop (emulator) | No edits (Pixel 11) | Perspective crop (Pixel 11) |
+  |---|---|---|---|---|
+  | 12 MP | ≈ 0.3–0.45 s | ≈ 0.4–0.6 s | ≈ 0.11 s | ≈ 0.18 s |
+  | 48 MP | ≈ 0.5–0.6 s | ≈ 0.5–0.85 s | ≈ 0.35 s | ≈ 0.38 s |
 
-  Platform decoding is about half of it (≈ 0.35 s at 48 MP). One-time costs per launch: ≈ 0.4–0.6 s for the first OpenCV call (library load) and ≈ 2.8 s for the first platform decode on the emulator. Preview size stays at 2048 px. Because a cold preview is noticeably slow, T8/T9 should render previews and thumbnails in the background right after import or an edit, and show the thumbnail while a preview renders.
+  Platform decoding is about half of it (≈ 0.35 s at 48 MP on the emulator, ≈ 0.08 s at 12 MP and ≈ 0.2 s at 48 MP on the Pixel 11). One-time costs per launch: ≈ 0.4–0.6 s for the first OpenCV call (library load; 35 ms on the Pixel 11) and ≈ 2.8 s for the first platform decode on the emulator. Preview size stays at 2048 px. Because a cold preview is noticeably slow, T8/T9 should render previews and thumbnails in the background right after import or an edit, and show the thumbnail while a preview renders.
 - On Android, OpenCV logs `could not open directory …base.apk!/lib/…` errors once at load while looking for optional plugins; they are harmless.
 
 ### 5.2 Import
@@ -447,10 +448,12 @@ When applying an auto-crop:
 - `exif` (pure Dart; JPEG/HEIC/PNG/WebP) reads orientation and capture time without decoding pixels. `image_picker_android` is listed directly only to switch on Android's photo picker (it is already part of `image_picker`).
 - `material_ui` is Flutter's Material library, now shipped as a package; `package:flutter/material.dart` is deprecated since Flutter 3.47, and `flutter create` adds `material_ui` by default. Import `package:material_ui/material_ui.dart`, never `package:flutter/material.dart`.
 - OpenCV is added in the rendering task (T7) rather than the setup task: it is a heavy native build and nothing uses it earlier.
-- OpenCV comes from `dartcv4` (the pure-Dart package behind `opencv_dart`), used by both the app and `packages/canvas_detect`. Its build hook compiles a small C wrapper with CMake and links OpenCV static libraries that it downloads prebuilt from the maintainer's GitHub releases (`rainyl/opencv.full`); the first build per target takes a few minutes, later builds are cached in `.dart_tool/hooks_runner`. Settings live under `hooks: user_defines: dartcv4:` in the root `pubspec.yaml`: the default modules (core, imgproc, imgcodecs) cover M1 including T13; CMake and Ninja come from the Android SDK (`prefer_android_cmake` / `prefer_android_ninja`); macOS uses the Ninja generator (the default, Xcode, isn't needed). Size: `libdartcv.so` is ≈ 9.5 MB per ABI uncompressed (arm64, debug); the arm64 profile APK is 32.8 MB. Tree-shaking (`treeshake: true`) can be tried before release.
+- OpenCV comes from `dartcv4` (the pure-Dart package behind `opencv_dart`), used by both the app and `packages/canvas_detect`. Its build hook compiles a small C wrapper with CMake and links OpenCV static libraries that it downloads prebuilt from the maintainer's GitHub releases (`rainyl/opencv.full`); the first build per target takes a few minutes, later builds are cached in `.dart_tool/hooks_runner`. Settings live under `hooks: user_defines: dartcv4:` in the root `pubspec.yaml`: the default modules (core, imgproc, imgcodecs) cover M1 including T13; CMake and Ninja come from the Android SDK (`prefer_android_cmake` / `prefer_android_ninja`); macOS uses the Ninja generator (the default, Xcode, isn't needed). Size: `libdartcv.so` is ≈ 9.5 MB per ABI uncompressed (arm64, debug); the arm64 profile APK is 32.8 MB. Tree-shaking (`treeshake: true`, tried in T15): release APKs split per ABI go from 30.8 to 27.2 MB for arm64 (`libdartcv.so` 9.5 → 5.9 MB). Only arm64 compared cleanly; the other ABIs' baselines were already built with a keep-list (next point). The app worked with it on the emulator, but it is **not enabled**. See the next point.
+- **dartcv4 keep-list hazard (2.3.0+, found in T15).** Every AOT build (profile or release) makes dartcv4's link hook write the native functions that build calls to `.dart_tool/hooks_runner/shared/dartcv4/dartcv_keep.txt`; every later native build of OpenCV, for any target and **with or without `treeshake`**, exports only those functions. So after a profile or release build, the next rebuild of the library (new target, changed dependencies or hook options) can lack functions other code calls, and fails at runtime with `Couldn't resolve native function`. Seen in T15: the benchmark lacked `cv_randu`, and the macOS library used by `flutter test` lost `cv_getPerspectiveTransform`. CI is unaffected (it makes no AOT builds). **Workaround:** after any profile or release build, run `rm -rf .dart_tool/hooks_runner/shared/dartcv4/{dartcv_keep.txt,build,link}` (the next build recompiles OpenCV, ≈ 10 minutes per target).
 - Flutter version: 3.50.0 stable, pinned in CI (`.github/workflows/ci.yml`); bump it there and locally together.
 - CI (GitHub Actions, using `subosito/flutter-action`): `flutter pub get` → `build_runner` → `flutter analyze` → `flutter test` (app, then `dart test` in `packages/canvas_detect`) → `canvas_detect` evaluation (from T13) → Android debug build.
   - Runs on `main` are never cancelled (superseded PR runs are), because only caches saved on `main` are shared with PRs.
+  - A second job, `integration` (T15), runs `flutter test integration_test` on an x86_64 API 35 emulator (`reactivecircus/android-emulator-runner`, KVM). It runs alongside the first job, caches its own OpenCV build (x86_64), and caches a booted AVD snapshot.
   - Since OpenCV (T7), CI frees disk space first (each native OpenCV build takes ~1 GB and the runner has ~14 GB free; without this the APK build ran out of space), caches `.dart_tool/hooks_runner` keyed on the pubspec files so OpenCV is rebuilt only when dependencies change, and builds the debug APK for arm64 only.
 
 ---
@@ -467,7 +470,7 @@ When applying an auto-crop:
 | Rendering | Golden tests: axis-aligned crop, straightened crop, perspective quad, quarter turns |
 | Canvas detection | Unit tests for scoring; evaluation run against fixtures |
 | Widgets | Project list (empty/non-empty), project screen reference slot, size picker, crop handles |
-| Integration (emulator) | New project → add photo → auto-crop review → apply → undo → revert |
+| Integration (emulator; `integration_test/m1_flow_test.dart`, T15) | New project → add photo → auto-crop review → apply → undo → redo → revert. Real database (in memory), files (temp folder), rendering and OpenCV detection; only the photo picker is faked, handing over a generated canvas photo (`test/support/synthetic_canvas.dart`, checked on the host by `synthetic_canvas_test.dart`) |
 | Migrations | Schema v1 dump committed; harness ready for v2 |
 
 ---
@@ -478,8 +481,10 @@ When applying an auto-crop:
 |---|---|
 | ~~Does `opencv_dart` run under plain `dart test`?~~ Resolved in T7: yes, via `dartcv4`; no package split (§6.1). | — |
 | ~~Can OpenCV decode camera HEIC?~~ Resolved: import stores HEIC as-is (T6); OpenCV can't decode it, so rendering uses the platform decoder (T7, §5.1). | — |
-| Preview-render latency on a mid-range phone: measured on the emulator in T7 (§5.1); a real-phone run of `tool/render_benchmark.dart` is still to do | T15 (exit-criteria check on a real phone) |
-| Detection time on a mid-range phone (target < 500 ms; ~120 ms on a Mac) | T15 (real-phone check) |
+| ~~Preview-render latency on a real phone~~ Resolved in T15: ≈ 0.1–0.4 s on a Pixel 11 (§5.1). | — |
+| ~~Detection time on a real phone (target < 500 ms)~~ Resolved in T15 (`tool/render_benchmark.dart`): on a Pixel 11 ≈ 0.14 s (12 MP) and ≈ 0.21 s (48 MP) including decode, ≈ 0.09 s for the detector itself; emulator ≈ 0.2–0.3 s; Mac ≈ 0.12 s. | — |
+| Preview latency and detection time on a mid-range phone: only a high-end Pixel 11 was measured; with detection at under half the target there, a mid-range phone is expected to pass, but check it when one is available (same benchmark; also frame pacing, see m1-tasks notes) | After M1 |
 | Detection confidence calibration (wrong answers can score high, §6.2), dark canvases on busy backgrounds, the remaining flips (06, 15); needs more evaluation photos | After M1 |
+| dartcv4's keep-list (§7) breaks native builds after any profile or release build; until dartcv4 fixes it, clear it after such builds. Tree-shaking (≈ 3.6 MB off the arm64 APK) depends on the same list, so enable it only once that's fixed, or with a release process that builds from a clean cache twice and smoke-tests the result | Before release |
 | Real application ID before the first Play Store upload | Before release |
 | If the repo becomes public: keep the painting fixtures in it, or move them out? | Before making the repo public |
