@@ -52,6 +52,12 @@ class FakeImageRepository implements ImageRepository {
   /// The image as currently stored.
   ProjectImage byId(String id) => _images[id]!;
 
+  /// A project's live images in the order they were added.
+  List<ProjectImage> imagesOf(String projectId) => [
+    for (final i in _images.values)
+      if (i.projectId == projectId && !_deleted.contains(i.id)) i,
+  ];
+
   List<ProjectImage> _live(String projectId) =>
       _images.values
           .where((i) => i.projectId == projectId && !_deleted.contains(i.id))

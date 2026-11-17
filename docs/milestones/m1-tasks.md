@@ -128,7 +128,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 ### Flows and wrap-up
 
-- [ ] **T14 — Add-photo flow and settings**
+- [x] **T14 — Add-photo flow and settings**
   - After adding grid photos: auto-crop review queue ("1 of 3", Skip). After adding a reference: manual crop at the project ratio (Skip; skipped if no size).
   - Settings screen: auto-crop on add, units, About.
   - *Done when:* widget tests for the queue and setting toggle; the full flow works on a device.

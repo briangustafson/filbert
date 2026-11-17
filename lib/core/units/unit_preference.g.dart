@@ -8,20 +8,20 @@ part of 'unit_preference.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Unit for new physical sizes, from the device's region. The Units setting
-/// (M1 T14) will take precedence over this.
+/// Unit for new physical sizes: the Units setting, or with Automatic (the
+/// default) the device's region.
 
 @ProviderFor(preferredLengthUnit)
 final preferredLengthUnitProvider = PreferredLengthUnitProvider._();
 
-/// Unit for new physical sizes, from the device's region. The Units setting
-/// (M1 T14) will take precedence over this.
+/// Unit for new physical sizes: the Units setting, or with Automatic (the
+/// default) the device's region.
 
 final class PreferredLengthUnitProvider
     extends $FunctionalProvider<LengthUnit, LengthUnit, LengthUnit>
     with $Provider<LengthUnit> {
-  /// Unit for new physical sizes, from the device's region. The Units setting
-  /// (M1 T14) will take precedence over this.
+  /// Unit for new physical sizes: the Units setting, or with Automatic (the
+  /// default) the device's region.
   PreferredLengthUnitProvider._()
     : super(
         from: null,
@@ -56,4 +56,4 @@ final class PreferredLengthUnitProvider
 }
 
 String _$preferredLengthUnitHash() =>
-    r'eb2fd93f28edcdf66c40fd631b111f0e5a61e9e2';
+    r'6cf16d434b183ae7bdc77cf357b98f10be807a8e';

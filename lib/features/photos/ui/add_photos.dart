@@ -1,7 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/routes.dart';
+import '../../../core/settings/app_settings.dart';
+import '../../autocrop/review_queue.dart';
+import '../../projects/data/project_providers.dart';
+import '../../projects/domain/project.dart';
 import '../data/photo_imports.dart';
+import '../domain/project_image.dart';
 
 enum PhotoSourceChoice { camera, device }
 
@@ -38,7 +45,8 @@ Future<PhotoSourceChoice?> showPhotoSourceSheet(
 );
 
 /// Asks where photos come from, then adds them to [projectId]'s grid (several
-/// allowed) or as its reference (one). Reports failures in a snackbar.
+/// allowed) or as its reference (one), and opens what follows an add
+/// ([afterAddRoute]). Reports failures in a snackbar.
 Future<void> addPhotos(
   BuildContext context,
   WidgetRef ref,
@@ -68,6 +76,13 @@ Future<void> addPhotos(
         SnackBar(content: Text(failedMessage(result.failed))),
       );
     }
+    final next = await afterAddRoute(
+      ref,
+      projectId,
+      result.added,
+      asReference: asReference,
+    );
+    if (next != null && context.mounted) context.go(next);
   } on Exception catch (e) {
     debugPrint('Adding photos failed: $e');
     messenger.showSnackBar(
@@ -85,3 +100,30 @@ Future<void> addPhotos(
 String failedMessage(int failed) => failed == 1
     ? "1 photo couldn't be added."
     : "$failed photos couldn't be added.";
+
+/// What opens after photos are added (m1-design §3.6), or null: the
+/// auto-crop review queue for new grid photos if "Auto-crop photos when
+/// added" is on, or manual crop at the project's ratio for a new reference
+/// if the project has a size or ratio.
+Future<String?> afterAddRoute(
+  WidgetRef ref,
+  String projectId,
+  List<ProjectImage> added, {
+  bool asReference = false,
+}) async {
+  if (added.isEmpty) return null;
+  if (asReference) {
+    final project = await ref.read(projectProvider(projectId).future);
+    if (project == null || project.size is NoSize) return null;
+    return Routes.crop(projectId, added.first.id, afterAdd: true);
+  }
+  // From the store: appSettingsProvider may have no listener here, and an
+  // unlistened provider is paused (Riverpod 3), so its future never completes.
+  final settings = await ref.read(settingsStoreProvider).watch().first;
+  if (!settings.autoCropOnAdd) return null;
+  return Routes.autocrop(
+    projectId,
+    added.first.id,
+    queue: ReviewQueue.start([for (final image in added) image.id]),
+  );
+}

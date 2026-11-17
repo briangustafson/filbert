@@ -79,6 +79,12 @@ class ProjectListScreen extends ConsumerWidget {
         );
       } else if (context.mounted) {
         context.go(Routes.project(created.projectId));
+        final next = await afterAddRoute(
+          ref,
+          created.projectId,
+          created.result.added,
+        );
+        if (next != null && context.mounted) context.go(next);
       }
     } on Exception catch (e) {
       debugPrint('Take photo failed: $e');

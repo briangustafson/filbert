@@ -113,7 +113,7 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
   - Presets and **None** save and close in one tap; **Custom** saves on **Save**; closing the sheet otherwise changes nothing. The orientation toggle re-saves the current size immediately (squares are left alone) and also turns the preset chips.
   - An **in / cm** toggle sits next to the orientation toggle in Size mode; it switches the preset list and the custom unit but doesn't save by itself.
   - Custom values: 0.1–1000, decimals allowed (`,` or `.`), for sizes and ratio terms; invalid input shows an inline error and disables **Save**. A saved size that isn't a preset reopens as **Custom**, pre-filled.
-  - Default unit for new sizes: inches when the device region is US, LR, or MM, otherwise cm (`preferredLengthUnitProvider`; the Units setting in T14 overrides it). An existing size keeps its own unit.
+  - Default unit for new sizes: inches when the device region is US, LR, or MM, otherwise cm (`preferredLengthUnitProvider`), unless the Units setting picks one (§3.9). An existing size keeps its own unit.
 
 ### 3.5 Photo screen
 
@@ -143,6 +143,12 @@ Implementation notes (T8):
 - **Photos taken while Android killed the app:** before the camera opens, the target (project + grid or reference, or "new project") is saved in `app_meta.pending_capture`, and cleared when the camera returns. On start-up, `retrieveLost()` photos are imported into that target (a new project if it is gone or none was saved), and a snackbar offers **Open**. Verified on the emulator by killing the app process while the camera was open.
 - **Picker leftovers:** `image_picker` copies each picked photo into `<cache>/<uuid>/` and writes camera photos as `<cache>/<uuid><digits>.<ext>`; import deletes the photo but not the folder. On start-up, after recovery, entries with exactly those names are deleted; nothing else in the cache (the render caches live there too).
 - The Android photo picker shows **Done** even in single-photo mode, but allows only one selection.
+
+Implementation notes (T14):
+
+- `afterAddRoute` (`features/photos/ui/add_photos.dart`) decides what opens after an add, for the project screen's Add photo / Add reference and the project list's Take photo. Photos recovered at start-up (above) don't open anything: they keep the snackbar with **Open**, so launching the app never lands on an unexpected screen.
+- **Review queue:** carried in the review route's query, `…/autocrop?queue=<id>,<id>&of=<total>` (`ReviewQueue`), so nothing global holds it. In queue mode the review screen shows "2 of 3" under its title (not for a single photo) and **Skip**; Apply and Skip go on to the next photo; Cancel, Android back, or finishing the last photo return to the project screen.
+- **New reference:** `…/crop?after=add` adds **Skip**; Apply, Skip, Cancel and back all return to the project. The lock starts at the project's ratio, as manual crop always does (§3.7).
 
 ### 3.7 Manual crop
 
@@ -178,6 +184,10 @@ Implementation notes (T8):
 - Auto-crop photos when added (default on).
 - Units: Automatic (locale) / Inches / Centimeters.
 - About (version, licenses).
+- Implementation notes (T14):
+  - Stored in `app_meta` (`auto_crop_on_add` `true`/`false`, `units` `auto`/`in`/`cm`) through `SettingsStore` (`lib/core/settings/`); `appSettingsProvider` watches them, so changes apply at once. Missing or unknown values read as the defaults.
+  - **Units** applies to new physical sizes (the size picker's default unit, §3.4); **Automatic** is the device region (inches in the US, Liberia and Myanmar, else centimeters). Existing sizes keep their own unit.
+  - Units is a row showing the current choice, opening a dialog with the three options. **About Filbert** opens Flutter's About dialog with the version (`package_info_plus`) and **View licenses**.
 
 ---
 

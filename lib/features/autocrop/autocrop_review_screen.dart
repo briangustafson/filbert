@@ -20,19 +20,26 @@ import '../projects/data/project_providers.dart';
 import '../projects/domain/project.dart';
 import 'canvas_detection.dart';
 import 'review_geometry.dart';
+import 'review_queue.dart';
 
 /// Auto-crop review (m1-design §3.8): the detected canvas corners over the
 /// photo, draggable with a magnifier loupe; Apply saves a perspective
 /// correction as an undoable edit.
+///
+/// With a [queue] (photos just added, m1-design §3.6) it shows "2 of 3" and
+/// Skip; Apply and Skip move on to the next photo, and Cancel, back, or the
+/// last photo return to the project.
 class AutocropReviewScreen extends ConsumerWidget {
   const AutocropReviewScreen({
     super.key,
     required this.projectId,
     required this.imageId,
+    this.queue,
   });
 
   final String projectId;
   final String imageId;
+  final ReviewQueue? queue;
 
   /// Hint shown when detection is unsure.
   static const lowConfidenceHint =
@@ -56,23 +63,37 @@ class AutocropReviewScreen extends ConsumerWidget {
         key: ValueKey(image.id),
         project: project.value!,
         image: image,
+        queue: queue,
       );
     }
-    return Theme(
-      data: FilbertTheme.dark,
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(child: body),
+    return PopScope(
+      // In the add flow, back ends the queue: the project, not this photo.
+      canPop: queue == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go(Routes.project(projectId));
+      },
+      child: Theme(
+        data: FilbertTheme.dark,
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: SafeArea(child: body),
+        ),
       ),
     );
   }
 }
 
 class _ReviewView extends ConsumerStatefulWidget {
-  const _ReviewView({super.key, required this.project, required this.image});
+  const _ReviewView({
+    super.key,
+    required this.project,
+    required this.image,
+    this.queue,
+  });
 
   final Project project;
   final ProjectImage image;
+  final ReviewQueue? queue;
 
   @override
   ConsumerState<_ReviewView> createState() => _ReviewViewState();
@@ -142,7 +163,9 @@ class _ReviewViewState extends ConsumerState<_ReviewView> {
   }
 
   void _close() {
-    if (context.canPop()) {
+    if (widget.queue != null) {
+      context.go(Routes.project(widget.project.id));
+    } else if (context.canPop()) {
       context.pop();
     } else {
       context.go(Routes.photo(widget.project.id, widget.image.id));
@@ -156,7 +179,24 @@ class _ReviewViewState extends ConsumerState<_ReviewView> {
           widget.image.id,
           reviewEdits(_corners, quarterTurns: _turns, aspect: _projectAspect),
         );
-    if (mounted) _close();
+    if (mounted) _done();
+  }
+
+  /// After Apply or Skip: the next photo in the queue, or back where the
+  /// screen was opened from.
+  void _done() {
+    final queue = widget.queue;
+    if (queue == null || queue.isLast) {
+      _close();
+    } else {
+      context.go(
+        Routes.autocrop(
+          widget.project.id,
+          queue.remaining.first,
+          queue: queue.advanced,
+        ),
+      );
+    }
   }
 
   /// Debug builds: one `expected.json` entry for the evaluation set
@@ -197,7 +237,21 @@ class _ReviewViewState extends ConsumerState<_ReviewView> {
                 onPressed: _close,
               ),
               const SizedBox(width: 4),
-              Text('Auto-crop', style: Theme.of(context).textTheme.titleLarge),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Auto-crop',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  if (widget.queue case final queue? when queue.total > 1)
+                    Text(
+                      '${queue.position} of ${queue.total}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
               const Spacer(),
               if (kDebugMode)
                 IconButton(
@@ -205,6 +259,8 @@ class _ReviewViewState extends ConsumerState<_ReviewView> {
                   icon: const Icon(Icons.data_object),
                   onPressed: _copyCorners,
                 ),
+              if (widget.queue != null)
+                TextButton(onPressed: _done, child: const Text('Skip')),
               const SizedBox(width: 4),
               FilledButton(onPressed: _apply, child: const Text('Apply')),
             ],
