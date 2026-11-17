@@ -420,7 +420,9 @@ When applying an auto-crop:
 - Success = max corner error ≤ 2% of the diagonal.
 - Report success rate and mean error; the CLI prints a table and exits non-zero if the success rate drops below the committed baseline.
 - Initial target: ≥ 80% success on the set; tuned during M1 and recorded as the baseline.
-- As built (T13): `dart run bin/evaluate.dart [--check | --write-baseline]` downscales each fixture to the app's 1000 px, prints error, confidence and time per photo, and with `--check` fails if successes drop below `test/fixtures/baseline.json`; CI runs it. Baseline: 15 / 18 (83%), mean error 3.05%, ~120 ms per photo on an M-series Mac. Verified in the app on the emulator.
+- As built (T13): `dart run bin/evaluate.dart [--runs N] [--check | --write-baseline]` downscales each fixture to the app's 1000 px and runs it N times (default 10): once as decoded, then with different invisible ±1 pixel noise. It prints passes, median and worst error, confidence and time per photo; the success rate is over all runs. `--check` fails if the rate drops more than 0.05 below `test/fixtures/baseline.json` (decoders differ between the Mac that records the baseline and CI's Linux); CI runs it.
+- **Why several runs:** the detector is unstable. Near-ties between candidates are decided by hard cut-offs, so a ±1 pixel difference (another platform's JPEG decoder, Android's decoder in the app) can change the answer: on one run per photo the Mac got 15 / 18 and CI 14 / 18, with different photos failing. One run measures luck.
+- Baseline (T13): 72.8% of runs (131 / 180), median error 0.41%, ~120 ms per photo on an M-series Mac. Stable on 04–06, 08–11, 13, 15; flips on 01, 02, 03, 07, 12, 18; mostly wrong on 14, 16, 17. Below the 80% target; stability is T13b. Verified in the app on the emulator.
 
 ---
 
@@ -465,6 +467,7 @@ When applying an auto-crop:
 | ~~Can OpenCV decode camera HEIC?~~ Resolved: import stores HEIC as-is (T6); OpenCV can't decode it, so rendering uses the platform decoder (T7, §5.1). | — |
 | Preview-render latency on a mid-range phone: measured on the emulator in T7 (§5.1); a real-phone run of `tool/render_benchmark.dart` is still to do | T15 (exit-criteria check on a real phone) |
 | Detection time on a mid-range phone (target < 500 ms; ~120 ms on a Mac) | T15 (real-phone check) |
+| Detection stability (near-ties flip with ±1 pixel noise, §6.5) | T13b |
 | Detection confidence calibration (wrong answers can score high, §6.2) and dark canvases on busy backgrounds; needs more evaluation photos | After M1 |
 | Real application ID before the first Play Store upload | Before release |
 | If the repo becomes public: keep the painting fixtures in it, or move them out? | Before making the repo public |

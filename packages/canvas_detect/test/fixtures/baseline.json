@@ -1,5 +1,5 @@
 {
-  "successes": 15,
-  "total": 18,
-  "meanErrorPercent": 3.05
+  "successRate": 0.728,
+  "runs": 10,
+  "photos": 18
 }
