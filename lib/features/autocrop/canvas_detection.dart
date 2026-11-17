@@ -73,9 +73,9 @@ class PlatformCanvasDetection implements CanvasDetection {
   }
 }
 
-/// The detector in use: a stub until the OpenCV one (M1 T13).
+/// The detector in use (runs in a background isolate).
 @Riverpod(keepAlive: true)
-CanvasDetector canvasDetector(Ref ref) => const StubCanvasDetector();
+CanvasDetector canvasDetector(Ref ref) => const OpenCvCanvasDetector();
 
 @Riverpod(keepAlive: true)
 CanvasDetection canvasDetection(Ref ref) => PlatformCanvasDetection(

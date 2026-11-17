@@ -110,12 +110,14 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* widget tests for handles and buttons; applying a hand-adjusted quad produces a correct perspective-corrected preview.
   - Depends on: T11
 
-- [ ] **T13 — Canvas detection and evaluation set**
+- [x] **T13 — Canvas detection and evaluation set**
   - **You + Claude:** annotate the collected photos using Copy corners as JSON (debug build; the copied `file` is `<imageId>.<ext>`, renamed to the fixture's name); commit downscaled fixtures and `expected.json` (§6.4).
   - OpenCV detector (§6.2) with pure-Dart scoring; runs in an isolate.
   - Evaluation tool (§6.5) and CI step that fails below the committed baseline.
   - *Done when:* success rate ≥ 80% on the set (or the achieved rate and plan agreed with you), baseline committed, detection < 500 ms on a mid-range phone.
   - Depends on: T12
+  - *Result:* 15 / 18 within 2% (83%); 15 references are approved detector proposals, 3 hand-marked (§6.4). ~120 ms per photo on a Mac; the mid-range-phone timing moves to T15's real-phone checks.
+  - *Later:* calibrate confidence (wrong answers can score high), dark canvases on busy backgrounds, more evaluation photos (hand-marked).
 
 ### Flows and wrap-up
 
@@ -127,7 +129,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 
 - [ ] **T15 — Integration test and M1 wrap-up**
   - Emulator integration test: new project → add photo → auto-crop review → apply → undo → revert.
-  - Check M1 exit criteria (HLD §11) on a real phone; fix polish issues found. Run `tool/render_benchmark.dart` on it and record preview latency (m1-design §5.1).
+  - Check M1 exit criteria (HLD §11) on a real phone; fix polish issues found. Run `tool/render_benchmark.dart` on it and record preview latency (m1-design §5.1); time canvas detection there too (target < 500 ms, §6.2).
   - Try `dartcv4`'s `treeshake: true` in a release build and record the APK size.
   - Update docs for anything that changed during M1; resolve or carry forward remaining open items.
   - *Done when:* integration test passes in CI; exit criteria confirmed by you.

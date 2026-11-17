@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Full-size photos for the canvas-detection evaluation set (m1-design §6.4).
+# Never committed: they carry GPS and other metadata. Fixtures are made from
+# them by tool/make_eval_fixtures.dart.
+/eval-originals/

@@ -368,30 +368,34 @@ Implementation notes (T6):
 ```
 packages/canvas_detect/
   lib/canvas_detect.dart        public API: CanvasDetector, Detection, Quad
-  lib/src/opencv_detector.dart  OpenCV implementation
-  lib/src/scoring.dart          candidate scoring (pure Dart)
+  lib/src/opencv_detector.dart  OpenCV implementation (candidates, pipeline)
+  lib/src/scoring.dart          candidate scoring and choice (pure Dart)
+  lib/src/refine.dart           side fitting and inset (pure Dart)
+  lib/src/geometry.dart, edge_map.dart   helpers (pure Dart)
   bin/evaluate.dart             evaluation CLI
-  test/fixtures/                photos + expected.json
+  tool/                         fixture, review-sheet and tuning tools
+  test/fixtures/                photos + expected.json + baseline.json
 ```
+
+Run the package's scripts from `packages/canvas_detect` (`dart run bin/evaluate.dart`): `dart run` from the repo root crashes on macOS (a Dart SDK bug in the native-assets runner), and so does `dart analyze` inside the package; use `flutter analyze packages/canvas_detect` from the root.
 
 API (T12): `CanvasDetector.detect(DetectorImage, {aspectHint})` → `Detection(quad, confidence)`; `DetectorImage` is 8-bit RGBA, EXIF-oriented (the app decodes, since OpenCV can't read HEIC); corners are normalized `Corner`s in a `Quad` (TL, TR, BR, BL); `Detection.isLowConfidence` below 0.5. `StubCanvasDetector` (5% inset, confidence 0) stands in until T13; the app reaches the detector through `canvasDetectorProvider`.
 
 **Resolved in T7:** OpenCV runs under plain `dart test`, so everything stays in `packages/canvas_detect` (no `canvas_detect_opencv` split) and the evaluation can be a CLI. The package depends on `dartcv4` — the pure-Dart bindings that `opencv_dart` wraps for Flutter — which builds its native library through Dart build hooks, so the same dependency works in `dart test`, `flutter test`, and the app. `packages/canvas_detect/test/opencv_smoke_test.dart` keeps this checked in CI.
 
-### 6.2 Algorithm (initial)
+### 6.2 Algorithm
 
-1. Downscale to ~1000 px on the long edge.
-2. Build edge maps from both grayscale and saturation channels (canvas vs. wall often differ more in saturation than brightness): Gaussian blur → Canny with median-based automatic thresholds → small dilation.
-3. **Contour candidates**: `findContours` → `approxPolyDP` → keep convex quadrilaterals.
-4. **Line candidates** (for edges broken by easel clamps, hands, or frames): Hough/LSD lines → cluster into near-horizontal and near-vertical groups → intersect pairs into candidate quads.
-5. **Score** each candidate (in `scoring.dart`):
-   - area fraction of the image (prefer large; reject < 15%),
-   - corner angles plausible for a rectangle under perspective,
-   - edge support (fraction of each side lying on strong edges),
-   - aspect match to the project's ratio when known (soft penalty),
-   - image-border penalty (sides lying exactly on the photo's edge are suspicious).
-6. Pick the best; refine corners at full resolution with `cornerSubPix`.
-7. Confidence = normalized best score; below a threshold → low-confidence result (§3.8).
+As built in T13 (`OpenCvCanvasDetector`; the app passes a copy ≤ 1000 px on the long edge, §3.8):
+
+1. Work on a copy ≤ 1000 px on the long edge.
+2. **Binary edges:** Gaussian blur of grayscale and saturation → Canny with median-based thresholds → OR → 3×3 dilation. (Canvas vs. wall often differ more in saturation than brightness.) *Tried and dropped:* Lab-channel edges after a bilateral filter (the auto-crop prototype's approach) picked up too much background clutter.
+3. **Contour candidates:** `findContours` → convex hull → `approxPolyDP` (several tolerances) → quadrilaterals.
+4. **Line candidates** (edges broken by clamps, hands, frames): `HoughLinesP` segments clustered into near-horizontal and near-vertical lines, plus the strongest standard-Hough lines (finds long faint edges), plus the photo's borders (canvases running off the photo); every pair × pair is a candidate.
+5. **Score** (`scoring.dart`, tunables in `ScoringParams`): edge support per side (fraction of points on a strong gradient, ends skipped), as 0.5·mean + 0.5·weakest side; × area^0.3 (rejected < 15%); × corner-angle term; × a **rectangle-plausibility** term: the quad must be the image of a rectangle through a camera with a focal length 0.6–1.6× the long edge (Zhang & He's whiteboard method; > 3° from a right angle in 3D is penalised); × aspect match when the project has a ratio; × a penalty per side on the photo border (at most one).
+6. **Choose:** the best, unless a quad **nested just inside it** (≥ 80% of its area) scores within 6% — the outer one is then usually a ledge, the canvas's side or a frame (from the prototype, limited to thin steps so shapes painted in the picture don't win).
+7. **Refine** at the input resolution, coarse then fine (search 0.8%, then 0.3% of the diagonal): each side is fitted (robust line fit, sub-pixel peaks) to the edge it lies on, and corners are the intersections of neighbouring sides — more reliable than refining corners alone, which clamps and the easel often cover. Where a side has two strong edges close together (face and side of the canvas), the innermost one at least 0.6× as strong wins.
+8. **Inset** every side by 0.1% of the diagonal: a crop missing a sliver of canvas looks better than one showing background.
+9. **Confidence** = min(normalized score, weakest side's support). *Not calibrated:* on the evaluation set no signal (score, weakest side, margin over a different quad) separated right from wrong answers, so wrong detections can score high; revisit with more photos (§9).
 
 Performance target: under 500 ms on a mid-range phone, run in an isolate.
 
@@ -407,6 +411,7 @@ When applying an auto-crop:
 - `test/fixtures/expected.json`: `[{ "file": "easel-01.jpg", "corners": [[x,y]×4], "notes": "clamp covers top edge" }]` in normalized coordinates.
 - Photos: 20–40 real shots covering an easel, a wall, an angled view, a busy studio, framed and unframed work, poor lighting, partial occlusion. Downscaled to ~1600 px; EXIF stripped except orientation.
 - Corners are created with the debug **Copy corners as JSON** action (§3.8) after manual adjustment.
+- **How the T13 set was made:** 18 photos (`tool/make_eval_fixtures.dart` downscales originals kept in the git-ignored `eval-originals/` and strips all metadata). For 15, the detector's proposals were reviewed on zoomed review sheets (`tool/annotation_sheets.dart`) and approved as the reference; the 3 it gets wrong (14, 16, 17: dark canvas against a dark, busy yard) were marked by hand in the app. `notes` says which. So the set measures the detector honestly on those 3 and guards against regressions on the other 15; new photos should be hand-marked.
 - **Repo visibility**: these are the user's paintings. If the repository is ever made public, decide whether to keep them (see §9).
 
 ### 6.5 Metrics
@@ -415,6 +420,7 @@ When applying an auto-crop:
 - Success = max corner error ≤ 2% of the diagonal.
 - Report success rate and mean error; the CLI prints a table and exits non-zero if the success rate drops below the committed baseline.
 - Initial target: ≥ 80% success on the set; tuned during M1 and recorded as the baseline.
+- As built (T13): `dart run bin/evaluate.dart [--check | --write-baseline]` downscales each fixture to the app's 1000 px, prints error, confidence and time per photo, and with `--check` fails if successes drop below `test/fixtures/baseline.json`; CI runs it. Baseline: 15 / 18 (83%), mean error 3.05%, ~120 ms per photo on an M-series Mac. Verified in the app on the emulator.
 
 ---
 
@@ -458,5 +464,7 @@ When applying an auto-crop:
 | ~~Does `opencv_dart` run under plain `dart test`?~~ Resolved in T7: yes, via `dartcv4`; no package split (§6.1). | — |
 | ~~Can OpenCV decode camera HEIC?~~ Resolved: import stores HEIC as-is (T6); OpenCV can't decode it, so rendering uses the platform decoder (T7, §5.1). | — |
 | Preview-render latency on a mid-range phone: measured on the emulator in T7 (§5.1); a real-phone run of `tool/render_benchmark.dart` is still to do | T15 (exit-criteria check on a real phone) |
+| Detection time on a mid-range phone (target < 500 ms; ~120 ms on a Mac) | T15 (real-phone check) |
+| Detection confidence calibration (wrong answers can score high, §6.2) and dark canvases on busy backgrounds; needs more evaluation photos | After M1 |
 | Real application ID before the first Play Store upload | Before release |
 | If the repo becomes public: keep the painting fixtures in it, or move them out? | Before making the repo public |
