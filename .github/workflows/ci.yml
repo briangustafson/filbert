@@ -109,8 +109,11 @@ jobs:
           cache: true
 
       # OpenCV for the emulator's ABI (x86_64), cached apart from `build`'s.
-      - name: Cache native builds
-        uses: actions/cache@v4
+      # Restored and saved as separate steps so a failed test still saves
+      # the ~18-minute native build.
+      - name: Restore native builds
+        id: hooks-cache
+        uses: actions/cache/restore@v4
         with:
           path: .dart_tool/hooks_runner
           key: hooks-emulator-${{ runner.os }}-flutter3.50.0-${{ hashFiles('pubspec.lock', 'pubspec.yaml', 'packages/*/pubspec.yaml') }}
@@ -158,4 +161,13 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: flutter test integration_test -d emulator-5554
+          # On failure, print the emulator log's crash-relevant lines (the
+          # app is x86_64 only here, never run locally).
+          script: flutter test integration_test -d emulator-5554 || { adb logcat -d | grep -E "AndroidRuntime|FATAL|DEBUG|libc|flutter|filbert|dartcv|linker" | tail -300; exit 1; }
+
+      - name: Save native builds
+        if: always() && steps.hooks-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .dart_tool/hooks_runner
+          key: ${{ steps.hooks-cache.outputs.cache-primary-key }}
