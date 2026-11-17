@@ -22,11 +22,20 @@ import 'crop_overlay.dart';
 /// Manual crop (m1-design §3.7): crop rectangle with an aspect lock,
 /// straighten slider and Rotate 90°, over the full original photo. Apply
 /// saves the crop as an undoable edit.
+///
+/// [afterAdd]: opened for a reference just added (m1-design §3.6); Skip
+/// leaves it uncropped, and every way out returns to the project.
 class CropScreen extends ConsumerWidget {
-  const CropScreen({super.key, required this.projectId, required this.imageId});
+  const CropScreen({
+    super.key,
+    required this.projectId,
+    required this.imageId,
+    this.afterAdd = false,
+  });
 
   final String projectId;
   final String imageId;
+  final bool afterAdd;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -46,23 +55,36 @@ class CropScreen extends ConsumerWidget {
         key: ValueKey(image.id),
         project: project.value!,
         image: image,
+        afterAdd: afterAdd,
       );
     }
-    return Theme(
-      data: FilbertTheme.dark,
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(child: body),
+    return PopScope(
+      canPop: !afterAdd,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go(Routes.project(projectId));
+      },
+      child: Theme(
+        data: FilbertTheme.dark,
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: SafeArea(child: body),
+        ),
       ),
     );
   }
 }
 
 class _CropView extends ConsumerStatefulWidget {
-  const _CropView({super.key, required this.project, required this.image});
+  const _CropView({
+    super.key,
+    required this.project,
+    required this.image,
+    this.afterAdd = false,
+  });
 
   final Project project;
   final ProjectImage image;
+  final bool afterAdd;
 
   @override
   ConsumerState<_CropView> createState() => _CropViewState();
@@ -109,7 +131,9 @@ class _CropViewState extends ConsumerState<_CropView> {
   }
 
   void _close() {
-    if (context.canPop()) {
+    if (widget.afterAdd) {
+      context.go(Routes.project(widget.project.id));
+    } else if (context.canPop()) {
       context.pop();
     } else {
       context.go(Routes.photo(widget.project.id, widget.image.id));
@@ -132,7 +156,12 @@ class _CropViewState extends ConsumerState<_CropView> {
       listenable: _editor,
       builder: (context, _) => Column(
         children: [
-          _TopBar(onCancel: _close, onReset: _editor.reset, onApply: _apply),
+          _TopBar(
+            onCancel: _close,
+            onReset: _editor.reset,
+            onSkip: widget.afterAdd ? _close : null,
+            onApply: _apply,
+          ),
           if (_replacesPerspective)
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -169,11 +198,15 @@ class _TopBar extends StatelessWidget {
     required this.onCancel,
     required this.onReset,
     required this.onApply,
+    this.onSkip,
   });
 
   final VoidCallback onCancel;
   final VoidCallback onReset;
   final VoidCallback onApply;
+
+  /// Shown when set (after adding a reference).
+  final VoidCallback? onSkip;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -189,6 +222,8 @@ class _TopBar extends StatelessWidget {
         Text('Crop', style: Theme.of(context).textTheme.titleLarge),
         const Spacer(),
         TextButton(onPressed: onReset, child: const Text('Reset')),
+        if (onSkip != null)
+          TextButton(onPressed: onSkip, child: const Text('Skip')),
         const SizedBox(width: 8),
         FilledButton(onPressed: onApply, child: const Text('Apply')),
       ],

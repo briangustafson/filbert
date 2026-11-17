@@ -2,6 +2,7 @@ import 'dart:ui' show PlatformDispatcher;
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../settings/app_settings.dart';
 import 'length_unit.dart';
 
 part 'unit_preference.g.dart';
@@ -15,8 +16,17 @@ LengthUnit lengthUnitForRegion(String? countryCode) =>
     ? LengthUnit.inches
     : LengthUnit.centimeters;
 
-/// Unit for new physical sizes, from the device's region. The Units setting
-/// (M1 T14) will take precedence over this.
+/// Unit for new physical sizes: the Units setting, or with Automatic (the
+/// default) the device's region.
 @riverpod
-LengthUnit preferredLengthUnit(Ref ref) =>
-    lengthUnitForRegion(PlatformDispatcher.instance.locale.countryCode);
+LengthUnit preferredLengthUnit(Ref ref) {
+  final setting =
+      ref.watch(appSettingsProvider).value?.units ?? UnitsSetting.automatic;
+  return switch (setting) {
+    UnitsSetting.inches => LengthUnit.inches,
+    UnitsSetting.centimeters => LengthUnit.centimeters,
+    UnitsSetting.automatic => lengthUnitForRegion(
+      PlatformDispatcher.instance.locale.countryCode,
+    ),
+  };
+}
