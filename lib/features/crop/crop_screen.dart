@@ -219,8 +219,15 @@ class _TopBar extends StatelessWidget {
           onPressed: onCancel,
         ),
         const SizedBox(width: 4),
-        Text('Crop', style: Theme.of(context).textTheme.titleLarge),
-        const Spacer(),
+        // The title gives way on narrow screens so the buttons fit.
+        Expanded(
+          child: Text(
+            'Crop',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
         TextButton(onPressed: onReset, child: const Text('Reset')),
         if (onSkip != null)
           TextButton(onPressed: onSkip, child: const Text('Skip')),

@@ -7,6 +7,7 @@ import 'package:filbert/features/crop/crop_screen.dart';
 import 'package:filbert/features/projects/domain/project.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../support/fake_photos.dart';
 import '../../support/fake_project_repository.dart';
@@ -171,6 +172,39 @@ void main() {
       await pumpProject(tester);
       await addFromDevice(tester, 'Add reference');
       expect(find.byType(CropScreen), findsNothing);
+      expect(location(), Routes.project(projectId));
+    });
+  });
+
+  // The top bars once pushed Apply off a 320 dp screen (the CI emulator).
+  // The test font (Ahem: every glyph a full square) is far wider than real
+  // fonts, so 400 dp here is tighter than 320 dp on a phone; without the fix
+  // these overflow.
+  group('on a narrow phone, every button fits', () {
+    void narrow(WidgetTester tester) {
+      tester.view.physicalSize = const Size(400, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
+
+    testWidgets('the review queue', (tester) async {
+      narrow(tester);
+      source.nextPicks = [picked('a.jpg'), picked('b.jpg')];
+      await pumpProject(tester);
+      await addFromDevice(tester, 'Add photo');
+      expect(find.byType(AutocropReviewScreen), findsOneWidget);
+      await tapText(tester, 'Apply');
+      expect(find.text('2 of 2'), findsOneWidget);
+    });
+
+    testWidgets('manual crop after adding a reference', (tester) async {
+      narrow(tester);
+      await projects.update(projectId, size: const RatioSize(4, 5));
+      source.nextPicks = [picked('ref.jpg')];
+      await pumpProject(tester);
+      await addFromDevice(tester, 'Add reference');
+      expect(find.byType(CropScreen), findsOneWidget);
+      await tapText(tester, 'Apply');
       expect(location(), Routes.project(projectId));
     });
   });
