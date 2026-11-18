@@ -164,7 +164,8 @@ One pure-Dart reference (`lib/core/imaging/tone.dart`) defines the tone math; th
 
 ### 5.2 Palette
 
-- Computed in an isolate from the cached preview downscaled to 256 px on the long edge, in CIELAB, with OpenCV `kmeans` (k-means++ init, 3 attempts, a fixed RNG seed so the same photo gives the same palette every time; see §9 on seeding).
+- Computed in an isolate from the cached preview, decoded with OpenCV and downscaled to 256 px on the long edge (area averaging), by k-means in CIELAB written in Dart (`lib/core/imaging/palette.dart`, decided in T3): identical pixels are grouped and weighted; k-means++ starting points from a fixed seed, using our own xorshift32 generator so the sequence can't change with the Dart SDK; 3 attempts, keeping the tightest; each stops after 20 rounds or once no color moves more than 0.1 ΔE. So the same photo always gives the same palette. OpenCV's `kmeans` wasn't used because dartcv4 can't seed the generator it draws from, and the Dart version also runs on web. An image with fewer distinct colors than asked gives fewer swatches.
+- Time (T3, emulator-5554, profile build, a noisy 12 MP synthetic photo, so a worst case): median 120 ms for 8 colors, 140 ms for 16, including the isolate start and the preview decode.
 - Cached in memory per (image id, edits hash, count) and on disk next to previews (`previews/<imageId>-<editsHash>-palette-<n>.json`), so export and later visits reuse it.
 - Swatches are ordered by L\*.
 
@@ -230,7 +231,7 @@ original + edits ─▶ full-size render (existing pipeline, ≤ 6000 px) ─▶
 |---|---|---|
 | `gal` | Save to gallery | Agreed. Latest is 3.0.1 (published 2026-11-15); the task checks it, else uses 2.3.3 |
 
-No other new packages: k-means and drawing use `dartcv4`; shaders are built into Flutter.
+No other new packages: k-means is plain Dart, drawing uses `dartcv4`, and shaders are built into Flutter.
 
 ---
 
@@ -239,7 +240,7 @@ No other new packages: k-means and drawing use `dartcv4`; shaders are built into
 | Item | When |
 |---|---|
 | ~~dartcv4 temporary-size hazard (m1-design §7, §9)~~ Fixed in T1: call such functions through `package:canvas_detect/safe_cv.dart`, which includes `kmeans` | — |
-| OpenCV `kmeans` draws from OpenCV's global RNG, and dartcv4 2.3.1 can't seed it (no `setRNGSeed`), so "a fixed RNG seed" (§5.2) isn't available as is. Candidate: `KMEANS_USE_INITIAL_LABELS` with deterministic starting labels (e.g. our own seeded k-means++ in Dart, or L\* quantiles), one attempt | T3 |
+| ~~Seeding OpenCV `kmeans`~~ Resolved in T3: k-means is written in Dart with its own seeded generator (§5.2) | — |
 | Can `flutter test` run fragment shaders on the host? Decides how the shader is tested (§7) | Shader task |
 | Export memory and time at 48 MP with compare, on the Pixel 11; lower the 6000 px cap if needed | Export task |
 | `gal` 3.0.1 vs 2.3.3 | Gallery task |
