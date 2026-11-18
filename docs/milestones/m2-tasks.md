@@ -68,11 +68,12 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
 
 ### Export
 
-- [ ] **T8 — RenderService (full-resolution export)**
+- [x] **T8 — RenderService (full-resolution export)**
   - `RenderService.export(image, ExportOptions)` in an isolate: full-size render (≤ 6000 px) → tone → compare blend → grid → JPEG 92; per-run cache in `<appCache>/exports/`, cleared at launch (§5.4).
   - Measure time and memory at 48 MP with compare on the Pixel 11 (extend `tool/render_benchmark.dart`); lower the cap if needed and record it in §5.4.
   - *Done when:* golden tests for each aid, compare, and grid on the synthetic pattern; CPU output matches the live view's math.
   - Depends on: T3, T6, T7
+  - *Result:* `OpenCvRenderService` with `ExportOptions` (m2-design §5.4). Tone by tables from `tone.dart` (`tone_map.dart`): Values and Colors equal it exactly, Gray within rounding. Goldens in `test/goldens/export/` (M1 tolerance). 48 MP at 6000 px with Values + Compare + grid: 1.4 s and +252 MB on the Pixel 11 (5.5 s on the emulator), so the 6000 px cap stays (§5.4).
 
 - [ ] **T9 — Export sheet, Save to gallery, Save as new image**
   - Photo menu → **Export…**: Include checklist preset to the aids that are on; progress and errors in the sheet (§3.5).

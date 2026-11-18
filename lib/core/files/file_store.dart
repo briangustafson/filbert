@@ -23,6 +23,13 @@ abstract interface class FileStore {
   /// Display renders: `<imageId>-<editsHash>.jpg`.
   Directory get previewsDir;
 
+  /// Exports with aids (m2-design §5.4): one-off files, kept only while
+  /// the app runs.
+  Directory get exportsDir;
+
+  /// Deletes every export; called at launch.
+  Future<void> clearExports();
+
   /// Deletes every cached render of [imageId].
   Future<void> deleteCachesFor(String imageId);
 }
@@ -31,7 +38,8 @@ class LocalFileStore implements FileStore {
   LocalFileStore({required Directory supportDir, required Directory cacheDir})
     : _blobsDir = Directory('${supportDir.path}/blobs'),
       thumbsDir = Directory('${cacheDir.path}/thumbs'),
-      previewsDir = Directory('${cacheDir.path}/previews');
+      previewsDir = Directory('${cacheDir.path}/previews'),
+      exportsDir = Directory('${cacheDir.path}/exports');
 
   /// The app's real directories, created if needed.
   static Future<LocalFileStore> open() async {
@@ -50,6 +58,14 @@ class LocalFileStore implements FileStore {
 
   @override
   final Directory previewsDir;
+
+  @override
+  final Directory exportsDir;
+
+  @override
+  Future<void> clearExports() async {
+    if (await exportsDir.exists()) await exportsDir.delete(recursive: true);
+  }
 
   Future<void> _ensureDirs() async {
     for (final dir in [_blobsDir, thumbsDir, previewsDir]) {

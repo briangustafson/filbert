@@ -34,6 +34,13 @@ Future<void> main() async {
   );
 
   // Background housekeeping; never blocks start-up.
+  // Exports are one-off files, kept only while the app runs (m2-design
+  // §5.4).
+  unawaited(
+    files.clearExports().catchError((Object e) {
+      debugPrint('Clearing exports failed: $e');
+    }),
+  );
   unawaited(
     PurgeJob(db: db, files: files, clock: clock).runIfDue().catchError((
       Object e,
