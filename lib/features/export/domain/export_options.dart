@@ -86,6 +86,28 @@ class ExportOptions {
     },
   };
 
+  /// What a photo saved from an export of [source] records about where it
+  /// came from (`images.derived_from_json`, m2-design §4.3).
+  String derivedFromJson(ProjectImage source) => jsonEncode({
+    'v': 1,
+    'imageId': source.id,
+    'edits': source.edits.toJson(),
+    'aids': {
+      if (tone != ToneAid.none)
+        'tone': switch (tone) {
+          ToneAid.valueBands => 'values',
+          _ => tone.name,
+        },
+      if (tone == ToneAid.valueBands) 'bands': bands,
+      if (tone == ToneAid.colors) 'colors': colors,
+      if (grid != null) 'grid': grid!.toJson(),
+      if (compareWith != null) ...{
+        'compareImageId': compareWith!.id,
+        'opacity': opacity,
+      },
+    },
+  });
+
   /// A short, stable hash of [toJson], for the export cache.
   String get cacheKey => stableHash(jsonEncode(toJson()));
 

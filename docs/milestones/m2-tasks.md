@@ -75,12 +75,13 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
   - Depends on: T3, T6, T7
   - *Result:* `OpenCvRenderService` with `ExportOptions` (m2-design §5.4). Tone by tables from `tone.dart` (`tone_map.dart`): Values and Colors equal it exactly, Gray within rounding. Goldens in `test/goldens/export/` (M1 tolerance). 48 MP at 6000 px with Values + Compare + grid: 1.4 s and +252 MB on the Pixel 11 (5.5 s on the emulator), so the 6000 px cap stays (§5.4).
 
-- [ ] **T9 — Export sheet, Save to gallery, Save as new image**
+- [x] **T9 — Export sheet, Save to gallery, Save as new image**
   - Photo menu → **Export…**: Include checklist preset to the aids that are on; progress and errors in the sheet (§3.5).
-  - `GallerySaver` with `gal` (choose 3.0.x or 2.3.3, §8): album "Filbert", file name rule, permission handling on Android 7–9.
+  - `GallerySaver` with `gal` (choose 3.0.x or 2.3.3, §8): album "Filbert", file name rule, permission handling on Android 7–10 (API ≤ 29).
   - `ImageRepository.importDerived`: new photo with `source = derived` and `derived_from_json`; snackbar with **Open**.
   - *Done when:* widget tests with a fake `GallerySaver`; repository test for derived import; saving to the gallery checked on the emulator.
   - Depends on: T2, T8
+  - *Result:* `gal` 3.0.1 (m2-design §8). The storage permission applies up to Android 10 (API 29), not 9, per `gal`'s README; the Settings button is a small method channel, not a package (§5.5). On emulator-5554: Colors + Grid saved to `Pictures/Filbert/` at full size and matching the live view; Save as new image added the photo and Open showed it. The Android 7–10 permission path is tested with the fake only.
 
 ### Wrap-up
 

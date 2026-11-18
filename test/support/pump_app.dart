@@ -14,7 +14,11 @@ import 'package:filbert/features/photos/data/pending_capture.dart';
 import 'package:filbert/features/photos/data/photo_source.dart';
 import 'package:filbert/features/view_aids/data/palette_service.dart';
 import 'package:filbert/features/view_aids/data/view_prefs_repository.dart';
+import 'package:filbert/core/platform/system_settings.dart';
+import 'package:filbert/features/export/data/gallery_saver.dart';
+import 'package:filbert/features/export/data/render_service.dart';
 
+import 'fake_export.dart';
 import 'fake_photos.dart';
 import 'fake_project_repository.dart';
 import 'fake_settings.dart';
@@ -33,6 +37,9 @@ Future<ProviderContainer> pumpFilbertApp(
   FakeSettingsStore? settings,
   FakeViewPrefsRepository? viewPrefs,
   FakePaletteService? palettes,
+  FakeRenderService? exports,
+  FakeGallerySaver? gallery,
+  FakeSystemSettings? systemSettings,
   String? initialLocation,
 }) async {
   // Off unless a test is about it, so adding photos stays on the project.
@@ -59,6 +66,11 @@ Future<ProviderContainer> pumpFilbertApp(
       ),
       paletteServiceProvider.overrideWithValue(
         palettes ?? FakePaletteService(),
+      ),
+      renderServiceProvider.overrideWithValue(exports ?? FakeRenderService()),
+      gallerySaverProvider.overrideWithValue(gallery ?? FakeGallerySaver()),
+      systemSettingsProvider.overrideWithValue(
+        systemSettings ?? FakeSystemSettings(),
       ),
     ],
   );

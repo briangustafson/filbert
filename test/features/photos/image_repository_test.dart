@@ -102,6 +102,52 @@ void main() {
     return (result.single as ImportSuccess).image;
   }
 
+  group('importDerived', () {
+    test('adds the export as a derived photo and keeps the file', () async {
+      tick();
+      // An export with EXIF (a capture time) still gets none.
+      final export = copyFixture('orientation_6.jpg', picked, 'export.jpg');
+      const json = '{"v":1,"imageId":"x","edits":{},"aids":{"tone":"gray"}}';
+      final image = await images.importDerived(
+        projectId,
+        export,
+        derivedFromJson: json,
+      );
+      expect(image.origin, ImageOrigin.derived);
+      expect(image.capturedAt, isNull);
+      expect(image.edits, Edits.none);
+      expect((image.width, image.height), (30, 40));
+      expect(export.existsSync(), isTrue, reason: 'the export stays cached');
+      expect(
+        files.blobFile(image.blobId, 'jpg').readAsBytesSync(),
+        export.readAsBytesSync(),
+      );
+      final row = await (db.select(
+        db.images,
+      )..where((t) => t.id.equals(image.id))).getSingle();
+      expect(row.derivedFromJson, json);
+      expect((await live()).first, image, reason: 'newest first');
+    });
+
+    test('a deleted project throws', () async {
+      await projects.delete(projectId);
+      final export = copyFixture('no_exif.jpg', picked, 'export.jpg');
+      await expectLater(
+        images.importDerived(projectId, export, derivedFromJson: '{}'),
+        throwsA(isA<ProjectNotFoundException>()),
+      );
+    });
+
+    test('an unreadable file throws and leaves no blob', () async {
+      final export = copyFixture('not_an_image.txt', picked, 'export.jpg');
+      await expectLater(
+        images.importDerived(projectId, export, derivedFromJson: '{}'),
+        throwsA(anything),
+      );
+      expect(blobFiles(), isEmpty);
+    });
+  });
+
   group('import', () {
     test('stores the original and records metadata', () async {
       tick();

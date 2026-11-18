@@ -42,6 +42,19 @@ abstract interface class ImageRepository {
     bool asReference = false,
   });
 
+  /// Adds an export ([file], a JPEG) to the project as a new photo with
+  /// `source = derived` (m2-design §4.3): copied into the blob store like
+  /// an import, with no edits and no capture time. [derivedFromJson]
+  /// records what it was made from. [file] is left in place.
+  ///
+  /// Throws [ProjectNotFoundException] if the project is missing or
+  /// deleted, or the import's error.
+  Future<ProjectImage> importDerived(
+    String projectId,
+    File file, {
+    required String derivedFromJson,
+  });
+
   /// Sets the image's edits and records them in its undo history
   /// (m1-design §4.1), discarding anything that could be redone. No-op if
   /// [edits] equal the current edits.
@@ -209,11 +222,32 @@ class DriftImageRepository implements ImageRepository {
     return results;
   }
 
+  @override
+  Future<ProjectImage> importDerived(
+    String projectId,
+    File file, {
+    required String derivedFromJson,
+  }) async {
+    await _requireLiveProject(projectId);
+    final result = await _importOne(
+      projectId,
+      PickedPhoto(path: file.path, origin: ImageOrigin.derived),
+      false,
+      derivedFromJson: derivedFromJson,
+    );
+    return switch (result) {
+      ImportSuccess(:final image) => image,
+      ImportFailure(:final error) => throw error,
+    };
+  }
+
   Future<ImportResult> _importOne(
     String projectId,
     PickedPhoto photo,
-    bool asReference,
-  ) async {
+    bool asReference, {
+    String? derivedFromJson,
+  }) async {
+    final derived = derivedFromJson != null;
     final source = File(photo.path);
     String? blobId;
     String? extension;
@@ -240,8 +274,11 @@ class DriftImageRepository implements ImageRepository {
                 width: meta.width,
                 height: meta.height,
                 source: photo.origin,
-                capturedAt: Value(meta.capturedAt?.millisecondsSinceEpoch),
+                capturedAt: Value(
+                  derived ? null : meta.capturedAt?.millisecondsSinceEpoch,
+                ),
                 editsJson: _noEdits,
+                derivedFromJson: Value(derivedFromJson),
               ),
             );
         await _touchProject(
@@ -257,7 +294,8 @@ class DriftImageRepository implements ImageRepository {
       }
       return ImportFailure(photo, error);
     } finally {
-      if (await source.exists()) await source.delete();
+      // An export stays in the exports cache; picked photos are temp files.
+      if (!derived && await source.exists()) await source.delete();
     }
   }
 

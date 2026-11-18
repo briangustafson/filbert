@@ -96,7 +96,8 @@ Panels are compact (one or two rows) so most of the photo stays visible; on a na
   - **Include**: Grid · Gray, Values or Colors (whichever is on; one line) · Compare overlay. Each item appears only if that aid is on, preset to checked. With no aids on, the sheet shows no checklist.
   - **Save to gallery**: renders and saves to the gallery album "Filbert"; snackbar "Saved to the gallery."
   - **Save as new image**: renders and adds the result to the project as a new photo; as the newest photo it appears first in the grid (after the reference). Snackbar "Saved as a new photo" with **Open**.
-- Rendering shows a progress indicator in the sheet (full-resolution renders take about a second); the sheet can't be dismissed mid-render, and errors show in the sheet.
+- Rendering shows a progress indicator in the sheet (full-resolution renders take about a second); the sheet can't be dismissed mid-render (tapping outside and Back are refused; drag-to-close is off), and errors show in the sheet, with the buttons back to try again. A refused gallery permission adds a **Settings** button (T9).
+- The Compare item appears only when there is an overlay (not on the compare photo itself). Unchecking an item leaves it out (`ExportOptions.without`). With no aids on, the export is the plain edited photo at full size (`lib/features/export/ui/export_sheet.dart`).
 - Output: JPEG, quality 92, long edge capped at 6000 px (bounds memory for 48 MP photos; enough for a 24 in print at 250 dpi). Gallery file name: `<project name>-<yyyyMMdd-HHmmss>.jpg`, the name stripped of characters not allowed in file names.
 
 ### 3.6 Menu
@@ -213,8 +214,9 @@ original + edits ─▶ full-size render (existing pipeline, ≤ 6000 px) ─▶
 
 ### 5.5 Destinations
 
-- **`GallerySaver`** (interface; `gal` implementation): `save(File, {album})`. On Android 10+ no permission is needed; on 7–9 `gal` asks for storage permission, and a refusal shows "Filbert needs permission to save to the gallery" with a Settings link.
-- **Save as new image**: `ImageRepository.importDerived(projectId, file, derivedFrom)`, the M1 import path (blob, thumbnail, preview) with `source = derived`.
+- **`GallerySaver`** (interface; `gal` 3.0.1 implementation, `lib/features/export/data/gallery_saver.dart`): `save(File, {album, fileName})`. The gallery takes the name from the file, so it saves a copy named by the rule in §3.5. Android 11+ needs no permission; on 7–10 (API ≤ 29, per `gal`'s README: `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion="29"` and `requestLegacyExternalStorage`) it asks for storage permission, and a refusal shows "Filbert needs permission to save to the gallery" with a Settings button.
+- **Settings button**: `SystemSettings.open()` (`lib/core/platform/system_settings.dart`), a method channel in `MainActivity.kt` that opens the app's page in Android's settings; no package needed (T9).
+- **Save as new image**: `ImageRepository.importDerived(projectId, file, derivedFromJson:)`, the M1 import path (blob, thumbnail, preview) with `source = derived`, no capture time, and `derived_from_json` from `ExportOptions.derivedFromJson`. The export file stays in the exports cache.
 
 ---
 
@@ -251,7 +253,7 @@ original + edits ─▶ full-size render (existing pipeline, ≤ 6000 px) ─▶
 
 | Package | Use | Status |
 |---|---|---|
-| `gal` | Save to gallery | Agreed. Latest is 3.0.1 (published 2026-11-15); the task checks it, else uses 2.3.3 |
+| `gal` | Save to gallery | **3.0.1**, pinned exactly (T9): 3.0.0 fixes saves never completing on Android 7–10 when the permission dialog is cancelled, which 2.3.3 has; its requirements (Flutter 3.41, Android API 24) fit |
 
 No other new packages: k-means is plain Dart, drawing uses `dartcv4`, and shaders are built into Flutter.
 
@@ -265,5 +267,5 @@ No other new packages: k-means is plain Dart, drawing uses `dartcv4`, and shader
 | ~~Seeding OpenCV `kmeans`~~ Resolved in T3: k-means is written in Dart with its own seeded generator (§5.2) | — |
 | ~~Can `flutter test` run fragment shaders on the host?~~ Yes (T5), §5.3 | — |
 | ~~Export memory and time at 48 MP with compare~~ Measured in T8 (§5.4): 1.4 s and ≈ 250 MB on the Pixel 11; the 6000 px cap stays | — |
-| `gal` 3.0.1 vs 2.3.3 | Gallery task |
+| ~~`gal` 3.0.1 vs 2.3.3~~ 3.0.1 (§8) | — |
 | Later ideas (not M2): centered grid origin; tap a swatch to highlight its areas; wipe / side-by-side compare; aids on thumbnails | — |
