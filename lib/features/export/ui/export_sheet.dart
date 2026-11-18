@@ -172,6 +172,7 @@ class _ExportSheetState extends ConsumerState<ExportSheet> {
   Widget build(BuildContext context) {
     final base = _baseOptions();
     final theme = Theme.of(context);
+    final gallery = ref.read(gallerySaverProvider).available;
     final items = base == null
         ? const <(_Item, String)>[]
         : [
@@ -237,16 +238,18 @@ class _ExportSheetState extends ConsumerState<ExportSheet> {
                         ? () => ref.read(systemSettingsProvider).open()
                         : null,
                   ),
-                FilledButton.icon(
-                  key: const ValueKey('export-gallery'),
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Save to gallery'),
-                  onPressed: ready
-                      ? () => _run(_options(base), _saveToGallery)
-                      : null,
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
+                if (gallery) ...[
+                  FilledButton.icon(
+                    key: const ValueKey('export-gallery'),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Save to gallery'),
+                    onPressed: ready
+                        ? () => _run(_options(base), _saveToGallery)
+                        : null,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                (gallery ? OutlinedButton.icon : FilledButton.icon)(
                   key: const ValueKey('export-new-photo'),
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: const Text('Save as new image'),

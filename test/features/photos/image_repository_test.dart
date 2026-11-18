@@ -180,6 +180,14 @@ void main() {
       expect(File(p.path).existsSync(), isFalse);
     });
 
+    test("never deletes the user's own file (macOS picker)", () async {
+      final p = photo('no_exif.jpg');
+      final own = PickedPhoto(path: p.path, origin: p.origin, temporary: false);
+      final result = await images.import(projectId, [own]);
+      expect(result.single, isA<ImportSuccess>());
+      expect(File(p.path).existsSync(), isTrue);
+    });
+
     test('updates the project timestamp', () async {
       tick();
       await importOne('plain.png');

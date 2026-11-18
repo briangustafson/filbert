@@ -283,6 +283,10 @@ class FakePhotoSource implements PhotoSource {
 
   final calls = <String>[];
 
+  /// False to act as macOS, which has no camera.
+  @override
+  bool canTakePhoto = true;
+
   @override
   Future<PickedPhoto?> takePhoto() async {
     calls.add('takePhoto');

@@ -152,6 +152,38 @@ void main() {
     });
   });
 
+  group('without a camera (macOS)', () {
+    setUp(() => source.canTakePhoto = false);
+
+    testWidgets('no Take photo on the project list', (tester) async {
+      container = await pumpFilbertApp(
+        tester,
+        projects: projects,
+        images: images,
+        photoSource: source,
+        settings: FakeSettingsStore(),
+      );
+      expect(find.byTooltip('Take photo'), findsNothing);
+      expect(find.text('New project'), findsOneWidget);
+    });
+
+    testWidgets('Add photos opens the picker directly', (tester) async {
+      source.nextPicks = [picked('a.jpg'), picked('b.jpg')];
+      await pumpProject(tester, autoCropOnAdd: false);
+      await tapText(tester, 'Add photo');
+      expect(find.text('Take photo'), findsNothing);
+      expect(source.calls.last, 'pickFromDevice multiple=true');
+      expect(images.imagesOf(projectId), hasLength(2));
+    });
+
+    testWidgets('so does Add reference', (tester) async {
+      source.nextPicks = [picked('ref.jpg')];
+      await pumpProject(tester);
+      await tapText(tester, 'Add reference');
+      expect(source.calls.last, 'pickFromDevice multiple=false');
+    });
+  });
+
   group('a new reference', () {
     testWidgets('opens manual crop when the project has a size', (
       tester,

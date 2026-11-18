@@ -131,6 +131,14 @@ void main() {
         expect(options.tone, ToneAid.gray);
       });
 
+      testWidgets('no gallery (macOS): only Save as new image', (tester) async {
+        gallery.available = false;
+        await open(tester);
+        expect(find.byKey(const ValueKey('export-gallery')), findsNothing);
+        await tap(tester, find.byKey(const ValueKey('export-new-photo')));
+        expect(find.text('Saved as a new photo.'), findsOneWidget);
+      });
+
       testWidgets('saves to the Filbert album with the file name rule', (
         tester,
       ) async {

@@ -12,12 +12,13 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
 
 ### Phase 1 — macOS
 
-- [ ] **T1 — macOS target**
+- [x] **T1 — macOS target**
   - `flutter create --platforms=macos .`; App Sandbox with the entitlements in §3.1; minimum macOS recorded.
   - The app builds and runs on the Mac with the M1 and M2 features; Take photo hidden; Add photos and the reference slot open a file picker (§3.1). Check HEIC import (§14).
   - `integration_test/app_flow_test.dart` runs on macOS locally; CI gains a macOS build job (proposal 8).
   - *Done when:* both flows pass on macOS; auto-crop and export work in the Mac app; CI's macOS build is green.
   - Depends on: —
+  - *Result:* macOS 12.0+, sandboxed, OpenCV bundled (m3-design §3.1). Import on the Mac would have deleted the user's picked file (Android hands over temp copies); `PickedPhoto.temporary` now guards it. No camera: Add photos opens the file picker directly; Export… shows only Save as new image until T4. Both integration flows pass on macOS (locally) and the emulator; eval 78.3% on the Mac; HEIC decodes. The macOS build is a manual workflow (`macos.yml`, Run workflow), per your choice; it can first run once on `main`. A stale dartcv4 keep-list broke host tests after the Mac build; recorded in §3.1.
 
 - [ ] **T2 — Desktop layout**
   - Width breakpoints (§3.2): more grid columns; the aid panel docked at the right at ≥ 840 dp; centered setup form; bottom sheets as dialogs at ≥ 600 dp; window 1200 × 800, minimum 800 × 600.

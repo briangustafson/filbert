@@ -8,6 +8,7 @@ import '../../autocrop/review_queue.dart';
 import '../../projects/data/project_providers.dart';
 import '../../projects/domain/project.dart';
 import '../data/photo_imports.dart';
+import '../data/photo_source.dart';
 import '../domain/project_image.dart';
 
 enum PhotoSourceChoice { camera, device }
@@ -44,7 +45,8 @@ Future<PhotoSourceChoice?> showPhotoSourceSheet(
   ),
 );
 
-/// Asks where photos come from, then adds them to [projectId]'s grid (several
+/// Asks where photos come from (straight to the picker without a camera,
+/// as on macOS), then adds them to [projectId]'s grid (several
 /// allowed) or as its reference (one), and opens what follows an add
 /// ([afterAddRoute]). Reports failures in a snackbar.
 Future<void> addPhotos(
@@ -53,10 +55,12 @@ Future<void> addPhotos(
   String projectId, {
   bool asReference = false,
 }) async {
-  final choice = await showPhotoSourceSheet(
-    context,
-    title: asReference ? 'Add reference' : 'Add photos',
-  );
+  final choice = ref.read(photoSourceProvider).canTakePhoto
+      ? await showPhotoSourceSheet(
+          context,
+          title: asReference ? 'Add reference' : 'Add photos',
+        )
+      : PhotoSourceChoice.device;
   if (choice == null || !context.mounted) return;
   final messenger = ScaffoldMessenger.of(context);
   final imports = ref.read(photoImportsProvider.notifier);

@@ -231,7 +231,11 @@ class DriftImageRepository implements ImageRepository {
     await _requireLiveProject(projectId);
     final result = await _importOne(
       projectId,
-      PickedPhoto(path: file.path, origin: ImageOrigin.derived),
+      PickedPhoto(
+        path: file.path,
+        origin: ImageOrigin.derived,
+        temporary: false,
+      ),
       false,
       derivedFromJson: derivedFromJson,
     );
@@ -294,8 +298,9 @@ class DriftImageRepository implements ImageRepository {
       }
       return ImportFailure(photo, error);
     } finally {
-      // An export stays in the exports cache; picked photos are temp files.
-      if (!derived && await source.exists()) await source.delete();
+      // Only Filbert's own temporary copies are deleted: never the user's
+      // file (macOS) or an export, which stays in the exports cache.
+      if (photo.temporary && await source.exists()) await source.delete();
     }
   }
 

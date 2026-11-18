@@ -9,21 +9,34 @@ import '../../../core/imaging/image_origin.dart';
 
 part 'photo_source.g.dart';
 
-/// A photo handed over by the camera or picker, as a temporary file that
-/// import copies and then deletes.
+/// A photo handed over by the camera or picker. Import copies it into the
+/// file store, then deletes it if it is [temporary].
 class PickedPhoto {
-  const PickedPhoto({required this.path, required this.origin});
+  const PickedPhoto({
+    required this.path,
+    required this.origin,
+    this.temporary = true,
+  });
 
   final String path;
   final ImageOrigin origin;
 
+  /// True for a copy made for Filbert (Android's picker and camera); false
+  /// for the user's own file (the macOS file picker, a drop, an export),
+  /// which import must never delete.
+  final bool temporary;
+
   @override
-  String toString() => 'PickedPhoto($path, ${origin.name})';
+  String toString() =>
+      'PickedPhoto($path, ${origin.name}${temporary ? '' : ', kept'})';
 }
 
 /// System camera and photo picker (m1-design §5). Photos come back
 /// unmodified: no resizing or re-encoding, metadata kept.
 abstract interface class PhotoSource {
+  /// Whether [takePhoto] is available (not on macOS, m3-design §3.1).
+  bool get canTakePhoto;
+
   /// Opens the system camera; null if the user cancels.
   Future<PickedPhoto?> takePhoto();
 
@@ -47,6 +60,9 @@ class ImagePickerPhotoSource implements PhotoSource {
 
   final ImagePickerAndroid? _android;
   final _picker = ImagePicker();
+
+  @override
+  bool get canTakePhoto => Platform.isAndroid || Platform.isIOS;
 
   static ImagePickerAndroid _photoPicker() =>
       ImagePickerAndroid()..useAndroidPhotoPicker = true;
@@ -74,17 +90,23 @@ class ImagePickerPhotoSource implements PhotoSource {
           : _picker.pickImage(source: ImageSource.gallery));
       files = [?file];
     }
+    // Mobile pickers copy picked photos into the cache; the macOS picker
+    // returns the user's own files.
     return [
       for (final f in files)
-        PickedPhoto(path: f.path, origin: ImageOrigin.device),
+        PickedPhoto(
+          path: f.path,
+          origin: ImageOrigin.device,
+          temporary: !Platform.isMacOS,
+        ),
     ];
   }
 
   @override
   Future<List<PickedPhoto>> retrieveLost() async {
-    final response = await (_android != null
-        ? _android.getLostData()
-        : _picker.retrieveLostData());
+    // Only Android can kill the app while the camera or picker is open.
+    if (_android == null) return const [];
+    final response = await _android.getLostData();
     if (response.isEmpty || response.files == null) return const [];
     // The response doesn't say whether it came from the camera or the
     // picker. Android kills the app mostly while the camera is open, so
@@ -97,6 +119,7 @@ class ImagePickerPhotoSource implements PhotoSource {
 
   @override
   Future<void> clearLeftovers() async {
+    if (_android == null) return;
     await deletePickerLeftovers(await getApplicationCacheDirectory());
   }
 }

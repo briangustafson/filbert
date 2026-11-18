@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../app/routes.dart';
 import '../../photos/data/image_providers.dart';
 import '../../photos/data/photo_imports.dart';
+import '../../photos/data/photo_source.dart';
 import '../../photos/domain/project_image.dart';
 import '../../photos/ui/add_photos.dart';
 import '../../photos/ui/image_thumbnail.dart';
@@ -25,11 +26,12 @@ class ProjectListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Projects'),
         actions: [
-          IconButton(
-            tooltip: 'Take photo',
-            icon: const Icon(Icons.photo_camera_outlined),
-            onPressed: () => _takePhoto(context, ref),
-          ),
+          if (ref.watch(photoSourceProvider).canTakePhoto)
+            IconButton(
+              tooltip: 'Take photo',
+              icon: const Icon(Icons.photo_camera_outlined),
+              onPressed: () => _takePhoto(context, ref),
+            ),
           PopupMenuButton<void>(
             tooltip: 'More',
             itemBuilder: (context) => [
