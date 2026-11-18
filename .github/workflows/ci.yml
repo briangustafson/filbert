@@ -41,6 +41,16 @@ jobs:
           flutter-version: 3.50.0
           cache: true
 
+      # The NDK that Flutter 3.50.0's Gradle plugin asks for (its
+      # `ndkVersion`) isn't on the runner image, so Gradle downloads it
+      # (~1 GB) on every run; a corrupted download failed a build once.
+      # Update the version with Flutter.
+      - name: Cache Android NDK
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/ndk/28.2.13676358
+          key: ndk-28.2.13676358-${{ runner.os }}
+
       # Native build outputs (OpenCV via dartcv4). Rebuilt only when
       # dependencies or their build settings (pubspec.yaml user_defines)
       # change.
@@ -108,6 +118,16 @@ jobs:
           channel: stable
           flutter-version: 3.50.0
           cache: true
+
+      # The NDK that Flutter 3.50.0's Gradle plugin asks for (its
+      # `ndkVersion`) isn't on the runner image, so Gradle downloads it
+      # (~1 GB) on every run; a corrupted download failed a build once.
+      # Update the version with Flutter.
+      - name: Cache Android NDK
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/ndk/28.2.13676358
+          key: ndk-28.2.13676358-${{ runner.os }}
 
       # OpenCV for the emulator's ABI (x86_64), cached apart from `build`'s.
       # Restored and saved as separate steps so a failed test still saves
