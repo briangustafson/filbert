@@ -237,22 +237,28 @@ class _ReviewViewState extends ConsumerState<_ReviewView> {
                 onPressed: _close,
               ),
               const SizedBox(width: 4),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Auto-crop',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  if (widget.queue case final queue? when queue.total > 1)
+              // The title gives way on narrow screens so the buttons fit.
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      '${queue.position} of ${queue.total}',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      'Auto-crop',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                ],
+                    if (widget.queue case final queue? when queue.total > 1)
+                      Text(
+                        '${queue.position} of ${queue.total}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
+                ),
               ),
-              const Spacer(),
               if (kDebugMode)
                 IconButton(
                   tooltip: 'Copy corners as JSON',

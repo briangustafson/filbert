@@ -67,6 +67,7 @@ void main() {
     );
 
     // New project: created with a default name, opens its screen.
+    _phase('new project');
     await _tap(tester, find.text('New project'));
     await _pumpUntil(tester, find.text('Add photo'));
     final projectId = container
@@ -77,11 +78,13 @@ void main() {
         .pathSegments
         .last;
 
+    _phase('add photo');
     // Add a photo: the auto-crop review opens ("Auto-crop photos when
     // added" is on by default) and detection fills in the corners.
     await _tap(tester, find.text('Add photo'));
     await _tap(tester, find.text('Choose from device'));
     await _pumpUntil(tester, find.byType(AutocropReviewScreen));
+    _phase('waiting for detection');
     await _pumpUntil(tester, _enabledButton('Reset'));
     expect(
       find.textContaining("Couldn't find the canvas edges"),
@@ -89,6 +92,7 @@ void main() {
       reason: 'detection should be confident on the synthetic canvas',
     );
 
+    _phase('apply');
     // Apply: back on the project, the photo has the detected crop.
     await _tap(tester, find.text('Apply'));
     await _pumpUntil(tester, find.text('Add photo'));
@@ -100,10 +104,12 @@ void main() {
     _expectNear(applied!.quad, SyntheticCanvas.normalizedCorners);
 
     // Undo, redo, revert from the photo screen's menu.
+    _phase('photo screen');
     final imageId = (await image()).id;
     await _tap(tester, find.byKey(ValueKey(imageId)));
     await _pumpUntil(tester, find.byType(PhotoScreen));
 
+    _phase('undo, redo, revert');
     await _menu(tester, 'Undo');
     expect((await image()).edits.crop, isNull, reason: 'undo');
     await _menu(tester, 'Redo');
@@ -111,8 +117,12 @@ void main() {
     await _menu(tester, 'Revert to original');
     await _pumpUntil(tester, find.text('Reverted to the original.'));
     expect((await image()).edits.crop, isNull, reason: 'revert');
+    _phase('done');
   });
 }
+
+/// Logs progress, so a CI run that hangs shows where.
+void _phase(String name) => debugPrint('M1 FLOW: $name');
 
 /// Hands over the generated canvas photo, as the picker would: a temp file
 /// that import copies and deletes.

@@ -134,7 +134,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
   - *Done when:* widget tests for the queue and setting toggle; the full flow works on a device.
   - Depends on: T8, T11, T13
 
-- [ ] **T15 — Integration test and M1 wrap-up**
+- [x] **T15 — Integration test and M1 wrap-up**
   - Emulator integration test: new project → add photo → auto-crop review → apply → undo → revert.
   - Check M1 exit criteria (HLD §11) on a real phone; fix polish issues found. Run `tool/render_benchmark.dart` on it and record preview latency (m1-design §5.1); time canvas detection there too (target < 500 ms, §6.2).
   - Try `dartcv4`'s `treeshake: true` in a release build and record the APK size.
