@@ -59,11 +59,12 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
   - Depends on: T4
   - *Result:* `GridLayout` (pure Dart, for T8 too) and `GridPainter` outside the zoom transform. Added in m2-design §3.3: the canvas's long side goes with the photo's, the note at > 2% aspect difference, spacing steps of ½ in / 1 cm. Overlay goldens in `test/goldens/grid/` (M1 tolerance). Checked on emulator-5554: lines stay 1 dp when zoomed; the panel fits.
 
-- [ ] **T7 — Compare**
+- [x] **T7 — Compare**
   - Compare photo: default reference (else the most recent other photo), chosen from the panel's thumbnails, saved in `ViewPrefs` with the opacity; falls back when the photo is deleted; hidden (with a note) when viewing the compare photo itself; Compare button hidden with no other photo.
   - Overlay stretched to this photo's frame, blended in the shader with tone applied to each photo (§3.4).
   - *Done when:* widget tests for the default, fallback and self cases; blend checked like T5; swiping keeps the compare photo.
   - Depends on: T5
+  - *Result:* the same shader takes a second sampler and palette; each photo is toned, then mixed in sRGB (m2-design §3.4, §5.3). `CompareTarget` resolves the photo per page. Blend tested against `tone.dart` at 0/30/50/100 % (within 2/255). On emulator-5554: overlay at 50 %, slider, Values and Colors on both photos, the note on the compare photo itself, swiping keeps the choice.
 
 ### Export
 

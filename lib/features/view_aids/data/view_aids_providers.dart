@@ -1,7 +1,10 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/imaging/palette.dart';
+import '../../photos/data/image_providers.dart';
 import '../../photos/domain/project_image.dart';
+import '../../projects/data/project_providers.dart';
+import '../domain/compare_target.dart';
 import '../domain/view_aids.dart';
 import '../domain/view_prefs.dart';
 import 'palette_service.dart';
@@ -31,3 +34,20 @@ Stream<ViewPrefs> viewPrefs(Ref ref, String projectId) =>
 @riverpod
 Future<Palette> photoPalette(Ref ref, ProjectImage image, int count) =>
     ref.watch(paletteServiceProvider).palette(image, count);
+
+/// The compare photo for [shown] (m2-design §3.4); null until the project,
+/// its photos and its settings have loaded.
+@riverpod
+CompareTarget? compareTarget(Ref ref, ProjectImage shown) {
+  final id = shown.projectId;
+  final prefs = ref.watch(viewPrefsProvider(id)).value;
+  final photos = ref.watch(projectImagesProvider(id)).value;
+  final project = ref.watch(projectProvider(id)).value;
+  if (prefs == null || photos == null || project == null) return null;
+  return CompareTarget.resolve(
+    savedId: prefs.compare.imageId,
+    shown: shown,
+    photos: photos,
+    referenceId: project.referenceImageId,
+  );
+}

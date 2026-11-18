@@ -68,7 +68,7 @@ Agreed with Brian on 2026-11-17.
 | Gray | No panel (nothing to adjust). |
 | Values | Bands: stepper 2–9, default 5; a strip showing the band grays. |
 | Colors | Colors: stepper 2–16, default 8; the palette as swatches, ordered dark to light. A spinner on the swatches while the palette computes (≈ 0.1–0.3 s). |
-| Compare | A row of thumbnails of the project's other photos (the chosen one marked); opacity slider 0–100 %, default 50 %. |
+| Compare | A row of thumbnails of the project's other photos, reference first (the compared one outlined); the row scrolls sideways, since a project can have many photos. Opacity slider 0–100 % in whole percent, default 50 %. |
 
 Panels are compact (one or two rows) so most of the photo stays visible; on a narrow phone they wrap rather than scroll sideways. A panel's stepper keeps its place at the bottom left while the swatches beside it wrap upwards, so repeated taps on − / + stay on the buttons.
 
@@ -85,7 +85,8 @@ Panels are compact (one or two rows) so most of the photo stays visible; on a na
 
 - Turning Compare on overlays the project's compare photo (default: the reference; if this photo is the reference, the most recent other photo). With no other photo, the Compare button isn't shown.
 - The overlay is the other photo's edited view **stretched to this photo's frame**: both are crops of the same canvas, so stretching lines them up even if their pixel sizes differ.
-- Opacity 0 % shows only this photo, 100 % only the other.
+- Opacity 0 % shows only this photo, 100 % only the other. The two are mixed as displayed (sRGB), like a layer's opacity in a photo editor; the export does the same (T7).
+- Tapping a thumbnail saves that photo as the compare photo. A saved photo that is deleted falls back to the default without clearing the setting, so restoring it brings it back. Without a reference, the default is the most recent photo other than the one shown. (`CompareTarget` in `lib/features/view_aids/domain/compare_target.dart`.)
 - Swiping keeps the same compare photo, so every progress photo can be checked against the reference in turn. When the shown photo is the compare photo itself, the overlay is hidden and the panel says "This is the photo you're comparing with."
 - Gray / Values / Colors are applied to **each photo before blending**, so value maps of both photos overlap. (Colors uses each photo's own palette.)
 
@@ -177,7 +178,8 @@ One pure-Dart reference (`lib/core/imaging/tone.dart`) defines the tone math; th
 - The photo page draws through the shader only while a tone aid or compare is on; otherwise it keeps M1's plain image path. Zoom and the detail render (m1-design §3.5) work the same with the shader.
 - The grid is a `CustomPainter` (`GridPainter`) above the zoomable photo, placing lines through the zoom transform so their width stays constant. Its geometry (`GridLayout`, `lib/features/view_aids/domain/grid_layout.dart`) is pure Dart, shared with the export.
 - **How it draws (T5).** `ShadedImage` (`lib/features/view_aids/ui/`) decodes the shown file through Flutter's image cache (the same key as the plain `Image.file`, so switching aids reuses the decode) and paints it with a `CustomPainter` whose paint has the shader, inside the same zoom transform. Flutter's simpler `ImageFiltered` + `ImageFilter.shader` was rejected: it needs Impeller, and `flutter test` runs on Skia, where it throws. While a new file decodes, the previous image stays (like `gaplessPlayback`). Colors shows the plain photo until the palette is ready, then keeps the last palette while a new count computes. Holding shows the plain original, even for an unedited photo.
-- **Uniforms**: size, mode, bands, palette count, then the palette as `vec4` arrays (Lab for the nearest match, sRGB to draw), set by index in `tone_shader.dart`.
+- **Uniforms**: size, mode (gray, values, colors, or plain for Compare alone), bands, palette count, then the palette as `vec4` arrays (Lab for the nearest match, sRGB to draw); then compare on/off, opacity, and the compare photo's own palette the same way. Set by index in `tone_shader.dart` (`AidParams`).
+- **Compare (T7).** The compare photo's preview is the second sampler, decoded at the same width as the shown photo and sampled at the same coordinates, so it stretches to this photo's frame. Zoomed in, the overlay stays at preview resolution (no detail render for it). Until it has decoded, the photo is drawn without the blend.
 - **Testing (resolved in T5)**: `flutter test` runs fragment shaders on the host (drawn into an image with `PictureRecorder`), so the shader is tested directly against `tone.dart` (§7). Checked on the Mac test host; CI's Linux host runs the same test.
 
 ### 5.4 `RenderService` (export, CPU)
@@ -187,7 +189,7 @@ original + edits ─▶ full-size render (existing pipeline, ≤ 6000 px) ─▶
 ```
 
 - Interface `RenderService.export(image, ExportOptions) → File` (temp JPEG), behind a provider; an OpenCV implementation in an isolate reuses `render_pipeline.dart` at full size.
-- Compare: the other photo rendered at the same output size (stretched), tone applied, then blended.
+- Compare: the other photo rendered at the same output size (stretched), tone applied (its own palette for Colors), then mixed in sRGB at the opacity, as the live view does (§3.4).
 - Grid: antialiased lines at the export width (§3.3).
 - Cached per (image, edits hash, options hash) in `<appCache>/exports/` while the app runs; cleared at the next launch (exports are one-off).
 - Memory: a 6000 × 4500 RGBA frame is ≈ 108 MB; compare holds two. Measured on the Pixel 11 and noted in §9.

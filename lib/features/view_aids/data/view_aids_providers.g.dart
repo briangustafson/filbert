@@ -283,3 +283,94 @@ final class PhotoPaletteFamily extends $Family
   @override
   String toString() => r'photoPaletteProvider';
 }
+
+/// The compare photo for [shown] (m2-design §3.4); null until the project,
+/// its photos and its settings have loaded.
+
+@ProviderFor(compareTarget)
+final compareTargetProvider = CompareTargetFamily._();
+
+/// The compare photo for [shown] (m2-design §3.4); null until the project,
+/// its photos and its settings have loaded.
+
+final class CompareTargetProvider
+    extends $FunctionalProvider<CompareTarget?, CompareTarget?, CompareTarget?>
+    with $Provider<CompareTarget?> {
+  /// The compare photo for [shown] (m2-design §3.4); null until the project,
+  /// its photos and its settings have loaded.
+  CompareTargetProvider._({
+    required CompareTargetFamily super.from,
+    required ProjectImage super.argument,
+  }) : super(
+         retry: null,
+         name: r'compareTargetProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$compareTargetHash();
+
+  @override
+  String toString() {
+    return r'compareTargetProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<CompareTarget?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CompareTarget? create(Ref ref) {
+    final argument = this.argument as ProjectImage;
+    return compareTarget(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CompareTarget? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CompareTarget?>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CompareTargetProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$compareTargetHash() => r'e84154f04af7fb36676cf751c2abadfe84cb72a3';
+
+/// The compare photo for [shown] (m2-design §3.4); null until the project,
+/// its photos and its settings have loaded.
+
+final class CompareTargetFamily extends $Family
+    with $FunctionalFamilyOverride<CompareTarget?, ProjectImage> {
+  CompareTargetFamily._()
+    : super(
+        retry: null,
+        name: r'compareTargetProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// The compare photo for [shown] (m2-design §3.4); null until the project,
+  /// its photos and its settings have loaded.
+
+  CompareTargetProvider call(ProjectImage shown) =>
+      CompareTargetProvider._(argument: shown, from: this);
+
+  @override
+  String toString() => r'compareTargetProvider';
+}

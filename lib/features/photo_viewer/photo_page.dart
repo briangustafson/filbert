@@ -23,8 +23,9 @@ import 'photo_files.dart';
 
 /// One photo on the photo screen (m1-design §3.5): the edited view fitted to
 /// the screen, with pinch and double-tap zoom, and the original while held.
-/// With a tone aid on (Gray, Values, Colors) it's drawn through the
-/// viewing-aid shader (m2-design §5.3); holding shows the plain original.
+/// With a tone aid (Gray, Values, Colors) or Compare on, it's drawn through
+/// the viewing-aid shader (m2-design §5.3); holding shows the plain
+/// original.
 ///
 /// Shows the thumbnail scaled up until the preview is ready, and switches to
 /// a sharper "detail" render once zoomed past the preview's resolution.
@@ -62,6 +63,9 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
   /// The last palette shown, kept while a new count's palette computes so
   /// the view doesn't drop back to the plain photo in between.
   Palette? _lastPalette;
+
+  /// The same for the compare photo's palette, with that photo's id.
+  (String, Palette)? _lastComparePalette;
   Offset _doubleTapAt = Offset.zero;
 
   // Layout facts from the last build, used by the zoom listener.
@@ -169,6 +173,40 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
     }
   }
 
+  /// The compare photo to blend over this one and how, or null with
+  /// Compare off, no other photo, or this being the compare photo
+  /// (m2-design §3.4).
+  ({ProjectImage photo, CompareParams params})? _compareFor(
+    ProjectImage image,
+    ToneParams? tone,
+  ) {
+    final on = ref.watch(
+      viewAidsStateProvider(image.projectId).select((a) => a.compare),
+    );
+    if (!on) return null;
+    final prefs = ref.watch(viewPrefsProvider(image.projectId)).value;
+    final other = ref.watch(compareTargetProvider(image))?.overlay;
+    if (prefs == null || other == null) return null;
+    Palette? palette;
+    if (tone?.mode == ToneAid.colors) {
+      // Each photo with its own palette; the last one while a new count
+      // computes, but never another photo's.
+      palette = ref
+          .watch(photoPaletteProvider(other, prefs.colors.count))
+          .value;
+      if (palette != null) _lastComparePalette = (other.id, palette);
+      palette ??= switch (_lastComparePalette) {
+        (final id, final last) when id == other.id => last,
+        _ => null,
+      };
+      if (palette == null) return null;
+    }
+    return (
+      photo: other,
+      params: CompareParams(opacity: prefs.compare.opacity, palette: palette),
+    );
+  }
+
   /// The grid to draw over the photo, or null with Grid off (m2-design
   /// §3.3).
   ({GridLayout layout, Color color, double width})? _gridFor(
@@ -214,13 +252,20 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
     final image = widget.image;
     final program = ref.watch(toneProgramProvider).value;
     final tone = program == null ? null : _toneFor(image);
+    final compare = program == null ? null : _compareFor(image, tone);
+    final aids = tone == null && compare == null
+        ? null
+        : AidParams(tone ?? const ToneParams.plain(), compare: compare?.params);
+    final other = compare == null
+        ? null
+        : ref.watch(previewFileProvider(compare.photo)).value;
     final grid = _gridFor(image);
     final thumb = ref.watch(thumbnailFileProvider(image));
     final preview = ref.watch(previewFileProvider(image));
     final detail = _wantDetail ? ref.watch(detailFileProvider(image)) : null;
     // Holding shows the plain original: unedited, without aids.
     final showOriginal =
-        _holding && (!image.edits.isNone || tone != null || grid != null);
+        _holding && (!image.edits.isNone || aids != null || grid != null);
     final original = showOriginal
         ? ref.watch(previewFileProvider(image.withEdits(Edits.none)))
         : null;
@@ -262,7 +307,8 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
                         file: file,
                         label: 'Photo',
                         program: program,
-                        tone: tone,
+                        aids: aids,
+                        other: other,
                         // Fitted, the screen shows fewer pixels than the
                         // preview has; decoding at screen size keeps
                         // swiping light on the GPU. Zoomed: full detail.
@@ -322,7 +368,8 @@ class _PhotoImage extends StatelessWidget {
     required this.label,
     this.decodeWidth,
     this.program,
-    this.tone,
+    this.aids,
+    this.other,
   });
 
   final File file;
@@ -333,18 +380,25 @@ class _PhotoImage extends StatelessWidget {
 
   /// With both, drawn through the viewing-aid shader.
   final ui.FragmentProgram? program;
-  final ToneParams? tone;
+  final AidParams? aids;
+
+  /// The compare photo's preview, blended over this one.
+  final File? other;
 
   @override
   Widget build(BuildContext context) {
-    final program = this.program, tone = this.tone;
-    if (program != null && tone != null) {
+    final program = this.program, aids = this.aids, other = this.other;
+    if (program != null && aids != null) {
       return ShadedImage(
         // The same cache key as Image.file with cacheWidth, so switching
         // aids on and off reuses the decode.
         image: ResizeImage.resizeIfNeeded(decodeWidth, null, FileImage(file)),
+        // Decoded like this photo; stretched to its frame by the shader.
+        other: other == null
+            ? null
+            : ResizeImage.resizeIfNeeded(decodeWidth, null, FileImage(other)),
         program: program,
-        params: tone,
+        params: aids,
         label: label,
       );
     }

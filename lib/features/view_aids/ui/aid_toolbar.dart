@@ -7,6 +7,7 @@ import '../data/view_aids_providers.dart';
 import '../data/view_prefs_repository.dart';
 import '../domain/view_aids.dart';
 import '../domain/view_prefs.dart';
+import 'compare_panel.dart';
 import 'grid_panel.dart';
 
 /// The photo screen's bottom bar: Grid · Gray · Values · Colors · Compare
@@ -157,8 +158,12 @@ class AidPanel extends ConsumerWidget {
               grid: prefs.grid,
               onChanged: (grid) => update(prefs.copyWith(grid: grid)),
             ),
-            // Filled in by M2 T7.
-            Aid.compare || Aid.gray => const SizedBox(height: 8),
+            Aid.compare => ComparePanel(
+              image: image,
+              compare: prefs.compare,
+              onChanged: (compare) => update(prefs.copyWith(compare: compare)),
+            ),
+            Aid.gray => const SizedBox(height: 8),
           };
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
