@@ -188,11 +188,21 @@ One pure-Dart reference (`lib/core/imaging/tone.dart`) defines the tone math; th
 original + edits ─▶ full-size render (existing pipeline, ≤ 6000 px) ─▶ tone (gray / values / palette) ─▶ compare blend ─▶ grid ─▶ JPEG
 ```
 
-- Interface `RenderService.export(image, ExportOptions) → File` (temp JPEG), behind a provider; an OpenCV implementation in an isolate reuses `render_pipeline.dart` at full size.
+- Interface `RenderService.export(image, ExportOptions) → File` (JPEG, quality 92), behind a provider; `OpenCvRenderService` (`lib/features/export/data/`) reuses M1's decode and warp at full size, in isolates. `ExportOptions.fromAids` builds the options from the aids that are on; `without(...)` drops what the export sheet unchecks (T9).
+- Order (T8): the compare photo is decoded, warped, stretched and toned in one isolate first, and comes back as BGR bytes; then this photo is decoded, warped and toned, the two mixed, the grid drawn and the JPEG encoded in a second. So only one decoded original is in memory at a time.
+- Tone on the CPU (`lib/core/imaging/tone_map.dart`): tables built from `tone.dart` instead of a `pow` per pixel. Luminance is a sum of three lookups; Gray and Values compare it with precomputed luminance thresholds; Colors keeps a 16 MB table of the nearest palette color per 24-bit color, filled as colors are met. Values and Colors equal `tone.dart` exactly, Gray within rounding (tested on every gray, a cube walk and random colors). Colors uses the live view's palette (`PaletteService`, same cache).
 - Compare: the other photo rendered at the same output size (stretched), tone applied (its own palette for Colors), then mixed in sRGB at the opacity, as the live view does (§3.4).
-- Grid: antialiased lines at the export width (§3.3).
-- Cached per (image, edits hash, options hash) in `<appCache>/exports/` while the app runs; cleared at the next launch (exports are one-off).
-- Memory: a 6000 × 4500 RGBA frame is ≈ 108 MB; compare holds two. Measured on the Pixel 11 and noted in §9.
+- Grid: OpenCV antialiased lines (`cv.line`, `LINE_AA`, sub-pixel positions) at the export width (§3.3), rounded to whole pixels.
+- Cached as `<appCache>/exports/<imageId>-<editsHash>-<optionsHash>.jpg` while the app runs (the options hash covers only the settings in use, and the compare photo's edits); cleared at the next launch, from `main.dart` (exports are one-off).
+- Memory: a 6000 × 4500 RGBA frame is ≈ 108 MB; with the order above, compare adds one BGR frame (≈ 81 MB) rather than a second original.
+- **Measured (T8)** with `tool/render_benchmark.dart` (profile build, synthetic noisy photos, no crop, so the full 6000 px; median of 3 runs; memory is the process's resident set above its level before the export, sampled every 10 ms, so short spikes may be missed). Emulator-5554 (arm64, Apple-silicon Mac):
+
+  | Original | Plain | Gray | Values | Colors (16) | Values + Compare + grid |
+  |---|---|---|---|---|---|
+  | 12 MP | 1.3 s, +135 MB | 2.0 s, +95 MB | 1.5 s, +96 MB | 1.1 s, +97 MB | 2.6 s, +101 MB |
+  | 48 MP | 1.9 s, +182 MB | 3.7 s, +120 MB | 2.4 s, +119 MB | 2.3 s, +203 MB | 5.5 s, +142 MB |
+
+  The process peaked at 658 MB over the whole benchmark (which also renders previews and runs detection). The 6000 px cap stays unless the Pixel 11 run (§9) says otherwise. Gray is the slowest tone (a search over 255 thresholds per pixel); a 16-bit luminance table would make it faster if needed.
 
 ### 5.5 Destinations
 
@@ -247,6 +257,6 @@ No other new packages: k-means is plain Dart, drawing uses `dartcv4`, and shader
 | ~~dartcv4 temporary-size hazard (m1-design §7, §9)~~ Fixed in T1: call such functions through `package:canvas_detect/safe_cv.dart`, which includes `kmeans` | — |
 | ~~Seeding OpenCV `kmeans`~~ Resolved in T3: k-means is written in Dart with its own seeded generator (§5.2) | — |
 | ~~Can `flutter test` run fragment shaders on the host?~~ Yes (T5), §5.3 | — |
-| Export memory and time at 48 MP with compare, on the Pixel 11; lower the 6000 px cap if needed | Export task |
+| Export memory and time at 48 MP with compare: measured on the emulator in T8 (§5.4: 5.5 s, +142 MB); the Pixel 11 run is Brian's (`flutter run --profile -d <pixel> -t tool/render_benchmark.dart`, then reinstall the app and clear the dartcv4 keep-list). Lower the 6000 px cap if it's too slow or too big there | T8 / T10 |
 | `gal` 3.0.1 vs 2.3.3 | Gallery task |
 | Later ideas (not M2): centered grid origin; tap a swatch to highlight its areas; wipe / side-by-side compare; aids on thumbnails | — |

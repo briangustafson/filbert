@@ -9,9 +9,11 @@
 //
 // Prints timings to the console, then shows "done" on screen. Synthetic
 // photos (12 MP and 48 MP JPEGs) are generated on the device first. Also
-// times canvas detection (m1-design §6.2, target < 500 ms) and palettes
-// (m2-design §5.2).
+// times canvas detection (m1-design §6.2, target < 500 ms), palettes
+// (m2-design §5.2) and full-resolution exports with aids, with the
+// process's peak memory (m2-design §5.4).
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
@@ -21,9 +23,13 @@ import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 import 'package:filbert/core/files/file_store.dart';
 import 'package:filbert/features/autocrop/canvas_detection.dart';
+import 'package:filbert/features/export/data/render_service.dart';
+import 'package:filbert/features/export/domain/export_options.dart';
 import 'package:filbert/features/photos/data/image_renderer.dart';
 import 'package:filbert/features/photos/domain/project_image.dart';
 import 'package:filbert/features/view_aids/data/palette_service.dart';
+import 'package:filbert/features/view_aids/domain/view_aids.dart';
+import 'package:filbert/features/view_aids/domain/view_prefs.dart';
 import 'package:flutter/widgets.dart';
 
 import '../test/support/synthetic_canvas.dart';
@@ -102,6 +108,7 @@ Future<void> main() async {
   }
   await _benchmarkDetection(root, files);
   await _benchmarkPalette(files);
+  await _benchmarkExport(root, files);
   debugPrint('BENCH done');
   runApp(const Center(child: Text('done', textDirection: TextDirection.ltr)));
 }
@@ -173,9 +180,8 @@ Future<void> _benchmarkDetection(Directory root, FileStore files) async {
 /// more distinct colors than a painting, so this is a worst case. Times the
 /// computation in an isolate, as PaletteService runs it (no caches).
 Future<void> _benchmarkPalette(FileStore files) async {
-  final preview = await OpenCvImageRenderer(
-    files: files,
-  ).preview(_image('bench-4000', Edits.none, 0));
+  final preview = await OpenCvImageRenderer(files: files)
+      .preview(_image('bench-4000', Edits.none, 0));
   final bytes = preview.readAsBytesSync();
   for (final count in [8, 16]) {
     final times = <int>[];
@@ -191,15 +197,80 @@ Future<void> _benchmarkPalette(FileStore files) async {
   }
 }
 
+/// Full-resolution exports (capped at 6000 px) of the 12 MP and 48 MP
+/// photos, with the aids that cost most: each tone aid, then Values with
+/// Compare (a second photo of the same size) and a grid. Peak memory is the
+/// process's resident set, sampled while each export runs. Palettes are
+/// computed beforehand, as the live view will have done.
+Future<void> _benchmarkExport(Directory root, FileStore files) async {
+  final palettes = IsolatePaletteService(
+    files: files,
+    renderer: OpenCvImageRenderer(files: files),
+  );
+  for (final (label, w, h) in [('12 MP', 4000, 3000), ('48 MP', 8000, 6000)]) {
+    final otherId = 'bench-other-$w';
+    await files.putBlob(otherId, 'jpg', File('${root.path}/bench-$w.jpg'));
+    final other = _image(otherId, Edits.none, 0, w: w, h: h);
+    final variants = [
+      ('plain', const ExportOptions()),
+      ('gray', const ExportOptions(tone: ToneAid.gray)),
+      ('values', const ExportOptions(tone: ToneAid.valueBands)),
+      ('colors 16', const ExportOptions(tone: ToneAid.colors, colors: 16)),
+      (
+        'values+compare+grid',
+        ExportOptions(
+          tone: ToneAid.valueBands,
+          compareWith: other,
+          grid: const GridPrefs(diagonals: true),
+        ),
+      ),
+    ];
+    await palettes.palette(other, 16);
+    for (final (name, options) in variants) {
+      final times = <int>[];
+      var peakMb = 0;
+      for (var run = 0; run < 3; run++) {
+        final image = _image('bench-$w', Edits.none, run, w: w, h: h);
+        await palettes.palette(image, 16);
+        await files.clearExports();
+        final service = OpenCvRenderService(files: files, palettes: palettes);
+        final baseline = ProcessInfo.currentRss;
+        var peak = baseline;
+        final sampler = Timer.periodic(const Duration(milliseconds: 10), (_) {
+          final rss = ProcessInfo.currentRss;
+          if (rss > peak) peak = rss;
+        });
+        final sw = Stopwatch()..start();
+        await service.export(image, options);
+        times.add(sw.elapsedMilliseconds);
+        sampler.cancel();
+        final mb = (peak - baseline) ~/ (1 << 20);
+        if (mb > peakMb) peakMb = mb;
+      }
+      debugPrint(
+        'BENCH export $label $name: median ${_median(times)} ms, '
+        'peak +$peakMb MB over baseline (runs $times)',
+      );
+    }
+  }
+  debugPrint('BENCH max RSS ${ProcessInfo.maxRss ~/ (1 << 20)} MB');
+}
+
 int _median(List<int> times) => (times.toList()..sort())[times.length ~/ 2];
 
-ProjectImage _image(String blobId, Edits edits, int run) => ProjectImage(
+ProjectImage _image(
+  String blobId,
+  Edits edits,
+  int run, {
+  int w = 0,
+  int h = 0,
+}) => ProjectImage(
   id: '$blobId-$run',
   projectId: 'bench',
   blobId: blobId,
   mimeType: 'image/jpeg',
-  width: 0,
-  height: 0,
+  width: w,
+  height: h,
   origin: ImageOrigin.device,
   capturedAt: null,
   edits: edits,

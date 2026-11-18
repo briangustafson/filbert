@@ -9,9 +9,13 @@ import 'edits.dart';
 ///
 /// Relies on 64-bit wrap-around integers (native platforms); the web port
 /// needs a different implementation.
-String editsHash(Edits edits) {
+String editsHash(Edits edits) => stableHash(edits.toJsonString());
+
+/// 64-bit FNV-1a of [text] as 16 hex digits: the same on every run, for
+/// cache keys.
+String stableHash(String text) {
   var hash = _offsetBasis;
-  for (final unit in edits.toJsonString().codeUnits) {
+  for (final unit in text.codeUnits) {
     hash ^= unit;
     hash *= _prime;
   }
