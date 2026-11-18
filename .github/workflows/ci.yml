@@ -180,6 +180,18 @@ jobs:
         timeout-minutes: 25
         run: flutter build apk --debug --target-platform android-x64 -t integration_test/app_flow_test.dart
 
+      # The emulator and Gradle together have exhausted the runner (it was
+      # shut down twice mid-test): android/gradle.properties lets Gradle grow
+      # to 8 GB of heap plus metaspace. Stop the daemon from the full build
+      # above, and cap the small rebuild `flutter test` does below while the
+      # emulator runs (user-level properties override the project's).
+      - name: Free memory for the emulator
+        run: |
+          (cd android && ./gradlew --stop)
+          mkdir -p ~/.gradle
+          echo 'org.gradle.jvmargs=-Xmx3G -XX:MaxMetaspaceSize=1G' >> ~/.gradle/gradle.properties
+          free -h
+
       - name: Integration test
         uses: reactivecircus/android-emulator-runner@v2.38.0
         with:
