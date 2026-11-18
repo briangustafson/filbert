@@ -41,6 +41,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Viewing aids drawn live (m2-design §5.3).
+  shaders:
+    - shaders/view_aids.frag
 
 # Native build settings for OpenCV (dartcv4). Default modules (core, imgproc,
 # imgcodecs) are all M1 needs. CMake and Ninja come from the Android SDK.

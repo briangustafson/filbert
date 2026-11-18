@@ -45,11 +45,12 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
   - Depends on: T2
   - *Result:* tap rules and Back closing a panel added to m2-design §3.1. The Values panel shows the band grays and the Colors panel the photo's palette (both already available). Grid and Compare panels are empty until T6/T7; hold-for-original hiding the aids comes with T5, when aids draw something.
 
-- [ ] **T5 — Live tone view (fragment shader)**
+- [x] **T5 — Live tone view (fragment shader)**
   - First, find out whether `flutter test` can run fragment shaders on the host; record the answer in m2-design §5.3 and choose the shader test (§7).
   - `shaders/view_aids.frag`: gray, values, colors (palette uniforms) over the preview; the photo page uses it only when a tone aid is on; zoom and detail renders still work; band strip and swatches in the panels.
   - *Done when:* shader output matches `tone.dart` within a tolerance (golden or emulator test); toggling and changing bands is instant on the emulator.
   - Depends on: T3, T4
+  - *Result:* `flutter test` runs the shader on the host, so it's tested directly against `tone.dart` (within 2/255). Drawn by a `CustomPainter` (`ShadedImage`), since `ImageFilter.shader` needs Impeller (m2-design §5.3). On emulator-5554: Gray, Values and Colors switch at once, bands change at once, zoom with the detail render works.
 
 - [ ] **T6 — Grid**
   - Grid geometry (divisions; spacing from the project's physical size with partial cells; aspect-mismatch note; export widths) as pure Dart, shared with export (§3.3).

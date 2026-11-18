@@ -1,17 +1,25 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/imaging/palette.dart';
 import '../../core/imaging/render_geometry.dart';
 import '../photos/data/image_renderer.dart';
 import '../photos/domain/project_image.dart';
 import '../photos/ui/image_thumbnail.dart';
+import '../view_aids/data/view_aids_providers.dart';
+import '../view_aids/domain/view_aids.dart';
+import '../view_aids/ui/shaded_image.dart';
+import '../view_aids/ui/tone_shader.dart';
 import 'photo_files.dart';
 
 /// One photo on the photo screen (m1-design §3.5): the edited view fitted to
 /// the screen, with pinch and double-tap zoom, and the original while held.
+/// With a tone aid on (Gray, Values, Colors) it's drawn through the
+/// viewing-aid shader (m2-design §5.3); holding shows the plain original.
 ///
 /// Shows the thumbnail scaled up until the preview is ready, and switches to
 /// a sharper "detail" render once zoomed past the preview's resolution.
@@ -45,6 +53,10 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
   var _zoomed = false;
   var _wantDetail = false;
   var _holding = false;
+
+  /// The last palette shown, kept while a new count's palette computes so
+  /// the view doesn't drop back to the plain photo in between.
+  Palette? _lastPalette;
   Offset _doubleTapAt = Offset.zero;
 
   // Layout facts from the last build, used by the zoom listener.
@@ -124,13 +136,44 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
 
   double get _maxScale => math.max(_scaleFor100 * 2, 4.0);
 
+  /// What the shader should draw, or null for the plain photo: no tone aid,
+  /// or the palette isn't ready yet.
+  ToneParams? _toneFor(ProjectImage image) {
+    final aid = ref.watch(
+      viewAidsStateProvider(image.projectId).select((a) => a.tone),
+    );
+    if (aid == ToneAid.none) return null;
+    // Waits for the project's settings, so it never computes a palette for
+    // the default count first.
+    final prefs = ref.watch(viewPrefsProvider(image.projectId)).value;
+    if (prefs == null) return null;
+    switch (aid) {
+      case ToneAid.none:
+        return null;
+      case ToneAid.gray:
+        return const ToneParams.gray();
+      case ToneAid.valueBands:
+        return ToneParams.values(prefs.values.bands);
+      case ToneAid.colors:
+        final palette = ref
+            .watch(photoPaletteProvider(image, prefs.colors.count))
+            .value;
+        if (palette != null) _lastPalette = palette;
+        final shown = palette ?? _lastPalette;
+        return shown == null ? null : ToneParams.colors(shown);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final image = widget.image;
+    final program = ref.watch(toneProgramProvider).value;
+    final tone = program == null ? null : _toneFor(image);
     final thumb = ref.watch(thumbnailFileProvider(image));
     final preview = ref.watch(previewFileProvider(image));
     final detail = _wantDetail ? ref.watch(detailFileProvider(image)) : null;
-    final showOriginal = _holding && !image.edits.isNone;
+    // Holding shows the plain original: unedited, without aids.
+    final showOriginal = _holding && (!image.edits.isNone || tone != null);
     final original = showOriginal
         ? ref.watch(previewFileProvider(image.withEdits(Edits.none)))
         : null;
@@ -171,6 +214,8 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
                       (final File file, _) => _PhotoImage(
                         file: file,
                         label: 'Photo',
+                        program: program,
+                        tone: tone,
                         // Fitted, the screen shows fewer pixels than the
                         // preview has; decoding at screen size keeps
                         // swiping light on the GPU. Zoomed: full detail.
@@ -216,6 +261,8 @@ class _PhotoImage extends StatelessWidget {
     required this.file,
     required this.label,
     this.decodeWidth,
+    this.program,
+    this.tone,
   });
 
   final File file;
@@ -224,8 +271,27 @@ class _PhotoImage extends StatelessWidget {
   /// Decode at this width (screen pixels); null for full resolution.
   final int? decodeWidth;
 
+  /// With both, drawn through the viewing-aid shader.
+  final ui.FragmentProgram? program;
+  final ToneParams? tone;
+
   @override
-  Widget build(BuildContext context) => Semantics(
+  Widget build(BuildContext context) {
+    final program = this.program, tone = this.tone;
+    if (program != null && tone != null) {
+      return ShadedImage(
+        // The same cache key as Image.file with cacheWidth, so switching
+        // aids on and off reuses the decode.
+        image: ResizeImage.resizeIfNeeded(decodeWidth, null, FileImage(file)),
+        program: program,
+        params: tone,
+        label: label,
+      );
+    }
+    return _plain();
+  }
+
+  Widget _plain() => Semantics(
     label: label,
     image: true,
     child: Image.file(
