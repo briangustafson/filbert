@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/adaptive_sheet.dart';
 import '../domain/project.dart';
 import '../domain/size_presets.dart';
 import 'proportion_shape.dart';
@@ -13,11 +14,8 @@ Future<void> showSizePicker(
   required LengthUnit defaultUnit,
   required ValueChanged<ProjectSize> onChanged,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    showDragHandle: true,
+  return showAdaptiveSheet<void>(
+    context,
     builder: (_) => SizePickerSheet(
       initial: initial,
       defaultUnit: defaultUnit,

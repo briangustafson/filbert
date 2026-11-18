@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/adaptive_sheet.dart';
 import '../../../app/routes.dart';
 import '../../../core/settings/app_settings.dart';
 import '../../autocrop/review_queue.dart';
@@ -17,9 +18,8 @@ enum PhotoSourceChoice { camera, device }
 Future<PhotoSourceChoice?> showPhotoSourceSheet(
   BuildContext context, {
   required String title,
-}) => showModalBottomSheet<PhotoSourceChoice>(
-  context: context,
-  showDragHandle: true,
+}) => showAdaptiveSheet<PhotoSourceChoice>(
+  context,
   builder: (context) => SafeArea(
     child: Column(
       mainAxisSize: MainAxisSize.min,

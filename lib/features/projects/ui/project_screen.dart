@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/layout.dart';
 import '../../../app/routes.dart';
 import '../../../core/units/unit_preference.dart';
 import '../../photos/ui/add_photos.dart';
@@ -72,45 +73,53 @@ class _ProjectView extends ConsumerWidget {
       ),
       body: CustomScrollView(
         slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverList.list(
-              children: [
-                ProjectNameField(
-                  key: ValueKey('name-${project.id}'),
-                  name: project.name,
-                  onSave: (name) => repository.update(project.id, name: name),
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: ActionChip(
-                    avatar: switch (dimsOf(project.size)) {
-                      (final w, final h) => ProportionShape(
-                        width: w,
-                        height: h,
-                      ),
-                      null => const Icon(Icons.aspect_ratio, size: 18),
-                    },
-                    label: Text(sizeLabel(project.size)),
-                    tooltip: 'Canvas size',
-                    onPressed: () => showSizePicker(
-                      context,
-                      initial: project.size,
-                      defaultUnit: ref.read(preferredLengthUnitProvider),
-                      onChanged: (size) =>
-                          repository.update(project.id, size: size),
+          // The header is capped and centred on wide windows (m3-design
+          // §3.2); the photo grid below stays full width.
+          SliverToBoxAdapter(
+            child: MaxWidth(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ProjectNameField(
+                      key: ValueKey('name-${project.id}'),
+                      name: project.name,
+                      onSave: (name) =>
+                          repository.update(project.id, name: name),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: ActionChip(
+                        avatar: switch (dimsOf(project.size)) {
+                          (final w, final h) => ProportionShape(
+                            width: w,
+                            height: h,
+                          ),
+                          null => const Icon(Icons.aspect_ratio, size: 18),
+                        },
+                        label: Text(sizeLabel(project.size)),
+                        tooltip: 'Canvas size',
+                        onPressed: () => showSizePicker(
+                          context,
+                          initial: project.size,
+                          defaultUnit: ref.read(preferredLengthUnitProvider),
+                          onChanged: (size) =>
+                              repository.update(project.id, size: size),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    StartNotesField(
+                      key: ValueKey('notes-${project.id}'),
+                      notes: project.startNotes,
+                      onSave: (notes) =>
+                          repository.update(project.id, startNotes: notes),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                StartNotesField(
-                  key: ValueKey('notes-${project.id}'),
-                  notes: project.startNotes,
-                  onSave: (notes) =>
-                      repository.update(project.id, startNotes: notes),
-                ),
-              ],
+              ),
             ),
           ),
           ...projectPhotoSlivers(context, ref, project),

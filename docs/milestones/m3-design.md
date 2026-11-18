@@ -75,18 +75,19 @@ project backup, export and import (M8, §8) · iOS and web (M9, M10) · macOS di
 
 ### 3.2 Desktop layout
 
-The same routes and screens as the phone. Width breakpoints follow Material's window size classes:
+The same routes and screens as the phone. Width breakpoints follow Material's window size classes (`WindowWidth` in `lib/app/layout.dart`, T2):
 
 | Width | Changes |
 |---|---|
-| < 600 dp | As the phone |
-| 600–839 dp | Project list and photo grid get more columns (thumbnail target ≈ 180 dp) |
-| ≥ 840 dp | Above, plus the photo screen docks the aid panel at the right (≈ 320 dp) instead of above the toolbar; the project setup form is capped at ≈ 640 dp wide and centered |
+| < 600 dp (compact) | As the phone |
+| 600–839 dp (medium) | The project list and photo grid already add columns as the window widens; photo thumbnails grow from 140 to 180 dp. The project header (name, size, start notes) and Settings are capped at 640 dp and centred; the photo grid stays full width. Bottom sheets become centred dialogs (480 dp wide) |
+| ≥ 840 dp (expanded) | Above, plus the photo screen docks an open aid panel at the right (320 dp, over the photo, below the top bar); tapping the photo or Back still closes it |
 
-- Window: resizable, minimum 800 × 600; opens at 1200 × 800. (Not remembered between launches in M3, which would need a window-management package.)
-- **Mouse on the photo screen**: the chrome shows when the pointer moves and hides after the same idle time as on the phone; it stays while the pointer is over the chrome or a panel is open. Zoom with the trackpad pinch, Ctrl/⌘ + scroll, or double-click; drag pans. Press and hold still shows the original (mouse button held without moving).
-- Every icon button gets a tooltip naming the action and its shortcut.
-- Menus, sheets and dialogs are the phone's; bottom sheets (Export…, add photos) become centered dialogs at ≥ 600 dp.
+- The Mac's minimum window (800 × 600) is medium, so the Mac never shows the phone layout. Widget tests run at 800 × 600 by default, so most tests see it too.
+- Window: resizable, minimum 800 × 600; opens at 1200 × 800, centred (`MainFlutterWindow.swift`). (Not remembered between launches in M3, which would need a window-management package.)
+- **Mouse on the photo screen** (T2): moving the pointer shows the chrome and restarts its hide timer (the phone's 3 s); it stays while the pointer is over the top bar, the toolbar, a panel or an arrow, or while a panel is open. **Previous / next buttons** appear at the left and right edges with the chrome once a mouse has moved, since Flutter doesn't drag pages with a mouse; a touch hides them again, so phones never show them. (Added in T2; T3 adds the arrow keys.) Zoom: `InteractiveViewer`'s own handling of the trackpad pinch and the mouse wheel, plus double-click; dragging pans when zoomed. Press and hold still shows the original.
+- Every icon-only button has a tooltip naming its action (checked in T2); T3 adds the shortcut to it.
+- Menus and dialogs are the phone's. Bottom sheets (the size picker, Export…, the add-photos choice) open through `showAdaptiveSheet` (`lib/app/adaptive_sheet.dart`): a sheet on phones, a centred dialog from 600 dp. Export's refusal to close mid-render guards the dialog too.
 
 ### 3.3 Keyboard shortcuts
 
