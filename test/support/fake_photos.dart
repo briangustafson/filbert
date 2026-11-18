@@ -113,6 +113,34 @@ class FakeImageRepository implements ImageRepository {
     return results;
   }
 
+  /// `derived_from_json` of each image saved by [importDerived], by id.
+  final derivedFrom = <String, String>{};
+
+  /// Makes the next [importDerived] fail.
+  Object? failDerived;
+
+  @override
+  Future<ProjectImage> importDerived(
+    String projectId,
+    File file, {
+    required String derivedFromJson,
+  }) async {
+    calls.add('importDerived $projectId');
+    if (projects.byId(projectId) == null || projects.isDeleted(projectId)) {
+      throw ProjectNotFoundException(projectId);
+    }
+    final failure = failDerived;
+    if (failure != null) {
+      failDerived = null;
+      throw failure;
+    }
+    final image = _newImage(projectId, ImageOrigin.derived);
+    _images[image.id] = image;
+    derivedFrom[image.id] = derivedFromJson;
+    _changes.add(null);
+    return image;
+  }
+
   @override
   Future<void> setEdits(String imageId, Edits edits) async {
     calls.add('setEdits $imageId');

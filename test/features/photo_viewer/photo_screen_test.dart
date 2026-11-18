@@ -189,6 +189,7 @@ void main() {
       expect(await menuItems(tester), [
         'Crop/rotate',
         'Auto-crop',
+        'Export…',
         'Set as reference',
         'Delete',
       ]);
@@ -197,7 +198,12 @@ void main() {
     testWidgets('the reference: Delete only', (tester) async {
       await images.setAsReference(projectId, a.id);
       await open(tester, a.id);
-      expect(await menuItems(tester), ['Crop/rotate', 'Auto-crop', 'Delete']);
+      expect(await menuItems(tester), [
+        'Crop/rotate',
+        'Auto-crop',
+        'Export…',
+        'Delete',
+      ]);
     });
 
     testWidgets('Undo, Redo, Revert appear only when they apply', (
@@ -211,6 +217,7 @@ void main() {
         'Auto-crop',
         'Undo',
         'Revert to original',
+        'Export…',
         'Set as reference',
         'Delete',
       ]);
@@ -221,6 +228,7 @@ void main() {
         'Crop/rotate',
         'Auto-crop',
         'Redo',
+        'Export…',
         'Set as reference',
         'Delete',
       ]);
@@ -232,6 +240,7 @@ void main() {
         'Auto-crop',
         'Undo',
         'Revert to original',
+        'Export…',
         'Set as reference',
         'Delete',
       ]);
@@ -250,6 +259,7 @@ void main() {
         'Crop/rotate',
         'Auto-crop',
         'Undo',
+        'Export…',
         'Set as reference',
         'Delete',
       ]);

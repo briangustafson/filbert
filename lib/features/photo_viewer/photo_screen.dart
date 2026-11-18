@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/routes.dart';
+import '../export/ui/export_sheet.dart';
 import '../photos/data/image_providers.dart';
 import '../photos/data/image_repository.dart';
 import '../photos/domain/project_image.dart';
@@ -134,6 +135,45 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
     messenger.showSnackBar(
       const SnackBar(content: Text('Set as the reference.')),
     );
+  }
+
+  /// The export sheet (m2-design §3.5), then a snackbar for what it did.
+  Future<void> _export(ProjectImage image) async {
+    _hideTimer?.cancel();
+    final messenger = ScaffoldMessenger.of(context);
+    final outcome = await showExportSheet(context, image);
+    if (!mounted) return;
+    _showChrome();
+    switch (outcome) {
+      case null:
+        return;
+      case SavedToGallery():
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Saved to the gallery.')),
+        );
+      case SavedAsNewPhoto(:final photo):
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text('Saved as a new photo.'),
+            action: SnackBarAction(
+              label: 'Open',
+              onPressed: () => _showPhoto(photo.id),
+            ),
+          ),
+        );
+    }
+  }
+
+  /// Swipes to [imageId] if it's one of the photos.
+  void _showPhoto(String imageId) {
+    final index = _ids.indexOf(imageId);
+    if (index < 0) return;
+    setState(() {
+      _currentId = imageId;
+      _zoomed = false;
+    });
+    final pages = _pages;
+    if (pages != null && pages.hasClients) pages.jumpToPage(index);
   }
 
   Future<void> _revert(ProjectImage image) async {
@@ -285,6 +325,7 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
                       onRedo: () =>
                           ref.read(imageRepositoryProvider).redo(current!.id),
                       onRevert: () => _revert(current!),
+                      onExport: () => _export(current!),
                       onSetAsReference: () => _setAsReference(current!),
                       onDelete: () => _delete(current!),
                     ),
@@ -410,6 +451,7 @@ class _PhotoMenu extends StatelessWidget {
     required this.onUndo,
     required this.onRedo,
     required this.onRevert,
+    required this.onExport,
     required this.onSetAsReference,
     required this.onDelete,
   });
@@ -425,6 +467,7 @@ class _PhotoMenu extends StatelessWidget {
   final VoidCallback onUndo;
   final VoidCallback onRedo;
   final VoidCallback onRevert;
+  final VoidCallback onExport;
   final VoidCallback onSetAsReference;
   final VoidCallback onDelete;
 
@@ -448,6 +491,8 @@ class _PhotoMenu extends StatelessWidget {
             onRedo();
           case _PhotoAction.revert:
             onRevert();
+          case _PhotoAction.export:
+            onExport();
           case _PhotoAction.setAsReference:
             onSetAsReference();
           case _PhotoAction.delete:
@@ -472,6 +517,7 @@ class _PhotoMenu extends StatelessWidget {
             value: _PhotoAction.revert,
             child: Text('Revert to original'),
           ),
+        const PopupMenuItem(value: _PhotoAction.export, child: Text('Export…')),
         if (!isReference)
           const PopupMenuItem(
             value: _PhotoAction.setAsReference,
@@ -483,7 +529,16 @@ class _PhotoMenu extends StatelessWidget {
   }
 }
 
-enum _PhotoAction { crop, autoCrop, undo, redo, revert, setAsReference, delete }
+enum _PhotoAction {
+  crop,
+  autoCrop,
+  undo,
+  redo,
+  revert,
+  export,
+  setAsReference,
+  delete,
+}
 
 class _Missing extends StatelessWidget {
   const _Missing();
