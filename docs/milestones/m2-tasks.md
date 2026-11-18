@@ -12,19 +12,21 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
 
 ### Foundation
 
-- [ ] **T1 — Safe OpenCV calls (dartcv4 temporary-size hazard)**
+- [x] **T1 — Safe OpenCV calls (dartcv4 temporary-size hazard)**
   - Wrap the dartcv4 calls that take a size, point or criteria record and that M1 or M2 use (`resize`, `gaussianBlur`, `getStructuringElement`, `warpPerspective`, `kmeans`), so the native struct stays alive until the call returns (m1-design §7, m2-design §9).
   - Route `packages/canvas_detect` and `lib/core/imaging` through the wrappers; a test fails if code calls the wrapped functions directly.
   - Draft an upstream issue for dartcv4 for you to file.
   - *Done when:* wrappers have unit tests; the eval score is unchanged (baseline 0.783); CI integration job green.
   - Depends on: —
+  - *Result:* `package:canvas_detect/safe_cv.dart` wrappers; the guard test scans the resolved dartcv4 source (28 hazardous functions, plus `Async` variants and a few classes) and fails on direct calls; `dartcv4` pinned to exactly 2.3.1. Eval unchanged (78.3%). Upstream issue drafted for you to file (m1-design §7).
 
-- [ ] **T2 — Schema v2: view prefs and derived images**
+- [x] **T2 — Schema v2: view prefs and derived images**
   - Drift schema 2: `view_prefs` table (§4.1); `images.source` gains `derived`; `images.derived_from_json` (§4.3). Migration plus migration test.
   - `ViewPrefs` model and JSON (§4.2): defaults, optional fields, unknown fields ignored, unknown `v` → defaults.
   - `ViewPrefsRepository`: `watch(projectId)` (defaults without a row), `update` (creates the row on first change, stamps only the row, debounced ≈ 500 ms).
   - *Done when:* repository, JSON and migration tests pass; the project list order doesn't change when prefs change.
   - Depends on: —
+  - *Result:* one live row per project is enforced by a partial unique index; `watch` shows changes before they're written, and pending writes are flushed when the app is hidden (§4.2). The typed `derived_from_json` model comes with its first writer, T9.
 
 - [ ] **T3 — Tone math and palette**
   - `lib/core/imaging/tone.dart`: sRGB → L\*, gray, value bands, nearest palette color in Lab (§5.1).
