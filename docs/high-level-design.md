@@ -109,7 +109,7 @@ The sync engine and canvas detector are separate packages so they can be tested 
 
 ## 4. Data model
 
-All records carry `id` (UUIDv7), `createdAt`, `updatedAt`, `updatedByDeviceId`, and `deletedAt` (tombstone; null when live). Local-only sync bookkeeping (dirty flag, last-synced remote revision) lives in separate columns that are never uploaded.
+All records carry `id` (UUIDv7), `createdAt`, `updatedAt`, `updatedByDeviceId`, and `deletedAt` (tombstone; null when live). Local-only sync bookkeeping (last-synced remote revision and record hash, from which local changes are detected; no dirty flag) lives in separate local tables that are never uploaded. See [milestones/m3-design.md](milestones/m3-design.md) §4.
 
 ### 4.1 Entities
 
@@ -204,25 +204,26 @@ original blob + edits + selected viewing aids ──▶ full-res render ──�
 ### 6.2 Remote layout (logical)
 
 ```
-appDataFolder/
+appDataFolder/                  flat: no folders (M3)
   manifest.json                 schemaVersion, created-by app version
-  projects/<project-uuid>.json  project record
-  images/<image-uuid>.json      image metadata record (incl. edits)
-  blobs/<blob-uuid>.<ext>       original image files (immutable)
-  thumbs/<blob-uuid>.jpg        small previews for fast project lists
-  prompts/<prompt-uuid>.json    custom AI prompts (M4)
+  project-<uuid>.json           project record
+  image-<uuid>.json             image metadata record (incl. edits)
+  viewprefs-<uuid>.json         viewing-aid settings (M2)
+  blob-<blob-uuid>.<ext>        original image files (immutable)
+  thumb-<blob-uuid>.jpg         small previews for fast project lists
+  prompt-<uuid>.json            custom AI prompts (M4)
 ```
 
-Every JSON record includes `schemaVersion` so devices running different app versions can read each other's data (older apps ignore unknown fields; breaking changes bump the version and newer apps migrate on read). The physical Drive layout (folders vs. flat files with `appProperties`) is an M3 decision.
+Every JSON record includes `schemaVersion` so devices running different app versions can read each other's data (older apps ignore unknown fields; breaking changes bump the version and newer apps migrate on read). Files are flat, with `appProperties` `{kind, id}`: two offline devices creating the same folder would make duplicate folders (M3 decision; [milestones/m3-design.md](milestones/m3-design.md) §6.2).
 
 ### 6.3 Export/import
 
-Records are converted with Drift's generated `toJson()` / `fromJson()`. The same code powers a local **Export project** feature (JSON + images in a folder or `.zip`), giving users a readable backup independent of sync.
+Records are converted by the sync engine's own codec (stable camelCase JSON, not Drift's generated `toJson()`, so a Dart rename can't change the format). The same code powers **Export project** and **Import project** (a `.zip` of JSON + originals; imports always as a new copy), giving users a readable, restorable backup independent of sync (M8; the record format is [milestones/m3-design.md](milestones/m3-design.md) §5).
 
 ### 6.4 Sync algorithm (outline)
 
 1. **Trigger**: app open, app resume, after local changes (debounced), periodic background (Android `WorkManager`; best-effort on iOS), and a manual **Sync now**.
-2. **Push**: for each dirty local record — upload any new blobs **first**, then the record JSON (so a record never references a missing blob). Use the remote revision we last saw as a precondition; if the remote changed since, treat as a potential conflict instead of overwriting.
+2. **Push**: for each locally changed record — upload any new blobs **first**, then the record JSON (so a record never references a missing blob). Use the remote revision we last saw as a precondition; if the remote changed since, treat as a potential conflict instead of overwriting.
 3. **Pull**: fetch remote changes since the stored page token using the **Drive Changes API** (`spaces=appDataFolder`). Apply each changed record to the DB in a transaction. Blobs download lazily (thumbnail first; originals on open or eagerly on Wi-Fi, per a setting).
 4. **Reconcile**:
    - Remote record we don't have → insert.
@@ -250,7 +251,7 @@ A **Merge projects** action (move images from one project into another) is a pos
 
 ### 6.7 Authentication
 
-- Google Sign-In, asking only for the scopes needed: `drive.appdata` when sync is enabled, the Photos Picker scope when Google Photos import is first used (incremental authorization).
+- Google Sign-In, asking only for the scopes needed: `drive.appdata` when sync is enabled, the Photos Picker scope when Google Photos import is first used on a platform that needs it (incremental authorization).
 - Tokens are stored by the platform sign-in SDK / secure storage, never in the DB or synced data.
 - Before public release, the Google Cloud OAuth consent screen needs verification for the requested scopes; scope classification and verification requirements will be confirmed in M3.
 
@@ -258,10 +259,10 @@ A **Merge projects** action (move images from one project into another) is a pos
 
 ## 7. Platforms
 
-| Concern | Android (M1) | macOS (M3) | iOS (M8) | Web (M9) |
+| Concern | Android (M1) | macOS (M3) | iOS (M9) | Web (M10) |
 |---|---|---|---|---|
 | Camera | `camera` / `image_picker` | Import from files / Photos picker (no camera flow) | `camera` / `image_picker` | File input with `capture` |
-| Device photos | System photo picker | File picker + drag-and-drop | PHPicker | File picker |
+| Device photos | System photo picker (also lists Google Photos) | File picker + drag-and-drop | PHPicker | File picker |
 | Local DB | Drift (native SQLite) | Drift (native) | Drift (native) | Drift (SQLite WASM + OPFS) |
 | Image files | App documents dir | App container | App documents dir | OPFS |
 | Auto-crop | OpenCV FFI | OpenCV FFI | OpenCV FFI | OpenCV.js |
@@ -272,7 +273,7 @@ A **Merge projects** action (move images from one project into another) is a pos
 
 Desktop layouts (macOS, web on large screens) use the extra space — e.g. side panel for tools, keyboard shortcuts — but share the same feature code.
 
-Web is still "app only": it is served as static files with no backend. Hosting choice (e.g. GitHub Pages) and the OAuth web client origin are M9 decisions.
+Web is still "app only": it is served as static files with no backend. Hosting choice (e.g. GitHub Pages) and the OAuth web client origin are M10 decisions.
 
 ---
 
@@ -281,7 +282,7 @@ Web is still "app only": it is served as static files with no backend. Hosting c
 ### 8.1 Photo sources
 
 - **Device / camera**: platform pickers and camera plugin (table above). Imported photos are copied into Filbert's file store so the project doesn't depend on the original staying in the gallery.
-- **Google Photos (M3)**: via the **Photos Picker API**. Since March 2025, third-party apps can no longer browse a user's library through the Library API; the Picker is the supported path. Flow: create a picker session → open the session's `pickerUri` (in a browser / custom tab) → poll the session until the user finishes → list the picked media items → download each at full resolution using the auth token → copy into the project.
+- **Google Photos (M3, macOS)**: on Android the system photo picker already lists Google Photos and downloads what's picked, so the API is only used where there is no such picker (macOS in M3). Via the **Photos Picker API**. Since March 2025, third-party apps can no longer browse a user's library through the Library API; the Picker is the supported path. Flow: create a picker session → open the session's `pickerUri` (in a browser / custom tab) → poll the session until the user finishes → list the picked media items → download each at full resolution using the auth token → copy into the project.
 
 ### 8.2 Sharing out (general)
 
@@ -370,8 +371,7 @@ Each milestone ends with a usable, shippable app on its platforms. Detailed desi
 - Google Sign-In (incremental scopes); settings to enable/disable sync.
 - Sync engine over Drive `appDataFolder`: push/pull, Changes API, lazy blob download, background sync on Android.
 - Conflict UI; duplicate-name handling.
-- Google Photos import via the Photos Picker API (Android + macOS).
-- Export project (JSON + images).
+- Google Photos import via the Photos Picker API on macOS (Android's system picker already includes Google Photos).
 
 **Exit criteria**: create a project on the Mac, continue on the phone, and see changes on both; conflicts are resolved through the prompt; nothing is lost when both devices edit offline.
 
@@ -401,12 +401,20 @@ Each milestone ends with a usable, shippable app on its platforms. Detailed desi
 - Final notes.
 - Browsable log of past projects (gallery view, timeline of progress photos per project), search and filter by name/notes/date/status.
 
-### M8 — iOS
+### M8 — Project backup
+
+- Export project: a `.zip` of the records' JSON and the original photos, saved or shared per platform.
+- Import project: restores a backup as a new copy (new ids), with edits and viewing-aid settings.
+- Moved out of M3 (2026-11-18): sync already covers moving projects between one's own devices, so backup is for people who don't sync and for an independent copy.
+
+**Exit criteria**: a project exported on one device and imported on another (or after a reinstall) comes back with its photos, edits, and settings, without sync.
+
+### M9 — iOS
 
 - iOS build: camera, PHPicker, share sheet, AirPrint, best-effort background sync.
 - App Store packaging.
 
-### M9 — Web
+### M10 — Web
 
 - Drift on SQLite WASM + OPFS; OPFS image storage.
 - OpenCV.js canvas detector.
@@ -420,11 +428,11 @@ Each milestone ends with a usable, shippable app on its platforms. Detailed desi
 | Item | When to decide |
 |---|---|
 | Does per-image undo history sync, or stay local? | M1 design |
-| Physical Drive layout (folders vs. flat files with `appProperties`); eager vs. lazy original downloads | M3 design |
+| ~~Physical Drive layout; eager vs. lazy original downloads~~ Flat files; eager downloads (m3-design §2) | — |
 | Google OAuth scope classification and verification requirements | M3 |
-| macOS distribution: Mac App Store vs. notarized DMG | M3 |
+| macOS distribution: Mac App Store vs. notarized DMG (M3 builds a sandboxed app, keeping both open) | First public release |
 | Exact Instagram intent behavior (feed vs. stories, multi-image) | M6 |
-| Web hosting and OAuth origin | M9 |
+| Web hosting and OAuth origin | M10 |
 | Future: bring-your-own-API-key AI mode | After M4 |
 | Future: Merge projects action | Unscheduled |
 | Future: additional sync backends (Dropbox, iCloud, WebDAV) behind a `SyncBackend` interface | Unscheduled |
