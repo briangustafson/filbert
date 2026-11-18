@@ -43,7 +43,7 @@ class AutocropReviewScreen extends ConsumerWidget {
 
   /// Hint shown when detection is unsure.
   static const lowConfidenceHint =
-      "Couldn't find the canvas edges — drag the corners.";
+      "Couldn't find the canvas edges — drag the corners, or crop manually.";
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -182,6 +182,14 @@ class _ReviewViewState extends ConsumerState<_ReviewView> {
     if (mounted) _done();
   }
 
+  /// The rectangle crop with ratio locks (m1-design §3.8), in place of
+  /// this screen; in a queue it carries on with the queue.
+  void _cropManually() => context.go(
+    // A sibling route under the photo, so leaving manual crop returns to
+    // the photo (or, in a queue, carries on with it), not to this screen.
+    Routes.crop(widget.project.id, widget.image.id, queue: widget.queue),
+  );
+
   /// After Apply or Skip: the next photo in the queue, or back where the
   /// screen was opened from.
   void _done() {
@@ -299,8 +307,11 @@ class _ReviewViewState extends ConsumerState<_ReviewView> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          // Wraps onto a second line where the three don't fit (narrow
+          // phones, large text).
+          child: Wrap(
+            alignment: WrapAlignment.spaceEvenly,
+            spacing: 8,
             children: [
               TextButton.icon(
                 onPressed: () => setState(() => _corners = fullImageCorners),
@@ -313,6 +324,12 @@ class _ReviewViewState extends ConsumerState<_ReviewView> {
                     : () => setState(() => _corners = _detected!),
                 icon: const Icon(Icons.restart_alt),
                 label: const Text('Reset'),
+              ),
+              TextButton.icon(
+                key: const ValueKey('autocrop-manual'),
+                onPressed: _cropManually,
+                icon: const Icon(Icons.crop),
+                label: const Text('Crop manually'),
               ),
             ],
           ),

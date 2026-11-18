@@ -8,6 +8,8 @@ import 'package:filbert/features/photos/domain/project_image.dart';
 import 'package:filbert/features/projects/domain/project.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:filbert/features/crop/crop_screen.dart';
+import 'package:filbert/features/photo_viewer/photo_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -231,6 +233,31 @@ void main() {
       await tapText(tester, 'Full image');
       await tapText(tester, 'Apply');
       expect(images.byId(photo.id).edits, const Edits(quarterTurns: 2));
+    });
+
+    testWidgets('Crop manually opens the rectangle crop; leaving it returns '
+        'to the photo', (tester) async {
+      await pumpFilbertApp(
+        tester,
+        projects: projects,
+        images: images,
+        renderer: FakeImageRenderer(file: fixtureImage('plain.png')),
+        initialLocation: Routes.photo(projectId, photo.id),
+      );
+      await tester.tap(find.byTooltip('Photo options'));
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Auto-crop');
+      await tapText(tester, 'Crop manually');
+      expect(find.byType(CropScreen), findsOneWidget);
+      expect(find.byType(AutocropReviewScreen), findsNothing);
+      expect(find.text('Skip'), findsNothing, reason: 'not in a queue');
+
+      await tester.tap(find.byTooltip('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CropScreen), findsNothing);
+      expect(find.byType(AutocropReviewScreen), findsNothing);
+      expect(find.byType(PhotoScreen), findsOneWidget);
+      expect(images.calls, isEmpty);
     });
 
     testWidgets('Cancel saves nothing', (tester) async {

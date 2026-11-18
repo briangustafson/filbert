@@ -89,6 +89,45 @@ void main() {
       expect(location(), Routes.project(projectId));
     });
 
+    testWidgets('Crop manually carries on with the queue', (tester) async {
+      await projects.update(projectId, size: const RatioSize(4, 5));
+      source.nextPicks = [picked('a.jpg'), picked('b.jpg'), picked('c.jpg')];
+      await pumpProject(tester);
+      await addFromDevice(tester, 'Add photo');
+      final ids = gridIds();
+
+      // Manual crop, then Apply: on to the next photo's review.
+      await tapText(tester, 'Crop manually');
+      expect(find.byType(CropScreen), findsOneWidget);
+      expect(location(), contains('/images/${ids[0]}/crop'));
+      expect(find.text('Skip'), findsOneWidget);
+      images.calls.clear();
+      await tapText(tester, 'Apply');
+      expect(images.calls, ['setEdits ${ids[0]}']);
+      expect(find.byType(AutocropReviewScreen), findsOneWidget);
+      expect(find.text('2 of 3'), findsOneWidget);
+
+      // Skip in manual crop also moves on; on the last photo, to the project.
+      await tapText(tester, 'Crop manually');
+      await tapText(tester, 'Skip');
+      expect(find.text('3 of 3'), findsOneWidget);
+      await tapText(tester, 'Crop manually');
+      await tapText(tester, 'Apply');
+      expect(location(), Routes.project(projectId));
+    });
+
+    testWidgets('Cancel in manual crop ends the queue', (tester) async {
+      source.nextPicks = [picked('a.jpg'), picked('b.jpg')];
+      await pumpProject(tester);
+      await addFromDevice(tester, 'Add photo');
+      await tapText(tester, 'Crop manually');
+      images.calls.clear();
+      await tester.tap(find.byTooltip('Cancel'));
+      await tester.pumpAndSettle();
+      expect(location(), Routes.project(projectId));
+      expect(images.calls, isEmpty);
+    });
+
     testWidgets('Cancel ends the queue, leaving the rest uncropped', (
       tester,
     ) async {
@@ -225,6 +264,10 @@ void main() {
       await pumpProject(tester);
       await addFromDevice(tester, 'Add photo');
       expect(find.byType(AutocropReviewScreen), findsOneWidget);
+      for (final label in ['Full image', 'Reset', 'Crop manually']) {
+        expect(find.text(label).hitTestable(), findsOneWidget, reason: label);
+      }
+      expect(tester.takeException(), isNull, reason: 'no overflow');
       await tapText(tester, 'Apply');
       expect(find.text('2 of 2'), findsOneWidget);
     });
@@ -253,5 +296,10 @@ void main() {
       'queue': 'b,c',
       'of': '3',
     });
+    expect(Uri.parse(Routes.crop('p', 'a', queue: queue)).queryParameters, {
+      'queue': 'b,c',
+      'of': '3',
+    });
+    expect(Routes.crop('p', 'a'), '/projects/p/images/a/crop');
   });
 }

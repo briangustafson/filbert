@@ -43,6 +43,7 @@ GoRouter router(Ref ref) {
                       projectId: state.pathParameters['projectId']!,
                       imageId: state.pathParameters['imageId']!,
                       afterAdd: state.uri.queryParameters['after'] == 'add',
+                      queue: ReviewQueue.fromQuery(state.uri.queryParameters),
                     ),
                   ),
                   GoRoute(
