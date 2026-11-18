@@ -16,6 +16,7 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:canvas_detect/canvas_detect.dart';
+import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 import 'package:filbert/core/files/file_store.dart';
 import 'package:filbert/features/autocrop/canvas_detection.dart';
@@ -113,7 +114,10 @@ Future<void> _benchmarkDetection(Directory root, FileStore files) async {
     final blobId = 'canvas-$w';
     final source = File('${root.path}/$blobId.jpg');
     final original = cv.imread(canvas.path);
-    final scaled = cv.resize(original, (w, h), interpolation: cv.INTER_CUBIC);
+    final scaled = safe_cv.resize(original, (
+      w,
+      h,
+    ), interpolation: cv.INTER_CUBIC);
     final (ok, bytes) = cv.imencode(
       '.jpg',
       scaled,
@@ -138,7 +142,7 @@ Future<void> _benchmarkDetection(Directory root, FileStore files) async {
     }
 
     // The detector alone, on the downscaled pixels detection works on.
-    final small = cv.resize(cv.imread(canvas.path), (
+    final small = safe_cv.resize(cv.imread(canvas.path), (
       PlatformCanvasDetection.maxLongEdge,
       PlatformCanvasDetection.maxLongEdge * 3 ~/ 4,
     ), interpolation: cv.INTER_AREA);
@@ -184,8 +188,8 @@ ProjectImage _image(String blobId, Edits edits, int run) => ProjectImage(
 Uint8List _syntheticJpeg(int w, int h) {
   final small = cv.Mat.zeros(h ~/ 8, w ~/ 8, cv.MatType.CV_8UC3);
   cv.randu(small, cv.Scalar.all(0), cv.Scalar.all(255));
-  final blurred = cv.gaussianBlur(small, (31, 31), 0);
-  final big = cv.resize(blurred, (w, h), interpolation: cv.INTER_CUBIC);
+  final blurred = safe_cv.gaussianBlur(small, (31, 31), 0);
+  final big = safe_cv.resize(blurred, (w, h), interpolation: cv.INTER_CUBIC);
   final noise = cv.Mat.zeros(h, w, cv.MatType.CV_8UC3);
   cv.randn(noise, cv.Scalar.all(0), cv.Scalar.all(12));
   final photo = cv.add(big, noise);

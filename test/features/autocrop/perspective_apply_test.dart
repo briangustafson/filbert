@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 import 'package:filbert/core/imaging/render_geometry.dart';
 import 'package:filbert/core/imaging/render_pipeline.dart';
@@ -44,7 +45,7 @@ cv.Mat _project(cv.Mat pattern, int w, int h, List<(double, double)> corners) {
     ]),
     cv.VecPoint2f.fromList([for (final (x, y) in corners) cv.Point2f(x, y)]),
   );
-  cv.warpPerspective(
+  safe_cv.warpPerspective(
     pattern,
     m,
     (w, h),
@@ -67,7 +68,7 @@ cv.Mat _render(cv.Mat photo, List<ReviewCorner> displayed, int turns) {
     edits: edits,
     maxLongEdge: _w,
   );
-  final decoded = cv.resize(photo, (
+  final decoded = safe_cv.resize(photo, (
     plan.decodeWidth,
     plan.decodeHeight,
   ), interpolation: cv.INTER_AREA);

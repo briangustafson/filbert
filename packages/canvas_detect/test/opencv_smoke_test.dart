@@ -1,3 +1,4 @@
+import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 import 'package:test/test.dart';
 
@@ -19,7 +20,7 @@ void main() {
       cv.Point(0, 49),
     ]);
     final h = cv.getPerspectiveTransform(corners, half);
-    final out = cv.warpPerspective(src, h, (50, 50));
+    final out = safe_cv.warpPerspective(src, h, (50, 50));
     expect((out.cols, out.rows), (50, 50));
     expect(cv.openCvVersion(), startsWith('4.'));
   });

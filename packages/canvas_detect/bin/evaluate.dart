@@ -22,6 +22,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:canvas_detect/canvas_detect.dart';
+import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 
 const _fixtures = 'test/fixtures';
@@ -184,7 +185,7 @@ DetectorImage _load(String path, {int? noiseSeed}) {
   final bgr = cv.imread(path, flags: cv.IMREAD_COLOR);
   final scale = math.min(1.0, _appLongEdge / math.max(bgr.cols, bgr.rows));
   final small = scale < 1
-      ? cv.resize(bgr, (
+      ? safe_cv.resize(bgr, (
           (bgr.cols * scale).round(),
           (bgr.rows * scale).round(),
         ), interpolation: cv.INTER_AREA)

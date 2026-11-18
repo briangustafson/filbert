@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 import 'package:filbert/core/imaging/edits.dart';
 import 'package:filbert/core/imaging/render_geometry.dart';
@@ -182,7 +183,7 @@ void main() {
       ]),
       cv.VecPoint2f.fromList([for (final (x, y) in quad) cv.Point2f(x, y)]),
     );
-    cv.warpPerspective(
+    safe_cv.warpPerspective(
       pattern,
       forward,
       (fw, fh),
@@ -200,7 +201,7 @@ void main() {
       maxLongEdge: _w,
     );
     // The renderer decodes at the plan's size; the decoder downscales.
-    final decoded = cv.resize(photo, (
+    final decoded = safe_cv.resize(photo, (
       plan.decodeWidth,
       plan.decodeHeight,
     ), interpolation: cv.INTER_AREA);

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dartcv4/dartcv.dart' as cv;
 
+import '../safe_cv.dart' as safe_cv;
 import 'detector.dart';
 import 'edge_map.dart';
 import 'geometry.dart';
@@ -45,7 +46,7 @@ class OpenCvCanvasDetector implements CanvasDetector {
       1.0,
       workLongEdge / math.max(image.width, image.height),
     );
-    final work = cv.resize(full, (
+    final work = safe_cv.resize(full, (
       (image.width * scale).round(),
       (image.height * scale).round(),
     ), interpolation: cv.INTER_AREA);
@@ -74,7 +75,7 @@ class OpenCvCanvasDetector implements CanvasDetector {
       workLongEdge / math.max(image.width, image.height),
     );
     final work = scale < 1
-        ? cv.resize(full, (
+        ? safe_cv.resize(full, (
             (image.width * scale).round(),
             (image.height * scale).round(),
           ), interpolation: cv.INTER_AREA)
@@ -183,8 +184,8 @@ class OpenCvCanvasDetector implements CanvasDetector {
     final hi = cv.max(cv.max(parts[0], parts[1]), parts[2]);
     final lo = cv.min(cv.min(parts[0], parts[1]), parts[2]);
     final chromaRaw = cv.subtract(hi, lo);
-    final gray = cv.gaussianBlur(grayRaw, (5, 5), 0);
-    final chroma = cv.gaussianBlur(chromaRaw, (5, 5), 0);
+    final gray = safe_cv.gaussianBlur(grayRaw, (5, 5), 0);
+    final chroma = safe_cv.gaussianBlur(chromaRaw, (5, 5), 0);
     for (final m in [grayRaw, ...parts, hi, lo, chromaRaw]) {
       m.dispose();
     }
@@ -215,7 +216,7 @@ class OpenCvCanvasDetector implements CanvasDetector {
 
     final e1 = cannyOf(gray), e2 = cannyOf(chroma);
     final both = cv.bitwiseOR(e1, e2);
-    final kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3));
+    final kernel = safe_cv.getStructuringElement(cv.MORPH_RECT, (3, 3));
     final dilated = cv.dilate(both, kernel);
     for (final m in [gray, chroma, e1, e2, both, kernel]) {
       m.dispose();
