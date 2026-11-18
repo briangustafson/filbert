@@ -7,7 +7,7 @@ Each task is roughly one PR. Workflow per task: short plan → approval → impl
 ## Before starting
 
 - [x] **You:** install the Flutter SDK (stable) and Android Studio; have an emulator or a phone with USB debugging enabled. (Needed for T1.)
-- [ ] **You:** collect 20–40 photos of paintings on an easel / wall / in progress, covering the situations in m1-design §6.4. (Needed for T13.)
+- [x] **You:** collect 20–40 photos of paintings on an easel / wall / in progress, covering the situations in m1-design §6.4. (Needed for T13.)
 
 ## Tasks
 

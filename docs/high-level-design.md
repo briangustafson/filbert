@@ -103,7 +103,7 @@ The sync engine and canvas detector are separate packages so they can be tested 
 
 ### 3.3 Key packages (to be validated per milestone)
 
-`flutter_riverpod`, `riverpod_generator`, `drift`, `drift_flutter`, `go_router`, `camera` / `image_picker`, `file_picker`, `desktop_drop` (macOS), `google_sign_in`, `googleapis` (Drive v3), `http` (Photos Picker REST), `share_plus`, `printing`, `pdf`, `dartcv4`, `image`, `path_provider`, `workmanager` (Android background sync), `uuid`.
+`flutter_riverpod`, `riverpod_generator`, `drift`, `drift_flutter`, `go_router`, `camera` / `image_picker`, `file_picker`, `desktop_drop` (macOS), `google_sign_in`, `googleapis` (Drive v3), `http` (Photos Picker REST), `share_plus`, `gal` (save to gallery, M2), `printing`, `pdf`, `dartcv4`, `image`, `path_provider`, `workmanager` (Android background sync), `uuid`.
 
 ---
 
@@ -125,7 +125,8 @@ All records carry `id` (UUIDv7), `createdAt`, `updatedAt`, `updatedByDeviceId`, 
 | `status` | `inProgress` / `completed` |
 | `referenceImageId` | Optional. The only record of which image is the reference (images carry no role field, so there's one source of truth after sync) |
 | `finalImageId` | Optional (M7); same approach as `referenceImageId` |
-| `viewPrefs` | Grid settings (count or physical spacing, color, width), last-used view aids |
+
+**ViewPrefs** (M2) — per-project viewing-aid settings (grid, value bands, color count, compare photo and opacity) as their own record keyed by project, so changing them neither reorders the project list nor conflicts with project edits during sync. See [milestones/m2-design.md](milestones/m2-design.md) §4.1.
 
 **Image** (metadata; the pixels live in a blob)
 
@@ -164,11 +165,11 @@ See [milestones/m1-design.md](milestones/m1-design.md) §4.2 for the exact forma
 | Kind | Examples | Stored where | Applied when |
 |---|---|---|---|
 | Permanent edits | crop, perspective, rotation | `Image.edits` | Always (display + export) |
-| Viewing aids | grayscale, limited colors/values, gridlines, compare overlay | `Project.viewPrefs` / transient view state | On screen when toggled; on export only if selected |
+| Viewing aids | grayscale, limited colors/values, gridlines, compare overlay | `ViewPrefs` (settings) / transient view state (on/off) | On screen when toggled; on export only if selected |
 
-Viewing aids render live on the GPU (color-matrix filters and fragment shaders over the cropped image), so toggling and adjusting is instant even on large photos. Display uses a downsampled decode sized to the screen; thumbnails are cached.
+Viewing aids render live on the GPU (a fragment shader over the cropped image; grayscale is computed as perceived lightness, not a color matrix), so toggling and adjusting is instant even on large photos. Display uses a downsampled decode sized to the screen; thumbnails are cached.
 
-"Limited colors" will cover value banding (N gray steps) and color posterization/palette reduction; the exact algorithms are an M2 decision.
+"Limited values" are equal steps of perceived lightness (CIELAB L\*); "limited colors" is a k-means palette in CIELAB. See [milestones/m2-design.md](milestones/m2-design.md) §5.
 
 ### 5.3 Rendering for export
 
@@ -419,7 +420,6 @@ Each milestone ends with a usable, shippable app on its platforms. Detailed desi
 | Item | When to decide |
 |---|---|
 | Does per-image undo history sync, or stay local? | M1 design |
-| Algorithms for "limited colors" (value bands, posterize, palette reduction) | M2 design |
 | Physical Drive layout (folders vs. flat files with `appProperties`); eager vs. lazy original downloads | M3 design |
 | Google OAuth scope classification and verification requirements | M3 |
 | macOS distribution: Mac App Store vs. notarized DMG | M3 |
