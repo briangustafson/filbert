@@ -12,10 +12,13 @@ import 'package:filbert/features/photos/data/image_renderer.dart';
 import 'package:filbert/features/photos/data/image_repository.dart';
 import 'package:filbert/features/photos/data/pending_capture.dart';
 import 'package:filbert/features/photos/data/photo_source.dart';
+import 'package:filbert/features/view_aids/data/palette_service.dart';
+import 'package:filbert/features/view_aids/data/view_prefs_repository.dart';
 
 import 'fake_photos.dart';
 import 'fake_project_repository.dart';
 import 'fake_settings.dart';
+import 'fake_view_aids.dart';
 
 /// Pumps the whole app with in-memory fakes and returns its container.
 Future<ProviderContainer> pumpFilbertApp(
@@ -28,6 +31,8 @@ Future<ProviderContainer> pumpFilbertApp(
   FakeCanvasDetection? detection,
   LengthUnit preferredUnit = LengthUnit.inches,
   FakeSettingsStore? settings,
+  FakeViewPrefsRepository? viewPrefs,
+  FakePaletteService? palettes,
   String? initialLocation,
 }) async {
   // Off unless a test is about it, so adding photos stays on the project.
@@ -49,6 +54,12 @@ Future<ProviderContainer> pumpFilbertApp(
       ),
       preferredLengthUnitProvider.overrideWithValue(preferredUnit),
       settingsStoreProvider.overrideWithValue(settings),
+      viewPrefsRepositoryProvider.overrideWithValue(
+        viewPrefs ?? FakeViewPrefsRepository(),
+      ),
+      paletteServiceProvider.overrideWithValue(
+        palettes ?? FakePaletteService(),
+      ),
     ],
   );
   if (initialLocation != null) {

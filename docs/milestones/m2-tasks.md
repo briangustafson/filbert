@@ -37,12 +37,13 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
 
 ### Live view
 
-- [ ] **T4 — Photo screen aid toolbar and state**
+- [x] **T4 — Photo screen aid toolbar and state**
   - Bottom toolbar with the chrome: Grid · Gray · Values · Colors · Compare (§3.1); Gray/Values/Colors exclusive; panels open and close as in §3.1–§3.2 (contents wired up in later tasks); chrome doesn't auto-hide while a panel is open; aids reset when leaving the photo screen; hold shows the original without aids.
   - Values and Colors panels (band and color steppers) read and write `ViewPrefs`.
   - Photo menu gains **Export…** only in T9 (menu items appear when built).
   - *Done when:* widget tests for exclusivity, panel toggling, chrome timing and reset, on a normal and a narrow (400 dp) screen.
   - Depends on: T2
+  - *Result:* tap rules and Back closing a panel added to m2-design §3.1. The Values panel shows the band grays and the Colors panel the photo's palette (both already available). Grid and Compare panels are empty until T6/T7; hold-for-original hiding the aids comes with T5, when aids draw something.
 
 - [ ] **T5 — Live tone view (fragment shader)**
   - First, find out whether `flutter test` can run fragment shaders on the host; record the answer in m2-design §5.3 and choose the shader test (§7).

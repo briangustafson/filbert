@@ -54,7 +54,7 @@ Agreed with Brian on 2026-11-17.
 
 - With the chrome (tap to show; m1-design §3.5), a bottom bar appears: **Grid · Gray · Values · Colors · Compare**, icons with short labels.
 - **Gray, Values and Colors are one choice**: turning one on turns the others off (they are alternative ways to show tone). Grid and Compare combine with any of them.
-- Tapping an aid that is off turns it on and opens its panel; tapping it again while its panel is open turns it off. Tapping elsewhere on the photo closes the panel and hides the chrome, as now.
+- Tapping an aid that is off turns it on and opens its panel; tapping it again while its panel is open turns it off. Tapping an aid that is on but whose panel is closed opens its panel (it stays on). Gray has no panel, so it just toggles; turning any aid on closes another aid's open panel. Tapping elsewhere on the photo closes the panel and hides the chrome, as now; Android Back with a panel open closes the panel instead of leaving the screen.
 - While a panel is open the chrome doesn't auto-hide. With the chrome hidden, the aids stay on.
 - Aids stay on while swiping between photos, and apply to whichever photo is shown. Leaving the photo screen turns them all off.
 - **Press and hold** still shows the original, without aids (the plain unedited photo).
@@ -70,7 +70,7 @@ Agreed with Brian on 2026-11-17.
 | Colors | Colors: stepper 2–16, default 8; the palette as swatches, ordered dark to light. A spinner on the swatches while the palette computes (≈ 0.1–0.3 s). |
 | Compare | A row of thumbnails of the project's other photos (the chosen one marked); opacity slider 0–100 %, default 50 %. |
 
-Panels are compact (one or two rows) so most of the photo stays visible; on a narrow phone they wrap rather than scroll sideways.
+Panels are compact (one or two rows) so most of the photo stays visible; on a narrow phone they wrap rather than scroll sideways. A panel's stepper keeps its place at the bottom left while the swatches beside it wrap upwards, so repeated taps on − / + stay on the buttons.
 
 ### 3.3 Grid
 
