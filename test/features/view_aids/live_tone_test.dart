@@ -77,13 +77,13 @@ void main() {
     await open(tester);
 
     await tapAid(tester, Aid.gray);
-    expect(shaded(tester)!.params, const ToneParams.gray());
+    expect(shaded(tester)!.params.tone, const ToneParams.gray());
 
     await tapAid(tester, Aid.valueBands);
-    expect(shaded(tester)!.params, const ToneParams.values(6));
+    expect(shaded(tester)!.params.tone, const ToneParams.values(6));
 
     await tapAid(tester, Aid.colors);
-    final params = shaded(tester)!.params;
+    final params = shaded(tester)!.params.tone;
     expect(params.mode, ToneAid.colors);
     expect(params.palette!.colors, hasLength(4));
     expect(palettes.requests, contains('${photo.id} 4'));
@@ -98,7 +98,7 @@ void main() {
     await tapAid(tester, Aid.valueBands);
     await tester.tap(find.byTooltip('More bands'));
     await tester.pump();
-    expect(shaded(tester)!.params, const ToneParams.values(6));
+    expect(shaded(tester)!.params.tone, const ToneParams.values(6));
   });
 
   testWidgets('Colors shows the plain photo until the palette is ready', (
