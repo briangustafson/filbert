@@ -10,8 +10,13 @@ import '../../core/imaging/render_geometry.dart';
 import '../photos/data/image_renderer.dart';
 import '../photos/domain/project_image.dart';
 import '../photos/ui/image_thumbnail.dart';
+import '../projects/data/project_providers.dart';
+import '../projects/domain/project.dart';
 import '../view_aids/data/view_aids_providers.dart';
+import '../view_aids/domain/grid_layout.dart';
+import '../view_aids/domain/view_prefs.dart';
 import '../view_aids/domain/view_aids.dart';
+import '../view_aids/ui/grid_painter.dart';
 import '../view_aids/ui/shaded_image.dart';
 import '../view_aids/ui/tone_shader.dart';
 import 'photo_files.dart';
@@ -164,16 +169,58 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
     }
   }
 
+  /// The grid to draw over the photo, or null with Grid off (m2-design
+  /// §3.3).
+  ({GridLayout layout, Color color, double width})? _gridFor(
+    ProjectImage image,
+  ) {
+    final on = ref.watch(
+      viewAidsStateProvider(image.projectId).select((a) => a.grid),
+    );
+    if (!on) return null;
+    final grid = ref.watch(viewPrefsProvider(image.projectId)).value?.grid;
+    if (grid == null) return null;
+    final size = ref.watch(projectProvider(image.projectId)).value?.size;
+    final canvas = size is PhysicalSize ? size : null;
+    final (w, h) = _naturalSize;
+    return (
+      layout: GridLayout.of(
+        grid,
+        photoWidth: w.toDouble(),
+        photoHeight: h.toDouble(),
+        canvasWidth: canvas?.width,
+        canvasHeight: canvas?.height,
+        defaultSpacing: canvas == null
+            ? null
+            : GridPrefs.defaultSpacing(canvas.unit),
+      ),
+      color: Color(gridColorArgb(grid.color)),
+      width: gridLineDp(grid.width),
+    );
+  }
+
+  /// Where the fitted photo is on screen, following zoom.
+  Rect _photoOnScreen() => MatrixUtils.transformRect(
+    _zoom.value,
+    Rect.fromCenter(
+      center: _box.center(Offset.zero),
+      width: _fitted.width,
+      height: _fitted.height,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final image = widget.image;
     final program = ref.watch(toneProgramProvider).value;
     final tone = program == null ? null : _toneFor(image);
+    final grid = _gridFor(image);
     final thumb = ref.watch(thumbnailFileProvider(image));
     final preview = ref.watch(previewFileProvider(image));
     final detail = _wantDetail ? ref.watch(detailFileProvider(image)) : null;
     // Holding shows the plain original: unedited, without aids.
-    final showOriginal = _holding && (!image.edits.isNone || tone != null);
+    final showOriginal =
+        _holding && (!image.edits.isNone || tone != null || grid != null);
     final original = showOriginal
         ? ref.watch(previewFileProvider(image.withEdits(Edits.none)))
         : null;
@@ -229,6 +276,19 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
                   ),
                 ),
               ),
+              // Outside the zoom transform, so lines keep their width.
+              if (grid != null && (best != null))
+                IgnorePointer(
+                  child: CustomPaint(
+                    painter: GridPainter(
+                      layout: grid.layout,
+                      photoRect: _photoOnScreen,
+                      color: grid.color,
+                      strokeWidth: grid.width,
+                      repaint: _zoom,
+                    ),
+                  ),
+                ),
               if (showOriginal)
                 ColoredBox(
                   color: Colors.black,

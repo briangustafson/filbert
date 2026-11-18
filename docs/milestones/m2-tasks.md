@@ -52,11 +52,12 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
   - Depends on: T3, T4
   - *Result:* `flutter test` runs the shader on the host, so it's tested directly against `tone.dart` (within 2/255). Drawn by a `CustomPainter` (`ShadedImage`), since `ImageFilter.shader` needs Impeller (m2-design §5.3). On emulator-5554: Gray, Values and Colors switch at once, bands change at once, zoom with the detail render works.
 
-- [ ] **T6 — Grid**
+- [x] **T6 — Grid**
   - Grid geometry (divisions; spacing from the project's physical size with partial cells; aspect-mismatch note; export widths) as pure Dart, shared with export (§3.3).
   - `CustomPainter` over the photo in the zoom transform; constant on-screen width; Grid panel (mode, rows/cols, spacing in the project's unit, diagonals, color, width) saved in `ViewPrefs`. Spacing mode only offered for projects with a physical size.
   - *Done when:* geometry unit tests; widget and golden tests of the overlay and panel.
   - Depends on: T4
+  - *Result:* `GridLayout` (pure Dart, for T8 too) and `GridPainter` outside the zoom transform. Added in m2-design §3.3: the canvas's long side goes with the photo's, the note at > 2% aspect difference, spacing steps of ½ in / 1 cm. Overlay goldens in `test/goldens/grid/` (M1 tolerance). Checked on emulator-5554: lines stay 1 dp when zoomed; the panel fits.
 
 - [ ] **T7 — Compare**
   - Compare photo: default reference (else the most recent other photo), chosen from the panel's thumbnails, saved in `ViewPrefs` with the opacity; falls back when the photo is deleted; hidden (with a note) when viewing the compare photo itself; Compare button hidden with no other photo.

@@ -76,9 +76,10 @@ Panels are compact (one or two rows) so most of the photo stays visible; on a na
 
 - Drawn over the edited photo, which is assumed to be the canvas (crop or auto-crop first).
 - **Divisions**: rows × columns of equal cells.
-- **Spacing**: square cells of the given length, computed from the project's physical width (cell px = photo width px × spacing ÷ canvas width). Lines start at the top-left corner; the last row and column may be partial. If the photo's aspect doesn't match the canvas (not cropped to the project's size), the squares still use the width, and the panel says "Crop to the project's size for an exact grid."
+- **Spacing**: square cells of the given length, computed from the project's physical width (cell px = photo width px × spacing ÷ canvas width). The canvas's longer side goes with the photo's longer side, so a portrait canvas photographed in landscape still gets cells of the right size (T6). Lines start at the top-left corner; the last row and column may be partial. If the photo's proportions differ from the canvas's by more than 2% (not cropped to the project's size), the squares still use the width, and the panel says "Crop to the project's size for an exact grid." A project without a physical size shows a saved spacing grid as divisions.
+- **Spacing steps** (panel): half inches or whole centimetres, from one step up to the canvas's shorter side.
 - **Diagonals**: both diagonals of every cell.
-- **Width** on screen: thin 1 dp, medium 2 dp, thick 3 dp, regardless of zoom. In exports, the line is the same fraction of the image as on a phone screen: width px = dp × long edge ÷ 800.
+- **Width** on screen: thin 1 dp, medium 2 dp, thick 3 dp, regardless of zoom (the grid is painted outside the zoom transform, at the photo's zoomed position). Colors: white, black, mid-gray (#808080), red (#E53935). Holding the photo hides the grid with the other aids. In exports, the line is the same fraction of the image as on a phone screen: width px = dp × long edge ÷ 800.
 
 ### 3.4 Compare
 
@@ -174,7 +175,7 @@ One pure-Dart reference (`lib/core/imaging/tone.dart`) defines the tone math; th
 - One fragment shader (`shaders/view_aids.frag`, declared under `flutter: shaders:`) draws the photo with the tone mode, and for compare a second photo blended at the opacity: sample both, apply tone to each, mix.
 - Inputs: the preview image(s) as samplers, mode, band count, palette (up to 16 colors as uniforms), opacity.
 - The photo page draws through the shader only while a tone aid or compare is on; otherwise it keeps M1's plain image path. Zoom and the detail render (m1-design §3.5) work the same with the shader.
-- The grid is a `CustomPainter` over the image, in the same transform as zoom.
+- The grid is a `CustomPainter` (`GridPainter`) above the zoomable photo, placing lines through the zoom transform so their width stays constant. Its geometry (`GridLayout`, `lib/features/view_aids/domain/grid_layout.dart`) is pure Dart, shared with the export.
 - **How it draws (T5).** `ShadedImage` (`lib/features/view_aids/ui/`) decodes the shown file through Flutter's image cache (the same key as the plain `Image.file`, so switching aids reuses the decode) and paints it with a `CustomPainter` whose paint has the shader, inside the same zoom transform. Flutter's simpler `ImageFiltered` + `ImageFilter.shader` was rejected: it needs Impeller, and `flutter test` runs on Skia, where it throws. While a new file decodes, the previous image stays (like `gaplessPlayback`). Colors shows the plain photo until the palette is ready, then keeps the last palette while a new count computes. Holding shows the plain original, even for an unedited photo.
 - **Uniforms**: size, mode, bands, palette count, then the palette as `vec4` arrays (Lab for the nearest match, sRGB to draw), set by index in `tone_shader.dart`.
 - **Testing (resolved in T5)**: `flutter test` runs fragment shaders on the host (drawn into an image with `PictureRecorder`), so the shader is tested directly against `tone.dart` (§7). Checked on the Mac test host; CI's Linux host runs the same test.
