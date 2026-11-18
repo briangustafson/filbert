@@ -309,6 +309,9 @@ Future<void> _pumpUntil(
 
 Future<void> _tap(WidgetTester tester, Finder finder) async {
   await _pumpUntil(tester, finder);
+  // CI's emulator is small (320 × 640 dp): scroll the target into view.
+  await tester.ensureVisible(finder.first);
+  await tester.pumpAndSettle();
   await tester.tap(finder.first);
   await tester.pumpAndSettle();
 }
