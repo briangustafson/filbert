@@ -471,7 +471,7 @@ When applying an auto-crop:
 | Rendering | Golden tests: axis-aligned crop, straightened crop, perspective quad, quarter turns |
 | Canvas detection | Unit tests for scoring; evaluation run against fixtures |
 | Widgets | Project list (empty/non-empty), project screen reference slot, size picker, crop handles |
-| Integration (emulator; `integration_test/m1_flow_test.dart`, T15) | New project → add photo → auto-crop review → apply → undo → redo → revert. Real database (in memory), files (temp folder), rendering and OpenCV detection; only the photo picker is faked, handing over a generated canvas photo (`test/support/synthetic_canvas.dart`, checked on the host by `synthetic_canvas_test.dart`) |
+| Integration (emulator; `integration_test/app_flow_test.dart`, named `m1_flow_test.dart` until M2 T10; T15) | New project → add photo → auto-crop review → apply → undo → redo → revert. Real database (in memory), files (temp folder), rendering and OpenCV detection; only the photo picker is faked, handing over a generated canvas photo (`test/support/synthetic_canvas.dart`, checked on the host by `synthetic_canvas_test.dart`) |
 | Migrations | Schema v1 dump committed; harness ready for v2 |
 
 ---

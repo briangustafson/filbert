@@ -80,8 +80,9 @@ jobs:
         if: always()
         run: df -h /
 
-  # The M1 flow end to end on an Android emulator (integration_test/,
-  # m1-design §8). A separate job so it runs alongside `build`.
+  # The M1 and M2 flows end to end on an Android emulator
+  # (integration_test/app_flow_test.dart; m1-design §8, m2-design §7). A
+  # separate job so it runs alongside `build`.
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -157,7 +158,7 @@ jobs:
       # the test. `flutter test` below then only rebuilds incrementally.
       - name: Build test APK
         timeout-minutes: 25
-        run: flutter build apk --debug --target-platform android-x64 -t integration_test/m1_flow_test.dart
+        run: flutter build apk --debug --target-platform android-x64 -t integration_test/app_flow_test.dart
 
       - name: Integration test
         uses: reactivecircus/android-emulator-runner@v2.38.0
@@ -168,8 +169,8 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          # On failure or a hang (cut off at 15 min; locally the test takes
-          # ~10 s), print the emulator log's crash-relevant lines (the app is
+          # On failure or a hang (cut off at 15 min; locally the tests take
+          # well under a minute), print the emulator log's crash-relevant lines (the app is
           # x86_64 only here, never run locally). The test logs each phase.
           script: timeout 15m flutter test integration_test -d emulator-5554 --reporter expanded || { adb logcat -d | grep -E "AndroidRuntime|FATAL|DEBUG|libc|flutter|filbert|dartcv|linker" | tail -300; exit 1; }
 
