@@ -202,7 +202,14 @@ original + edits ─▶ full-size render (existing pipeline, ≤ 6000 px) ─▶
   | 12 MP | 1.3 s, +135 MB | 2.0 s, +95 MB | 1.5 s, +96 MB | 1.1 s, +97 MB | 2.6 s, +101 MB |
   | 48 MP | 1.9 s, +182 MB | 3.7 s, +120 MB | 2.4 s, +119 MB | 2.3 s, +203 MB | 5.5 s, +142 MB |
 
-  The process peaked at 658 MB over the whole benchmark (which also renders previews and runs detection). The 6000 px cap stays unless the Pixel 11 run (§9) says otherwise. Gray is the slowest tone (a search over 255 thresholds per pixel); a 16-bit luminance table would make it faster if needed.
+  Pixel 11 (a high-end phone; Brian's run, T8):
+
+  | Original | Plain | Gray | Values | Colors (16) | Values + Compare + grid |
+  |---|---|---|---|---|---|
+  | 12 MP | 0.42 s, +160 MB | 0.68 s, +64 MB | 0.46 s, +65 MB | 0.36 s, +65 MB | 0.85 s, +183 MB |
+  | 48 MP | 0.60 s, +183 MB | 0.98 s, +108 MB | 0.71 s, +111 MB | 0.68 s, +110 MB | 1.4 s, +252 MB |
+
+  The process peaked at 658 MB on the emulator and 637 MB on the Pixel 11 over the whole benchmark (which also renders previews and runs detection). **Decision (T8): the 6000 px cap stays**: the worst case is 1.4 s and about 250 MB on the Pixel 11. A mid-range phone is not measured (as in M1). Gray is the slowest tone (a search over 255 thresholds per pixel); a 16-bit luminance table would make it faster if needed.
 
 ### 5.5 Destinations
 
@@ -257,6 +264,6 @@ No other new packages: k-means is plain Dart, drawing uses `dartcv4`, and shader
 | ~~dartcv4 temporary-size hazard (m1-design §7, §9)~~ Fixed in T1: call such functions through `package:canvas_detect/safe_cv.dart`, which includes `kmeans` | — |
 | ~~Seeding OpenCV `kmeans`~~ Resolved in T3: k-means is written in Dart with its own seeded generator (§5.2) | — |
 | ~~Can `flutter test` run fragment shaders on the host?~~ Yes (T5), §5.3 | — |
-| Export memory and time at 48 MP with compare: measured on the emulator in T8 (§5.4: 5.5 s, +142 MB); the Pixel 11 run is Brian's (`flutter run --profile -d <pixel> -t tool/render_benchmark.dart`, then reinstall the app and clear the dartcv4 keep-list). Lower the 6000 px cap if it's too slow or too big there | T8 / T10 |
+| ~~Export memory and time at 48 MP with compare~~ Measured in T8 (§5.4): 1.4 s and ≈ 250 MB on the Pixel 11; the 6000 px cap stays | — |
 | `gal` 3.0.1 vs 2.3.3 | Gallery task |
 | Later ideas (not M2): centered grid origin; tap a swatch to highlight its areas; wipe / side-by-side compare; aids on thumbnails | — |
