@@ -85,12 +85,13 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
 
 ### Wrap-up
 
-- [ ] **T10 — Integration test and M2 wrap-up**
+- [x] **T10 — Integration test and M2 wrap-up**
   - Extend the emulator integration test: turn on Values and Compare, export as a new image, check it appears in the project.
   - Check M2 exit criteria (HLD §11) on the Pixel 11; fix polish issues found.
   - Update docs for anything that changed during M2; resolve or carry forward open items (m2-design §9).
   - *Done when:* integration test passes in CI; exit criteria confirmed by you.
   - Depends on: T9
+  - *Result:* exit criteria confirmed by you on a Pixel 11 (2026-11-18). Integration test `integration_test/app_flow_test.dart` (renamed from `m1_flow_test.dart`; CI job `integration`) runs the M1 flow and the M2 flow: reference and photo → Values and Compare → Save as new image → the derived photo checked and opened. Later ideas and unchanged polish carried forward below (m2-design §9).
 
 ## Notes and later ideas
 
@@ -98,3 +99,5 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
 
 - Carried over from M1: clamp panning to the photo's edges when zoomed; pinch/pan the photo under the manual crop; frame pacing and `tool/render_benchmark.dart` on a mid-range phone (m1-tasks notes).
 - From the M2 design: centered grid origin; tap a swatch to highlight its areas; wipe or side-by-side compare; aids on thumbnails (m2-design §9).
+- Polish noticed while building M2 (not done): the snackbar briefly covers the aid toolbar; Gray export is the slowest tone (≈ 1 s at 48 MP on the Pixel 11) and a 16-bit luminance table would speed it up (m2-design §5.4); the compare overlay stays at preview resolution when zoomed (§5.3).
+- Not tested on a device: saving to the gallery on Android 7–10, where storage permission is asked (T9; fake only).

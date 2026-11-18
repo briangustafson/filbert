@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'synthetic_canvas.dart';
 
-/// The integration test (`integration_test/m1_flow_test.dart`) relies on the
+/// The integration test (`integration_test/app_flow_test.dart`) relies on the
 /// detector finding this photo confidently; this checks it on the host.
 void main() {
   test('the synthetic canvas is detected confidently and accurately', () {

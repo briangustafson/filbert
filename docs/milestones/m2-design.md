@@ -1,6 +1,6 @@
 # M2 Detailed Design — Viewing aids and compare (Android)
 
-Status: Draft v1 (2026-11-17)
+Status: Implemented (M2 done 2026-11-18; exit criteria confirmed on a Pixel 11)
 Parent docs: [high-level-design.md](../high-level-design.md) · [engineering-guidelines.md](../engineering-guidelines.md) · [m1-design.md](m1-design.md)
 
 M2 lets a painter check a photo at the easel — gridlines, grayscale, limited values, limited colors, and an overlay comparing any two project photos — and export what they see, to the device gallery or as a new photo in the project. Everything stays local; sync is M3.
@@ -245,7 +245,7 @@ original + edits ─▶ full-size render (existing pipeline, ≤ 6000 px) ─▶
 | View prefs | Repository tests: defaults, debounce, unknown fields; migration test for schema 2 |
 | UI | Widget tests: toolbar exclusivity (Gray/Values/Colors), panels, compare default photo and hidden-on-self, export sheet presets; narrow phone (400 dp, as in M1) |
 | Gallery | Fake `GallerySaver` in widget tests; manual check on the emulator (Android 15) |
-| Integration | Extend `integration_test/m1_flow_test.dart` (or add `m2_flow_test.dart`): turn on Values and Compare, export as a new image, check it appears |
+| Integration | `integration_test/app_flow_test.dart` (renamed from `m1_flow_test.dart` in T10; one file so CI builds once): the M1 flow, then new project → add reference and photo → Values and Compare (real shader) → Export → Save as new image (real `RenderService`) → the new photo is derived, records the aids, is all grays (Values on both photos mixed), and Open shows it |
 
 ---
 
@@ -268,4 +268,4 @@ No other new packages: k-means is plain Dart, drawing uses `dartcv4`, and shader
 | ~~Can `flutter test` run fragment shaders on the host?~~ Yes (T5), §5.3 | — |
 | ~~Export memory and time at 48 MP with compare~~ Measured in T8 (§5.4): 1.4 s and ≈ 250 MB on the Pixel 11; the 6000 px cap stays | — |
 | ~~`gal` 3.0.1 vs 2.3.3~~ 3.0.1 (§8) | — |
-| Later ideas (not M2): centered grid origin; tap a swatch to highlight its areas; wipe / side-by-side compare; aids on thumbnails | — |
+| Later ideas (not M2): centered grid origin; tap a swatch to highlight its areas; wipe / side-by-side compare; aids on thumbnails. Carried forward in m2-tasks' notes (T10) | Later milestone |

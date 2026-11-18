@@ -41,6 +41,16 @@ jobs:
           flutter-version: 3.50.0
           cache: true
 
+      # The NDK that Flutter 3.50.0's Gradle plugin asks for (its
+      # `ndkVersion`) isn't on the runner image, so Gradle downloads it
+      # (~1 GB) on every run; a corrupted download failed a build once.
+      # Update the version with Flutter.
+      - name: Cache Android NDK
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/ndk/28.2.13676358
+          key: ndk-28.2.13676358-${{ runner.os }}
+
       # Native build outputs (OpenCV via dartcv4). Rebuilt only when
       # dependencies or their build settings (pubspec.yaml user_defines)
       # change.
@@ -80,8 +90,9 @@ jobs:
         if: always()
         run: df -h /
 
-  # The M1 flow end to end on an Android emulator (integration_test/,
-  # m1-design §8). A separate job so it runs alongside `build`.
+  # The M1 and M2 flows end to end on an Android emulator
+  # (integration_test/app_flow_test.dart; m1-design §8, m2-design §7). A
+  # separate job so it runs alongside `build`.
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -107,6 +118,16 @@ jobs:
           channel: stable
           flutter-version: 3.50.0
           cache: true
+
+      # The NDK that Flutter 3.50.0's Gradle plugin asks for (its
+      # `ndkVersion`) isn't on the runner image, so Gradle downloads it
+      # (~1 GB) on every run; a corrupted download failed a build once.
+      # Update the version with Flutter.
+      - name: Cache Android NDK
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/ndk/28.2.13676358
+          key: ndk-28.2.13676358-${{ runner.os }}
 
       # OpenCV for the emulator's ABI (x86_64), cached apart from `build`'s.
       # Restored and saved as separate steps so a failed test still saves
@@ -157,7 +178,19 @@ jobs:
       # the test. `flutter test` below then only rebuilds incrementally.
       - name: Build test APK
         timeout-minutes: 25
-        run: flutter build apk --debug --target-platform android-x64 -t integration_test/m1_flow_test.dart
+        run: flutter build apk --debug --target-platform android-x64 -t integration_test/app_flow_test.dart
+
+      # The emulator and Gradle together have exhausted the runner (it was
+      # shut down twice mid-test): android/gradle.properties lets Gradle grow
+      # to 8 GB of heap plus metaspace. Stop the daemon from the full build
+      # above, and cap the small rebuild `flutter test` does below while the
+      # emulator runs (user-level properties override the project's).
+      - name: Free memory for the emulator
+        run: |
+          (cd android && ./gradlew --stop)
+          mkdir -p ~/.gradle
+          echo 'org.gradle.jvmargs=-Xmx3G -XX:MaxMetaspaceSize=1G' >> ~/.gradle/gradle.properties
+          free -h
 
       - name: Integration test
         uses: reactivecircus/android-emulator-runner@v2.38.0
@@ -168,8 +201,8 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          # On failure or a hang (cut off at 15 min; locally the test takes
-          # ~10 s), print the emulator log's crash-relevant lines (the app is
+          # On failure or a hang (cut off at 15 min; locally the tests take
+          # well under a minute), print the emulator log's crash-relevant lines (the app is
           # x86_64 only here, never run locally). The test logs each phase.
           script: timeout 15m flutter test integration_test -d emulator-5554 --reporter expanded || { adb logcat -d | grep -E "AndroidRuntime|FATAL|DEBUG|libc|flutter|filbert|dartcv|linker" | tail -300; exit 1; }
 
