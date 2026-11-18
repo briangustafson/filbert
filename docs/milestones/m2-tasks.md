@@ -28,11 +28,12 @@ Nothing needed from you: M2 uses the same emulator and Pixel 11 as M1.
   - Depends on: —
   - *Result:* one live row per project is enforced by a partial unique index; `watch` shows changes before they're written, and pending writes are flushed when the app is hidden (§4.2). The typed `derived_from_json` model comes with its first writer, T9.
 
-- [ ] **T3 — Tone math and palette**
+- [x] **T3 — Tone math and palette**
   - `lib/core/imaging/tone.dart`: sRGB → L\*, gray, value bands, nearest palette color in Lab (§5.1).
   - `PaletteService`: k-means in Lab on a 256 px downscale of the preview, fixed seed, swatches ordered by L\*; memory and disk cache (§5.2).
   - *Done when:* unit tests for known L\* values, band edges, determinism, and recovering the colors of a synthetic flat-color image; palette time on the emulator recorded.
   - Depends on: T1
+  - *Result:* k-means in plain Dart with its own seeded generator instead of OpenCV `kmeans`, which dartcv4 can't seed (m2-design §5.2). Emulator, worst-case photo: 120 ms for 8 colors, 140 ms for 16.
 
 ### Live view
 

@@ -9,7 +9,8 @@
 //
 // Prints timings to the console, then shows "done" on screen. Synthetic
 // photos (12 MP and 48 MP JPEGs) are generated on the device first. Also
-// times canvas detection (m1-design §6.2, target < 500 ms).
+// times canvas detection (m1-design §6.2, target < 500 ms) and palettes
+// (m2-design §5.2).
 
 import 'dart:io';
 import 'dart:isolate';
@@ -22,6 +23,7 @@ import 'package:filbert/core/files/file_store.dart';
 import 'package:filbert/features/autocrop/canvas_detection.dart';
 import 'package:filbert/features/photos/data/image_renderer.dart';
 import 'package:filbert/features/photos/domain/project_image.dart';
+import 'package:filbert/features/view_aids/data/palette_service.dart';
 import 'package:flutter/widgets.dart';
 
 import '../test/support/synthetic_canvas.dart';
@@ -99,6 +101,7 @@ Future<void> main() async {
     }
   }
   await _benchmarkDetection(root, files);
+  await _benchmarkPalette(files);
   debugPrint('BENCH done');
   runApp(const Center(child: Text('done', textDirection: TextDirection.ltr)));
 }
@@ -162,6 +165,28 @@ Future<void> _benchmarkDetection(Directory root, FileStore files) async {
       'BENCH detect $label: median ${_median(total)} ms with decode, '
       '${_median(detectorOnly)} ms detector only '
       '(runs $total / $detectorOnly)',
+    );
+  }
+}
+
+/// Palettes from a 12 MP photo's preview: the noisy synthetic photo has far
+/// more distinct colors than a painting, so this is a worst case. Times the
+/// computation in an isolate, as PaletteService runs it (no caches).
+Future<void> _benchmarkPalette(FileStore files) async {
+  final preview = await OpenCvImageRenderer(
+    files: files,
+  ).preview(_image('bench-4000', Edits.none, 0));
+  final bytes = preview.readAsBytesSync();
+  for (final count in [8, 16]) {
+    final times = <int>[];
+    for (var run = 0; run < 5; run++) {
+      final sw = Stopwatch()..start();
+      await Isolate.run(() => paletteFromEncoded(bytes, count).colors.length);
+      times.add(sw.elapsedMilliseconds);
+    }
+    debugPrint(
+      'BENCH palette $count colors: median ${_median(times)} ms '
+      '(runs $times)',
     );
   }
 }
