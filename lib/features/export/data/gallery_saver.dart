@@ -7,6 +7,10 @@ part 'gallery_saver.g.dart';
 
 /// Saves files to the device's photo gallery (m2-design §5.5).
 abstract interface class GallerySaver {
+  /// Whether this platform has a gallery to save to. False on macOS, which
+  /// saves to a file instead (m3-design §3.5, T4).
+  bool get available;
+
   /// Saves the JPEG [file] in [album] as [fileName]. Throws
   /// [GallerySaveException].
   Future<void> save(
@@ -32,6 +36,9 @@ class GallerySaveException implements Exception {
 /// permission; on 7–10 `gal` asks for storage access the first time.
 class GalGallerySaver implements GallerySaver {
   const GalGallerySaver();
+
+  @override
+  bool get available => Platform.isAndroid || Platform.isIOS;
 
   @override
   Future<void> save(

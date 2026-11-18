@@ -49,7 +49,7 @@ project backup, export and import (M8, §8) · iOS and web (M9, M10) · macOS di
 | 5 | Device name | Filled from the device (`device_info_plus`: model on Android, computer name on Mac), editable in Settings. Settles m1-design §4.1. | Conflict choices need a recognizable label without asking the user up front. |
 | 6 | Android export of a backup (M8) | Through the **share sheet** (`share_plus`), so the user picks Files, Drive or another app; Mac uses a save dialog. Import uses a file picker on both. | Android's file pickers can't save a large file without holding it in memory; the share sheet hands over the file. `share_plus` is in the HLD for M6 anyway. |
 | 7 | macOS distribution | **Defer** to the first public release (HLD §12 said M3). M3 builds a **sandboxed** app, which keeps both the Mac App Store and a notarized DMG open. | No one but Brian runs the Mac app in M3; the sandbox is what the App Store requires and works for a DMG too. |
-| 8 | CI for macOS | A **macOS build job** (`flutter build macos --debug`) on PRs; the macOS integration test runs locally. | Proves the Mac app compiles. macOS runners use 10× the minutes on a private repo, so they only build. |
+| 8 | CI for macOS | A **macOS build job** (`flutter build macos --debug`), **run by hand** (`.github/workflows/macos.yml`, Run workflow; changed in T1 from "on PRs"); the macOS integration test runs locally. | Proves the Mac app compiles. macOS runners use 10× the minutes on a private repo, so it runs only when a change touches `macos/`, native packages or `pubspec.*`. |
 
 ### Deviations from the high-level design
 
@@ -64,11 +64,14 @@ project backup, export and import (M8, §8) · iOS and web (M9, M10) · macOS di
 
 ### 3.1 Platform setup
 
-- `flutter create --platforms=macos .` adds `macos/`. Minimum macOS: Flutter 3.50's minimum, unless a plugin needs more.
-- **App Sandbox** on, with entitlements: outgoing network (phase 2), user-selected files read/write (import, export), keychain sharing (Google Sign-In, phase 2).
-- OpenCV: dartcv4's build hooks build OpenCV for macOS (arm64 and x86_64); canvas detection and export are already tested on the Mac host by `flutter test`. T1 confirms the app build and checks the eval on the Mac app as on Android.
-- Files: the same `FileStore` layout under the app container (`path_provider`).
-- **No camera** on the Mac: the Take photo actions are hidden. Add photos and the reference slot open a file picker for images (`image_picker` on macOS, which uses `file_selector`).
+- `flutter create --platforms=macos .` added `macos/` (T1). **Minimum macOS 12.0** (Flutter 3.50's; no plugin needs more). Bundle id `com.example.filbert`, as on Android; the app is named **Filbert**. Plugins build through Swift Package Manager (no CocoaPods).
+- **App Sandbox** on. T1's entitlements: user-selected files read/write (`com.apple.security.files.user-selected.read-write`; the debug and profile builds also have Flutter's `network.server` for the debugger). Phase 2 adds outgoing network and keychain sharing (Google Sign-In).
+- OpenCV: dartcv4's build hooks build OpenCV for macOS; debug builds are for this Mac's chip only (arm64), a universal build is for release. The app bundles it as `dartcv.framework`. The detection eval gives the same score on the Mac as in CI (78.3%, T1).
+- **Keep-list hazard** (seen in T1): a profile or release build writes `.dart_tool/hooks_runner/shared/dartcv4/dartcv_keep.txt`, the OpenCV functions that build used, and later builds of the same target leave out the rest. `flutter test` and macOS debug builds share the host target, so after a profile run (e.g. `tool/render_benchmark.dart`) the Mac build stripped functions the tests need (`cv_imread`). Delete that file after any profile or release build.
+- Files: the same `FileStore` layout under the app container (`~/Library/Containers/com.example.filbert/Data/`); the database is `Documents/filbert.sqlite` there.
+- **No camera** on the Mac: `PhotoSource.canTakePhoto` is false, so the project list's Take photo is hidden and Add photos / Add reference skip the camera-or-device sheet and open the file picker (`image_picker`, which uses `file_selector` on macOS).
+- **The user's files are never deleted.** Android's picker hands over temporary copies, which import deletes; the macOS picker returns the user's own files. `PickedPhoto.temporary` says which, and import deletes only temporary copies (found and fixed in T1, before any Mac import ran).
+- **HEIC** decodes through the platform decoder on macOS too: the HEIC metadata, render and import tests run on the Mac host (T1).
 
 ### 3.2 Desktop layout
 
@@ -106,6 +109,7 @@ Shortcuts are `Shortcuts`/`Actions` on each screen, so they also work on Android
 
 ### 3.5 Export on the Mac
 
+- Until T4, Export… on the Mac shows only **Save as new image** (`GallerySaver.available` is false there), so it never asks for Photos access.
 - Export… (m2-design §3.5) shows **Save to file…** in place of Save to gallery: a save dialog (`file_selector`'s `getSaveLocation`) preset to the Pictures folder and the gallery file name rule; JPEG at the same size and quality. Snackbar "Saved." with **Show in Finder**.
 - `GallerySaver` stays the Android path; `ExportDestination` chooses by platform.
 
@@ -364,5 +368,5 @@ Approved by Brian (2026-11-18); versions are checked in the task that adds them.
 | Does Drive v3 support a conditional update (If-Match or similar)? If so, use it in §6.3 step 3 | T8 |
 | Can `google_sign_in` give an access token in a WorkManager isolate? | T11 |
 | Classification of `drive.appdata` and `photospicker.mediaitems.readonly`; verification needed for public release | T7 |
-| Does HEIC import work on macOS through the existing decode path? | T1 |
+| ~~Does HEIC import work on macOS through the existing decode path?~~ Yes (T1, §3.1) | — |
 | Later ideas: the Photos Picker API on Android, if the system picker's Google Photos support proves patchy on phones painters use; remember the window size; a cellular-data setting for original downloads; merge projects | Later milestone |

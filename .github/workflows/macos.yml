@@ -1,0 +1,38 @@
+name: macOS build
+
+# Manual only (Actions → "macOS build" → Run workflow): macOS runners use
+# 10× the minutes on a private repo, so the Mac build isn't run on every
+# push (m3-design §2, proposal 8, as changed in T1). Run it before merging
+# a change that touches macos/, native packages, or pubspec.*; the macOS
+# integration test runs locally (`flutter test integration_test -d macos`).
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.0
+          cache: true
+
+      # OpenCV for macOS (dartcv4 build hooks), as in ci.yml.
+      - name: Cache native builds
+        uses: actions/cache@v4
+        with:
+          path: .dart_tool/hooks_runner
+          key: hooks-macos-${{ runner.os }}-${{ runner.arch }}-flutter3.50.0-${{ hashFiles('pubspec.lock', 'pubspec.yaml', 'packages/*/pubspec.yaml') }}
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Code generation
+        run: dart run build_runner build
+
+      - name: macOS debug build
+        run: flutter build macos --debug

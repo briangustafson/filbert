@@ -36,6 +36,10 @@ class FakeGallerySaver implements GallerySaver {
   final saved = <({String path, String album, String fileName})>[];
   GallerySaveFailure? failNext;
 
+  /// False to act as macOS, which has no gallery.
+  @override
+  bool available = true;
+
   @override
   Future<void> save(
     File file, {

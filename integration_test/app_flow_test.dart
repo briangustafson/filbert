@@ -103,7 +103,7 @@ void main() {
     // Add a photo: the auto-crop review opens ("Auto-crop photos when
     // added" is on by default) and detection fills in the corners.
     await _tap(tester, find.text('Add photo'));
-    await _tap(tester, find.text('Choose from device'));
+    await _chooseFromDevice(tester);
     await _pumpUntil(tester, find.byType(AutocropReviewScreen));
     _phase('waiting for detection');
     await _pumpUntil(tester, _enabledButton('Reset'));
@@ -151,10 +151,10 @@ void main() {
 
     _phase('M2 add reference and photo');
     await _tap(tester, find.text('Add reference'));
-    await _tap(tester, find.text('Choose from device'));
+    await _chooseFromDevice(tester);
     await _pumpUntil(tester, find.text('Add photo'));
     await _tap(tester, find.text('Add photo'));
-    await _tap(tester, find.text('Choose from device'));
+    await _chooseFromDevice(tester);
     final images = container.read(imageRepositoryProvider);
     Future<List<ProjectImage>> photos() =>
         images.watchForProject(projectId).first;
@@ -167,6 +167,13 @@ void main() {
     final progress = (await photos()).firstWhere((p) => p.id != referenceId);
 
     _phase('M2 photo screen');
+    // The grid is lazy; on a wide window (macOS) the larger reference
+    // pushes it below the fold, so scroll its tile into being first.
+    await tester.scrollUntilVisible(
+      find.byKey(ValueKey(progress.id)),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await _tap(tester, find.byKey(ValueKey(progress.id)));
     await _pumpUntil(tester, find.byType(PhotoScreen));
 
@@ -262,6 +269,11 @@ Future<void> _waitFor(
   }
 }
 
+/// Android asks camera or device first; macOS opens the picker directly.
+Future<void> _chooseFromDevice(WidgetTester tester) async {
+  if (Platform.isAndroid) await _tap(tester, find.text('Choose from device'));
+}
+
 /// Logs progress, so a CI run that hangs shows where.
 void _phase(String name) => debugPrint('APP FLOW: $name');
 
@@ -280,6 +292,11 @@ class _SyntheticPhotoSource implements PhotoSource {
       origin: ImageOrigin.device,
     ),
   ];
+
+  /// As the real source: a camera on Android, none on macOS, so the flow
+  /// sees the platform's add-photo path.
+  @override
+  bool get canTakePhoto => Platform.isAndroid;
 
   @override
   Future<PickedPhoto?> takePhoto() async => null;
