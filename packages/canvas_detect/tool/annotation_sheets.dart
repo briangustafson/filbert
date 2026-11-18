@@ -15,6 +15,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 
 const _fixtures = 'test/fixtures';
@@ -68,7 +69,7 @@ void _contact(String jsonPath, String out) {
     final image = cv.imread('$_fixtures/$file', flags: cv.IMREAD_COLOR);
     final c = _cornersPx(entry, image.cols, image.rows);
     final s = (cell - 8) / math.max(image.cols, image.rows);
-    final small = cv.resize(image, (
+    final small = safe_cv.resize(image, (
       (image.cols * s).round(),
       (image.rows * s).round(),
     ), interpolation: cv.INTER_AREA);
@@ -127,7 +128,7 @@ cv.Mat _sheet(
 ) {
   const overviewLong = 900, zoom = 3, radius = 70, cell = radius * 2 * zoom;
   final s = overviewLong / math.max(image.cols, image.rows);
-  final overview = cv.resize(image, (
+  final overview = safe_cv.resize(image, (
     (image.cols * s).round(),
     (image.rows * s).round(),
   ), interpolation: cv.INTER_AREA);
@@ -186,7 +187,7 @@ cv.Mat _zoom(
   );
   final x0 = cx.round() - radius, y0 = cy.round() - radius;
   final crop = padded.region(cv.Rect(x0 + size, y0 + size, size, size)).clone();
-  final big = cv.resize(crop, (
+  final big = safe_cv.resize(crop, (
     size * zoom,
     size * zoom,
   ), interpolation: cv.INTER_NEAREST);

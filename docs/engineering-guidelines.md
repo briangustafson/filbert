@@ -42,6 +42,7 @@ packages/       canvas_detect/ (M1), sync_engine/ (M3)
 - Follow `flutter_lints`; `flutter analyze` must be clean.
 - Material widgets come from `package:material_ui/material_ui.dart`; `package:flutter/material.dart` is deprecated.
 - Generated files (`*.g.dart`, `*.drift.dart`) come from `build_runner`; never hand-edit them.
+- Import `dartcv4` only as `import 'package:dartcv4/dartcv.dart' as cv;`. dartcv4 functions that take a size or criteria record (`resize`, `gaussianBlur`, `warpPerspective`, `kmeans`, …) are called through `package:canvas_detect/safe_cv.dart`, never as `cv.<name>`; a test enforces it (m1-design §7).
 - No secrets or tokens in the DB, logs, or synced data; use platform secure storage.
 - Each feature must be usable on its own (e.g. a user who only wants auto-crop).
 

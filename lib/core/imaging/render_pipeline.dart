@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 
 import 'render_geometry.dart';
@@ -26,7 +27,7 @@ cv.Mat warpForPlan(cv.Mat source, RenderPlan plan) {
   final dst = corners(plan.destinationCorners);
   final homography = cv.getPerspectiveTransform2f(src, dst);
   try {
-    final warped = cv.warpPerspective(
+    final warped = safe_cv.warpPerspective(
       source,
       homography,
       (plan.warpWidth, plan.warpHeight),

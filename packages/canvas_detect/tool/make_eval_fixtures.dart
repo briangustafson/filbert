@@ -16,6 +16,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 
 const _originals = '../../eval-originals';
@@ -50,7 +51,7 @@ void main() {
     final image = cv.imread('$_originals/$name', flags: cv.IMREAD_COLOR);
     if (image.isEmpty) throw StateError('Could not read $name');
     final scale = math.min(1.0, _longEdge / math.max(image.cols, image.rows));
-    final small = cv.resize(image, (
+    final small = safe_cv.resize(image, (
       (image.cols * scale).round(),
       (image.rows * scale).round(),
     ), interpolation: cv.INTER_AREA);

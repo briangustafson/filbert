@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:canvas_detect/canvas_detect.dart';
+import 'package:canvas_detect/safe_cv.dart' as safe_cv;
 import 'package:dartcv4/dartcv.dart' as cv;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -18,7 +19,10 @@ void main() {
 
     // Downscaled like the app does before detection (m1-design §6.2).
     final bgr = cv.imread(file.path);
-    final small = cv.resize(bgr, (1000, 750), interpolation: cv.INTER_AREA);
+    final small = safe_cv.resize(bgr, (
+      1000,
+      750,
+    ), interpolation: cv.INTER_AREA);
     final rgba = cv.cvtColor(small, cv.COLOR_BGR2RGBA);
     final detection = const OpenCvCanvasDetector().detectSync(
       DetectorImage(
