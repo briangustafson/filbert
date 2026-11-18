@@ -84,7 +84,7 @@ jobs:
   # m1-design §8). A separate job so it runs alongside `build`.
   integration:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       API_LEVEL: 35
     steps:
@@ -152,6 +152,13 @@ jobs:
           disable-animations: false
           script: echo "AVD snapshot created."
 
+      # Build the test APK before booting the emulator, so the native build
+      # (~13 min cold) is timed on its own and a hang in it can't hide behind
+      # the test. `flutter test` below then only rebuilds incrementally.
+      - name: Build test APK
+        timeout-minutes: 25
+        run: flutter build apk --debug --target-platform android-x64 -t integration_test/m1_flow_test.dart
+
       - name: Integration test
         uses: reactivecircus/android-emulator-runner@v2.38.0
         with:
@@ -161,9 +168,10 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          # On failure, print the emulator log's crash-relevant lines (the
-          # app is x86_64 only here, never run locally).
-          script: flutter test integration_test -d emulator-5554 || { adb logcat -d | grep -E "AndroidRuntime|FATAL|DEBUG|libc|flutter|filbert|dartcv|linker" | tail -300; exit 1; }
+          # On failure or a hang (cut off at 15 min; locally the test takes
+          # ~10 s), print the emulator log's crash-relevant lines (the app is
+          # x86_64 only here, never run locally). The test logs each phase.
+          script: timeout 15m flutter test integration_test -d emulator-5554 --reporter expanded || { adb logcat -d | grep -E "AndroidRuntime|FATAL|DEBUG|libc|flutter|filbert|dartcv|linker" | tail -300; exit 1; }
 
       - name: Save native builds
         if: always() && steps.hooks-cache.outputs.cache-hit != 'true'
