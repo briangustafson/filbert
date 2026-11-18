@@ -175,7 +175,9 @@ One pure-Dart reference (`lib/core/imaging/tone.dart`) defines the tone math; th
 - Inputs: the preview image(s) as samplers, mode, band count, palette (up to 16 colors as uniforms), opacity.
 - The photo page draws through the shader only while a tone aid or compare is on; otherwise it keeps M1's plain image path. Zoom and the detail render (m1-design §3.5) work the same with the shader.
 - The grid is a `CustomPainter` over the image, in the same transform as zoom.
-- To check before implementing: whether `flutter test` can run fragment shaders on the host for widget/golden tests; if not, shader output is checked by an emulator integration test against the CPU path (§7).
+- **How it draws (T5).** `ShadedImage` (`lib/features/view_aids/ui/`) decodes the shown file through Flutter's image cache (the same key as the plain `Image.file`, so switching aids reuses the decode) and paints it with a `CustomPainter` whose paint has the shader, inside the same zoom transform. Flutter's simpler `ImageFiltered` + `ImageFilter.shader` was rejected: it needs Impeller, and `flutter test` runs on Skia, where it throws. While a new file decodes, the previous image stays (like `gaplessPlayback`). Colors shows the plain photo until the palette is ready, then keeps the last palette while a new count computes. Holding shows the plain original, even for an unedited photo.
+- **Uniforms**: size, mode, bands, palette count, then the palette as `vec4` arrays (Lab for the nearest match, sRGB to draw), set by index in `tone_shader.dart`.
+- **Testing (resolved in T5)**: `flutter test` runs fragment shaders on the host (drawn into an image with `PictureRecorder`), so the shader is tested directly against `tone.dart` (§7). Checked on the Mac test host; CI's Linux host runs the same test.
 
 ### 5.4 `RenderService` (export, CPU)
 
@@ -216,7 +218,7 @@ original + edits ─▶ full-size render (existing pipeline, ≤ 6000 px) ─▶
 | Tone math | Unit tests on `tone.dart`: L\* of known colors, band edges, palette nearest-color |
 | Palette | Unit tests: deterministic for a fixed image; recovers the colors of a synthetic image made of N flat colors |
 | Export | Golden tests of `RenderService` output for each aid and compare, on the synthetic test pattern (m1-design §5.1 approach) |
-| Shader | Widget golden tests if shaders run under `flutter test`; otherwise an emulator integration test comparing a shader screenshot with the CPU render within a tolerance |
+| Shader | `tone_shader_test.dart`: a 32 × 32 image of colors spread over the sRGB cube drawn through the shader in each mode; every pixel within 2/255 of `tone.dart` |
 | Grid geometry | Unit tests: divisions, spacing with partial cells, aspect mismatch, export widths |
 | View prefs | Repository tests: defaults, debounce, unknown fields; migration test for schema 2 |
 | UI | Widget tests: toolbar exclusivity (Gray/Values/Colors), panels, compare default photo and hidden-on-self, export sheet presets; narrow phone (400 dp, as in M1) |
@@ -241,7 +243,7 @@ No other new packages: k-means is plain Dart, drawing uses `dartcv4`, and shader
 |---|---|
 | ~~dartcv4 temporary-size hazard (m1-design §7, §9)~~ Fixed in T1: call such functions through `package:canvas_detect/safe_cv.dart`, which includes `kmeans` | — |
 | ~~Seeding OpenCV `kmeans`~~ Resolved in T3: k-means is written in Dart with its own seeded generator (§5.2) | — |
-| Can `flutter test` run fragment shaders on the host? Decides how the shader is tested (§7) | Shader task |
+| ~~Can `flutter test` run fragment shaders on the host?~~ Yes (T5), §5.3 | — |
 | Export memory and time at 48 MP with compare, on the Pixel 11; lower the 6000 px cap if needed | Export task |
 | `gal` 3.0.1 vs 2.3.3 | Gallery task |
 | Later ideas (not M2): centered grid origin; tap a swatch to highlight its areas; wipe / side-by-side compare; aids on thumbnails | — |
