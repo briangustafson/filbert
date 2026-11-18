@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../features/photos/data/photo_imports.dart';
 import '../features/photos/data/photo_source.dart';
 import '../features/photos/ui/add_photos.dart';
+import '../features/view_aids/data/view_prefs_repository.dart';
 import 'router.dart';
 import 'routes.dart';
 import 'theme.dart';
@@ -17,11 +18,23 @@ class FilbertApp extends ConsumerStatefulWidget {
 
 class _FilbertAppState extends ConsumerState<FilbertApp> {
   final _messenger = GlobalKey<ScaffoldMessengerState>();
+  late final AppLifecycleListener _lifecycle;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _startupTasks());
+    // Android may kill the app once it's in the background; write debounced
+    // changes before that (m2-design §4.2).
+    _lifecycle = AppLifecycleListener(
+      onHide: () => ref.read(viewPrefsRepositoryProvider).flush(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   /// Photos taken while Android killed the app are imported where they were

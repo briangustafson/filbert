@@ -145,6 +145,17 @@ class $ImagesTable extends Images with TableInfo<$ImagesTable, ImageRecord> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _derivedFromJsonMeta = const VerificationMeta(
+    'derivedFromJson',
+  );
+  @override
+  late final GeneratedColumn<String> derivedFromJson = GeneratedColumn<String>(
+    'derived_from_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -160,6 +171,7 @@ class $ImagesTable extends Images with TableInfo<$ImagesTable, ImageRecord> {
     source,
     capturedAt,
     editsJson,
+    derivedFromJson,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -265,6 +277,15 @@ class $ImagesTable extends Images with TableInfo<$ImagesTable, ImageRecord> {
     } else if (isInserting) {
       context.missing(_editsJsonMeta);
     }
+    if (data.containsKey('derived_from_json')) {
+      context.handle(
+        _derivedFromJsonMeta,
+        derivedFromJson.isAcceptableOrUnknown(
+          data['derived_from_json']!,
+          _derivedFromJsonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -328,6 +349,10 @@ class $ImagesTable extends Images with TableInfo<$ImagesTable, ImageRecord> {
         DriftSqlType.string,
         data['${effectivePrefix}edits_json'],
       )!,
+      derivedFromJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}derived_from_json'],
+      ),
     );
   }
 
@@ -358,6 +383,10 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
 
   /// Current edit state (m1-design §4.2).
   final String editsJson;
+
+  /// For `source = derived`: where the image was rendered from
+  /// (m2-design §4.3). Null for other sources. Added in schema 2.
+  final String? derivedFromJson;
   const ImageRecord({
     required this.id,
     required this.createdAt,
@@ -372,6 +401,7 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
     required this.source,
     this.capturedAt,
     required this.editsJson,
+    this.derivedFromJson,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -397,6 +427,9 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
       map['captured_at'] = Variable<int>(capturedAt);
     }
     map['edits_json'] = Variable<String>(editsJson);
+    if (!nullToAbsent || derivedFromJson != null) {
+      map['derived_from_json'] = Variable<String>(derivedFromJson);
+    }
     return map;
   }
 
@@ -419,6 +452,9 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
           ? const Value.absent()
           : Value(capturedAt),
       editsJson: Value(editsJson),
+      derivedFromJson: derivedFromJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(derivedFromJson),
     );
   }
 
@@ -443,6 +479,7 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
       ),
       capturedAt: serializer.fromJson<int?>(json['capturedAt']),
       editsJson: serializer.fromJson<String>(json['editsJson']),
+      derivedFromJson: serializer.fromJson<String?>(json['derivedFromJson']),
     );
   }
   @override
@@ -464,6 +501,7 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
       ),
       'capturedAt': serializer.toJson<int?>(capturedAt),
       'editsJson': serializer.toJson<String>(editsJson),
+      'derivedFromJson': serializer.toJson<String?>(derivedFromJson),
     };
   }
 
@@ -481,6 +519,7 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
     ImageOrigin? source,
     Value<int?> capturedAt = const Value.absent(),
     String? editsJson,
+    Value<String?> derivedFromJson = const Value.absent(),
   }) => ImageRecord(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -495,6 +534,9 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
     source: source ?? this.source,
     capturedAt: capturedAt.present ? capturedAt.value : this.capturedAt,
     editsJson: editsJson ?? this.editsJson,
+    derivedFromJson: derivedFromJson.present
+        ? derivedFromJson.value
+        : this.derivedFromJson,
   );
   ImageRecord copyWithCompanion(ImagesCompanion data) {
     return ImageRecord(
@@ -515,6 +557,9 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
           ? data.capturedAt.value
           : this.capturedAt,
       editsJson: data.editsJson.present ? data.editsJson.value : this.editsJson,
+      derivedFromJson: data.derivedFromJson.present
+          ? data.derivedFromJson.value
+          : this.derivedFromJson,
     );
   }
 
@@ -533,7 +578,8 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
           ..write('height: $height, ')
           ..write('source: $source, ')
           ..write('capturedAt: $capturedAt, ')
-          ..write('editsJson: $editsJson')
+          ..write('editsJson: $editsJson, ')
+          ..write('derivedFromJson: $derivedFromJson')
           ..write(')'))
         .toString();
   }
@@ -553,6 +599,7 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
     source,
     capturedAt,
     editsJson,
+    derivedFromJson,
   );
   @override
   bool operator ==(Object other) =>
@@ -570,7 +617,8 @@ class ImageRecord extends DataClass implements Insertable<ImageRecord> {
           other.height == this.height &&
           other.source == this.source &&
           other.capturedAt == this.capturedAt &&
-          other.editsJson == this.editsJson);
+          other.editsJson == this.editsJson &&
+          other.derivedFromJson == this.derivedFromJson);
 }
 
 class ImagesCompanion extends UpdateCompanion<ImageRecord> {
@@ -587,6 +635,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
   final Value<ImageOrigin> source;
   final Value<int?> capturedAt;
   final Value<String> editsJson;
+  final Value<String?> derivedFromJson;
   final Value<int> rowid;
   const ImagesCompanion({
     this.id = const Value.absent(),
@@ -602,6 +651,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
     this.source = const Value.absent(),
     this.capturedAt = const Value.absent(),
     this.editsJson = const Value.absent(),
+    this.derivedFromJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ImagesCompanion.insert({
@@ -618,6 +668,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
     required ImageOrigin source,
     this.capturedAt = const Value.absent(),
     required String editsJson,
+    this.derivedFromJson = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -644,6 +695,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
     Expression<String>? source,
     Expression<int>? capturedAt,
     Expression<String>? editsJson,
+    Expression<String>? derivedFromJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -660,6 +712,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
       if (source != null) 'source': source,
       if (capturedAt != null) 'captured_at': capturedAt,
       if (editsJson != null) 'edits_json': editsJson,
+      if (derivedFromJson != null) 'derived_from_json': derivedFromJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -678,6 +731,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
     Value<ImageOrigin>? source,
     Value<int?>? capturedAt,
     Value<String>? editsJson,
+    Value<String?>? derivedFromJson,
     Value<int>? rowid,
   }) {
     return ImagesCompanion(
@@ -694,6 +748,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
       source: source ?? this.source,
       capturedAt: capturedAt ?? this.capturedAt,
       editsJson: editsJson ?? this.editsJson,
+      derivedFromJson: derivedFromJson ?? this.derivedFromJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -742,6 +797,9 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
     if (editsJson.present) {
       map['edits_json'] = Variable<String>(editsJson.value);
     }
+    if (derivedFromJson.present) {
+      map['derived_from_json'] = Variable<String>(derivedFromJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -764,6 +822,7 @@ class ImagesCompanion extends UpdateCompanion<ImageRecord> {
           ..write('source: $source, ')
           ..write('capturedAt: $capturedAt, ')
           ..write('editsJson: $editsJson, ')
+          ..write('derivedFromJson: $derivedFromJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2340,6 +2399,482 @@ class AppMetaCompanion extends UpdateCompanion<AppMetaEntry> {
   }
 }
 
+class $ViewPrefsTable extends ViewPrefs
+    with TableInfo<$ViewPrefsTable, ViewPrefsRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ViewPrefsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedByDeviceIdMeta = const VerificationMeta(
+    'updatedByDeviceId',
+  );
+  @override
+  late final GeneratedColumn<String> updatedByDeviceId =
+      GeneratedColumn<String>(
+        'updated_by_device_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _projectIdMeta = const VerificationMeta(
+    'projectId',
+  );
+  @override
+  late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
+    'project_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES projects (id)',
+    ),
+  );
+  static const VerificationMeta _prefsJsonMeta = const VerificationMeta(
+    'prefsJson',
+  );
+  @override
+  late final GeneratedColumn<String> prefsJson = GeneratedColumn<String>(
+    'prefs_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    updatedAt,
+    updatedByDeviceId,
+    deletedAt,
+    projectId,
+    prefsJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'view_prefs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ViewPrefsRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('updated_by_device_id')) {
+      context.handle(
+        _updatedByDeviceIdMeta,
+        updatedByDeviceId.isAcceptableOrUnknown(
+          data['updated_by_device_id']!,
+          _updatedByDeviceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedByDeviceIdMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('project_id')) {
+      context.handle(
+        _projectIdMeta,
+        projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_projectIdMeta);
+    }
+    if (data.containsKey('prefs_json')) {
+      context.handle(
+        _prefsJsonMeta,
+        prefsJson.isAcceptableOrUnknown(data['prefs_json']!, _prefsJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_prefsJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ViewPrefsRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ViewPrefsRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      updatedByDeviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_by_device_id'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project_id'],
+      )!,
+      prefsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prefs_json'],
+      )!,
+    );
+  }
+
+  @override
+  $ViewPrefsTable createAlias(String alias) {
+    return $ViewPrefsTable(attachedDatabase, alias);
+  }
+}
+
+class ViewPrefsRecord extends DataClass implements Insertable<ViewPrefsRecord> {
+  final String id;
+  final int createdAt;
+  final int updatedAt;
+  final String updatedByDeviceId;
+  final int? deletedAt;
+  final String projectId;
+
+  /// m2-design §4.2.
+  final String prefsJson;
+  const ViewPrefsRecord({
+    required this.id,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.updatedByDeviceId,
+    this.deletedAt,
+    required this.projectId,
+    required this.prefsJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    map['updated_by_device_id'] = Variable<String>(updatedByDeviceId);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
+    map['project_id'] = Variable<String>(projectId);
+    map['prefs_json'] = Variable<String>(prefsJson);
+    return map;
+  }
+
+  ViewPrefsCompanion toCompanion(bool nullToAbsent) {
+    return ViewPrefsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      updatedByDeviceId: Value(updatedByDeviceId),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      projectId: Value(projectId),
+      prefsJson: Value(prefsJson),
+    );
+  }
+
+  factory ViewPrefsRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ViewPrefsRecord(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      updatedByDeviceId: serializer.fromJson<String>(json['updatedByDeviceId']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
+      projectId: serializer.fromJson<String>(json['projectId']),
+      prefsJson: serializer.fromJson<String>(json['prefsJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'updatedByDeviceId': serializer.toJson<String>(updatedByDeviceId),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
+      'projectId': serializer.toJson<String>(projectId),
+      'prefsJson': serializer.toJson<String>(prefsJson),
+    };
+  }
+
+  ViewPrefsRecord copyWith({
+    String? id,
+    int? createdAt,
+    int? updatedAt,
+    String? updatedByDeviceId,
+    Value<int?> deletedAt = const Value.absent(),
+    String? projectId,
+    String? prefsJson,
+  }) => ViewPrefsRecord(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    updatedByDeviceId: updatedByDeviceId ?? this.updatedByDeviceId,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    projectId: projectId ?? this.projectId,
+    prefsJson: prefsJson ?? this.prefsJson,
+  );
+  ViewPrefsRecord copyWithCompanion(ViewPrefsCompanion data) {
+    return ViewPrefsRecord(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      updatedByDeviceId: data.updatedByDeviceId.present
+          ? data.updatedByDeviceId.value
+          : this.updatedByDeviceId,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      prefsJson: data.prefsJson.present ? data.prefsJson.value : this.prefsJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ViewPrefsRecord(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('updatedByDeviceId: $updatedByDeviceId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('projectId: $projectId, ')
+          ..write('prefsJson: $prefsJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    updatedByDeviceId,
+    deletedAt,
+    projectId,
+    prefsJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ViewPrefsRecord &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.updatedByDeviceId == this.updatedByDeviceId &&
+          other.deletedAt == this.deletedAt &&
+          other.projectId == this.projectId &&
+          other.prefsJson == this.prefsJson);
+}
+
+class ViewPrefsCompanion extends UpdateCompanion<ViewPrefsRecord> {
+  final Value<String> id;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<String> updatedByDeviceId;
+  final Value<int?> deletedAt;
+  final Value<String> projectId;
+  final Value<String> prefsJson;
+  final Value<int> rowid;
+  const ViewPrefsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.updatedByDeviceId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.projectId = const Value.absent(),
+    this.prefsJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ViewPrefsCompanion.insert({
+    required String id,
+    required int createdAt,
+    required int updatedAt,
+    required String updatedByDeviceId,
+    this.deletedAt = const Value.absent(),
+    required String projectId,
+    required String prefsJson,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       updatedByDeviceId = Value(updatedByDeviceId),
+       projectId = Value(projectId),
+       prefsJson = Value(prefsJson);
+  static Insertable<ViewPrefsRecord> custom({
+    Expression<String>? id,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<String>? updatedByDeviceId,
+    Expression<int>? deletedAt,
+    Expression<String>? projectId,
+    Expression<String>? prefsJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (updatedByDeviceId != null) 'updated_by_device_id': updatedByDeviceId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (projectId != null) 'project_id': projectId,
+      if (prefsJson != null) 'prefs_json': prefsJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ViewPrefsCompanion copyWith({
+    Value<String>? id,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<String>? updatedByDeviceId,
+    Value<int?>? deletedAt,
+    Value<String>? projectId,
+    Value<String>? prefsJson,
+    Value<int>? rowid,
+  }) {
+    return ViewPrefsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      updatedByDeviceId: updatedByDeviceId ?? this.updatedByDeviceId,
+      deletedAt: deletedAt ?? this.deletedAt,
+      projectId: projectId ?? this.projectId,
+      prefsJson: prefsJson ?? this.prefsJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (updatedByDeviceId.present) {
+      map['updated_by_device_id'] = Variable<String>(updatedByDeviceId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (projectId.present) {
+      map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (prefsJson.present) {
+      map['prefs_json'] = Variable<String>(prefsJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ViewPrefsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('updatedByDeviceId: $updatedByDeviceId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('projectId: $projectId, ')
+          ..write('prefsJson: $prefsJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2352,9 +2887,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $AppMetaTable appMeta = $AppMetaTable(this);
+  late final $ViewPrefsTable viewPrefs = $ViewPrefsTable(this);
   late final Index imagesProjectId = Index(
     'images_project_id',
     'CREATE INDEX images_project_id ON images (project_id)',
+  );
+  late final Index viewPrefsProjectId = Index(
+    'view_prefs_project_id',
+    'CREATE UNIQUE INDEX view_prefs_project_id ON view_prefs (project_id) WHERE deleted_at IS NULL',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -2366,7 +2906,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     imageEditHistory,
     imageEditCursor,
     appMeta,
+    viewPrefs,
     imagesProjectId,
+    viewPrefsProjectId,
   ];
 }
 
@@ -2384,6 +2926,7 @@ typedef $$ImagesTableCreateCompanionBuilder = ImagesCompanion Function({
   required ImageOrigin source,
   Value<int?> capturedAt,
   required String editsJson,
+  Value<String?> derivedFromJson,
   Value<int> rowid,
 });
 typedef $$ImagesTableUpdateCompanionBuilder = ImagesCompanion Function({
@@ -2400,6 +2943,7 @@ typedef $$ImagesTableUpdateCompanionBuilder = ImagesCompanion Function({
   Value<ImageOrigin> source,
   Value<int?> capturedAt,
   Value<String> editsJson,
+  Value<String?> derivedFromJson,
   Value<int> rowid,
 });
 
@@ -2552,6 +3096,11 @@ class $$ImagesTableFilterComposer
 
   ColumnFilters<String> get editsJson => $composableBuilder(
     column: $table.editsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get derivedFromJson => $composableBuilder(
+    column: $table.derivedFromJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2723,6 +3272,11 @@ class $$ImagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get derivedFromJson => $composableBuilder(
+    column: $table.derivedFromJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ProjectsTableOrderingComposer get projectId {
     final $$ProjectsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2795,6 +3349,11 @@ class $$ImagesTableAnnotationComposer
 
   GeneratedColumn<String> get editsJson =>
       $composableBuilder(column: $table.editsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get derivedFromJson => $composableBuilder(
+    column: $table.derivedFromJson,
+    builder: (column) => column,
+  );
 
   $$ProjectsTableAnnotationComposer get projectId {
     final $$ProjectsTableAnnotationComposer composer = $composerBuilder(
@@ -2941,6 +3500,7 @@ class $$ImagesTableTableManager
                 Value<ImageOrigin> source = const Value.absent(),
                 Value<int?> capturedAt = const Value.absent(),
                 Value<String> editsJson = const Value.absent(),
+                Value<String?> derivedFromJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ImagesCompanion(
                 id: id,
@@ -2956,6 +3516,7 @@ class $$ImagesTableTableManager
                 source: source,
                 capturedAt: capturedAt,
                 editsJson: editsJson,
+                derivedFromJson: derivedFromJson,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2973,6 +3534,7 @@ class $$ImagesTableTableManager
                 required ImageOrigin source,
                 Value<int?> capturedAt = const Value.absent(),
                 required String editsJson,
+                Value<String?> derivedFromJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ImagesCompanion.insert(
                 id: id,
@@ -2988,6 +3550,7 @@ class $$ImagesTableTableManager
                 source: source,
                 capturedAt: capturedAt,
                 editsJson: editsJson,
+                derivedFromJson: derivedFromJson,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3207,6 +3770,24 @@ final class $$ProjectsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$ViewPrefsTable, List<ViewPrefsRecord>>
+  _viewPrefsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.viewPrefs,
+    aliasName: 'projects__id__view_prefs__project_id',
+  );
+
+  $$ViewPrefsTableProcessedTableManager get viewPrefsRefs {
+    final manager = $$ViewPrefsTableTableManager(
+      $_db,
+      $_db.viewPrefs,
+    ).filter((f) => f.projectId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_viewPrefsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ProjectsTableFilterComposer
@@ -3329,6 +3910,31 @@ class $$ProjectsTableFilterComposer
           }) => $$ImagesTableFilterComposer(
             $db: $db,
             $table: $db.images,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> viewPrefsRefs(
+    Expression<bool> Function($$ViewPrefsTableFilterComposer f) f,
+  ) {
+    final $$ViewPrefsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.viewPrefs,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ViewPrefsTableFilterComposer(
+            $db: $db,
+            $table: $db.viewPrefs,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3546,6 +4152,31 @@ class $$ProjectsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> viewPrefsRefs<T extends Object>(
+    Expression<T> Function($$ViewPrefsTableAnnotationComposer a) f,
+  ) {
+    final $$ViewPrefsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.viewPrefs,
+      getReferencedColumn: (t) => t.projectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ViewPrefsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.viewPrefs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ProjectsTableTableManager
@@ -3561,7 +4192,11 @@ class $$ProjectsTableTableManager
           $$ProjectsTableUpdateCompanionBuilder,
           (ProjectRecord, $$ProjectsTableReferences),
           ProjectRecord,
-          PrefetchHooks Function({bool referenceImageId, bool imagesRefs})
+          PrefetchHooks Function({
+            bool referenceImageId,
+            bool imagesRefs,
+            bool viewPrefsRefs,
+          })
         > {
   $$ProjectsTableTableManager(_$AppDatabase db, $ProjectsTable table)
     : super(
@@ -3655,10 +4290,17 @@ class $$ProjectsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({referenceImageId = false, imagesRefs = false}) {
+              ({
+                referenceImageId = false,
+                imagesRefs = false,
+                viewPrefsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
-                  explicitlyWatchedTables: [if (imagesRefs) db.images],
+                  explicitlyWatchedTables: [
+                    if (imagesRefs) db.images,
+                    if (viewPrefsRefs) db.viewPrefs,
+                  ],
                   addJoins:
                       <
                         T extends TableManagerState<
@@ -3711,6 +4353,26 @@ class $$ProjectsTableTableManager
                           referencedColumn: 'project_id',
                           typedResults: items,
                         ),
+                      if (viewPrefsRefs)
+                        await $_getPrefetchedDataByColumns<
+                          ProjectRecord,
+                          $ProjectsTable,
+                          ViewPrefsRecord,
+                          $ViewPrefsTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ProjectsTableReferences
+                              ._viewPrefsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ProjectsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).viewPrefsRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'project_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -3731,7 +4393,11 @@ typedef $$ProjectsTableProcessedTableManager =
       $$ProjectsTableUpdateCompanionBuilder,
       (ProjectRecord, $$ProjectsTableReferences),
       ProjectRecord,
-      PrefetchHooks Function({bool referenceImageId, bool imagesRefs})
+      PrefetchHooks Function({
+        bool referenceImageId,
+        bool imagesRefs,
+        bool viewPrefsRefs,
+      })
     >;
 typedef $$ImageEditHistoryTableCreateCompanionBuilder =
     ImageEditHistoryCompanion Function({
@@ -4434,6 +5100,359 @@ typedef $$AppMetaTableProcessedTableManager =
       AppMetaEntry,
       PrefetchHooks Function()
     >;
+typedef $$ViewPrefsTableCreateCompanionBuilder = ViewPrefsCompanion Function({
+  required String id,
+  required int createdAt,
+  required int updatedAt,
+  required String updatedByDeviceId,
+  Value<int?> deletedAt,
+  required String projectId,
+  required String prefsJson,
+  Value<int> rowid,
+});
+typedef $$ViewPrefsTableUpdateCompanionBuilder = ViewPrefsCompanion Function({
+  Value<String> id,
+  Value<int> createdAt,
+  Value<int> updatedAt,
+  Value<String> updatedByDeviceId,
+  Value<int?> deletedAt,
+  Value<String> projectId,
+  Value<String> prefsJson,
+  Value<int> rowid,
+});
+
+final class $$ViewPrefsTableReferences
+    extends BaseReferences<_$AppDatabase, $ViewPrefsTable, ViewPrefsRecord> {
+  $$ViewPrefsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ProjectsTable _projectIdTable(_$AppDatabase db) =>
+      db.projects.createAlias('view_prefs__project_id__projects__id');
+
+  $$ProjectsTableProcessedTableManager get projectId {
+    final $_column = $_itemColumn<String>('project_id')!;
+
+    final manager = $$ProjectsTableTableManager(
+      $_db,
+      $_db.projects,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_projectIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ViewPrefsTableFilterComposer
+    extends Composer<_$AppDatabase, $ViewPrefsTable> {
+  $$ViewPrefsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedByDeviceId => $composableBuilder(
+    column: $table.updatedByDeviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prefsJson => $composableBuilder(
+    column: $table.prefsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ProjectsTableFilterComposer get projectId {
+    final $$ProjectsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projects,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableFilterComposer(
+            $db: $db,
+            $table: $db.projects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ViewPrefsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ViewPrefsTable> {
+  $$ViewPrefsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedByDeviceId => $composableBuilder(
+    column: $table.updatedByDeviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prefsJson => $composableBuilder(
+    column: $table.prefsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ProjectsTableOrderingComposer get projectId {
+    final $$ProjectsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projects,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableOrderingComposer(
+            $db: $db,
+            $table: $db.projects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ViewPrefsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ViewPrefsTable> {
+  $$ViewPrefsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedByDeviceId => $composableBuilder(
+    column: $table.updatedByDeviceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get prefsJson =>
+      $composableBuilder(column: $table.prefsJson, builder: (column) => column);
+
+  $$ProjectsTableAnnotationComposer get projectId {
+    final $$ProjectsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.projectId,
+      referencedTable: $db.projects,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.projects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ViewPrefsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ViewPrefsTable,
+          ViewPrefsRecord,
+          $$ViewPrefsTableFilterComposer,
+          $$ViewPrefsTableOrderingComposer,
+          $$ViewPrefsTableAnnotationComposer,
+          $$ViewPrefsTableCreateCompanionBuilder,
+          $$ViewPrefsTableUpdateCompanionBuilder,
+          (ViewPrefsRecord, $$ViewPrefsTableReferences),
+          ViewPrefsRecord,
+          PrefetchHooks Function({bool projectId})
+        > {
+  $$ViewPrefsTableTableManager(_$AppDatabase db, $ViewPrefsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ViewPrefsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ViewPrefsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ViewPrefsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<String> updatedByDeviceId = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<String> projectId = const Value.absent(),
+                Value<String> prefsJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ViewPrefsCompanion(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                updatedByDeviceId: updatedByDeviceId,
+                deletedAt: deletedAt,
+                projectId: projectId,
+                prefsJson: prefsJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required int createdAt,
+                required int updatedAt,
+                required String updatedByDeviceId,
+                Value<int?> deletedAt = const Value.absent(),
+                required String projectId,
+                required String prefsJson,
+                Value<int> rowid = const Value.absent(),
+              }) => ViewPrefsCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                updatedByDeviceId: updatedByDeviceId,
+                deletedAt: deletedAt,
+                projectId: projectId,
+                prefsJson: prefsJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ViewPrefsTable, ViewPrefsRecord>(table),
+                  $$ViewPrefsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({projectId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (projectId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.projectId,
+                        referencedTable: $$ViewPrefsTableReferences
+                            ._projectIdTable(db),
+                        referencedColumn: $$ViewPrefsTableReferences
+                            ._projectIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ViewPrefsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ViewPrefsTable,
+      ViewPrefsRecord,
+      $$ViewPrefsTableFilterComposer,
+      $$ViewPrefsTableOrderingComposer,
+      $$ViewPrefsTableAnnotationComposer,
+      $$ViewPrefsTableCreateCompanionBuilder,
+      $$ViewPrefsTableUpdateCompanionBuilder,
+      (ViewPrefsRecord, $$ViewPrefsTableReferences),
+      ViewPrefsRecord,
+      PrefetchHooks Function({bool projectId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4448,6 +5467,8 @@ class $AppDatabaseManager {
       $$ImageEditCursorTableTableManager(_db, _db.imageEditCursor);
   $$AppMetaTableTableManager get appMeta =>
       $$AppMetaTableTableManager(_db, _db.appMeta);
+  $$ViewPrefsTableTableManager get viewPrefs =>
+      $$ViewPrefsTableTableManager(_db, _db.viewPrefs);
 }
 
 // **************************************************************************

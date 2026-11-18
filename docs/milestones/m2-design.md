@@ -113,7 +113,7 @@ One row per project that has changed an aid setting. Common columns (`id` UUIDv7
 
 | Column | Type | Notes |
 |---|---|---|
-| `project_id` | TEXT | Unique among live rows; indexed |
+| `project_id` | TEXT | Unique among live rows (partial unique index `WHERE deleted_at IS NULL`) |
 | `prefs_json` | TEXT | §4.2 |
 
 - No row means defaults. The row is created on the first change.
@@ -135,7 +135,7 @@ One row per project that has changed an aid setting. Common columns (`id` UUIDv7
 
 - Every field is optional; missing fields take defaults, unknown fields are ignored (forward-compatible), and an unknown `v` falls back to defaults rather than erroring (settings are not worth blocking on).
 - `spacing` is in the project's unit. `compare.imageId` that no longer points at a live photo in the project falls back to the default.
-- Writes are debounced (≈ 500 ms) so dragging the opacity slider doesn't write on every frame.
+- Writes are debounced (≈ 500 ms) so dragging the opacity slider doesn't write on every frame. `ViewPrefsRepository.watch` shows a change at once, before it's written; pending writes are flushed when the app is hidden, since Android may then kill it.
 
 ### 4.3 Derived images
 
@@ -164,7 +164,7 @@ One pure-Dart reference (`lib/core/imaging/tone.dart`) defines the tone math; th
 
 ### 5.2 Palette
 
-- Computed in an isolate from the cached preview downscaled to 256 px on the long edge, in CIELAB, with OpenCV `kmeans` (k-means++ init, 3 attempts, a fixed RNG seed so the same photo gives the same palette every time).
+- Computed in an isolate from the cached preview downscaled to 256 px on the long edge, in CIELAB, with OpenCV `kmeans` (k-means++ init, 3 attempts, a fixed RNG seed so the same photo gives the same palette every time; see §9 on seeding).
 - Cached in memory per (image id, edits hash, count) and on disk next to previews (`previews/<imageId>-<editsHash>-palette-<n>.json`), so export and later visits reuse it.
 - Swatches are ordered by L\*.
 
@@ -238,7 +238,8 @@ No other new packages: k-means and drawing use `dartcv4`; shaders are built into
 
 | Item | When |
 |---|---|
-| dartcv4 temporary-size hazard (m1-design §7, §9): wrap the calls M1 and M2 use so the native size or criteria outlive the call; report upstream | First M2 task |
+| ~~dartcv4 temporary-size hazard (m1-design §7, §9)~~ Fixed in T1: call such functions through `package:canvas_detect/safe_cv.dart`, which includes `kmeans` | — |
+| OpenCV `kmeans` draws from OpenCV's global RNG, and dartcv4 2.3.1 can't seed it (no `setRNGSeed`), so "a fixed RNG seed" (§5.2) isn't available as is. Candidate: `KMEANS_USE_INITIAL_LABELS` with deterministic starting labels (e.g. our own seeded k-means++ in Dart, or L\* quantiles), one attempt | T3 |
 | Can `flutter test` run fragment shaders on the host? Decides how the shader is tested (§7) | Shader task |
 | Export memory and time at 48 MP with compare, on the Pixel 11; lower the 6000 px cap if needed | Export task |
 | `gal` 3.0.1 vs 2.3.3 | Gallery task |

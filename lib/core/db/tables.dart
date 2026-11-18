@@ -6,7 +6,8 @@ import '../units/length_unit.dart';
 export '../imaging/image_origin.dart';
 export '../units/length_unit.dart';
 
-// Schema v1 (m1-design §4.1). Any change here needs a schema version bump,
+// Schema v2 (m1-design §4.1; v2 adds view_prefs and derived images,
+// m2-design §4). Any change here needs a schema version bump,
 // a migration, and `dart run drift_dev make-migrations`.
 //
 // Timestamps are UTC epoch milliseconds. Relationships are declared with
@@ -69,6 +70,24 @@ class Images extends Table with SyncedColumns {
 
   /// Current edit state (m1-design §4.2).
   TextColumn get editsJson => text()();
+
+  /// For `source = derived`: where the image was rendered from
+  /// (m2-design §4.3). Null for other sources. Added in schema 2.
+  TextColumn get derivedFromJson => text().nullable()();
+}
+
+/// A project's viewing-aid settings (m2-design §4.1). No row means defaults;
+/// at most one live row per project.
+@DataClassName('ViewPrefsRecord')
+@TableIndex.sql(
+  'CREATE UNIQUE INDEX view_prefs_project_id ON view_prefs (project_id) '
+  'WHERE deleted_at IS NULL',
+)
+class ViewPrefs extends Table with SyncedColumns {
+  TextColumn get projectId => text().references(Projects, #id)();
+
+  /// m2-design §4.2.
+  TextColumn get prefsJson => text()();
 }
 
 /// Local-only undo history; never synced.
