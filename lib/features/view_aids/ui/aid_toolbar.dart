@@ -7,6 +7,7 @@ import '../data/view_aids_providers.dart';
 import '../data/view_prefs_repository.dart';
 import '../domain/view_aids.dart';
 import '../domain/view_prefs.dart';
+import 'grid_panel.dart';
 
 /// The photo screen's bottom bar: Grid · Gray · Values · Colors · Compare
 /// (m2-design §3.1). Each button shows whether its aid is on.
@@ -151,8 +152,13 @@ class AidPanel extends ConsumerWidget {
               onChanged: (count) =>
                   update(prefs.copyWith(colors: ColorsPrefs(count: count))),
             ),
-            // Filled in by M2 T6 (grid) and T7 (compare).
-            Aid.grid || Aid.compare || Aid.gray => const SizedBox(height: 8),
+            Aid.grid => GridPanel(
+              image: image,
+              grid: prefs.grid,
+              onChanged: (grid) => update(prefs.copyWith(grid: grid)),
+            ),
+            // Filled in by M2 T7.
+            Aid.compare || Aid.gray => const SizedBox(height: 8),
           };
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -296,7 +302,9 @@ class _Swatches extends StatelessWidget {
   }
 }
 
-/// − value + for a whole number between [min] and [max].
+/// − value + for a whole number between [min] and [max]. [format] shows
+/// the value differently (a step count as a length, say); [less] and
+/// [more] name the buttons for TalkBack and tests.
 class AidStepper extends StatelessWidget {
   const AidStepper({
     super.key,
@@ -305,6 +313,10 @@ class AidStepper extends StatelessWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    this.format,
+    this.valueWidth = 24,
+    this.less,
+    this.more,
   });
 
   final String label;
@@ -312,6 +324,10 @@ class AidStepper extends StatelessWidget {
   final int min;
   final int max;
   final ValueChanged<int> onChanged;
+  final String Function(int value)? format;
+  final double valueWidth;
+  final String? less;
+  final String? more;
 
   @override
   Widget build(BuildContext context) {
@@ -320,7 +336,7 @@ class AidStepper extends StatelessWidget {
       children: [
         Text(label),
         IconButton(
-          tooltip: 'Fewer ${label.toLowerCase()}',
+          tooltip: less ?? 'Fewer ${label.toLowerCase()}',
           icon: const Icon(Icons.remove),
           color: Colors.white,
           disabledColor: Colors.white38,
@@ -328,19 +344,19 @@ class AidStepper extends StatelessWidget {
         ),
         Semantics(
           label: label,
-          value: '$value',
+          value: format?.call(value) ?? '$value',
           excludeSemantics: true,
           child: SizedBox(
-            width: 24,
+            width: valueWidth,
             child: Text(
-              '$value',
+              format?.call(value) ?? '$value',
               textAlign: TextAlign.center,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ),
         IconButton(
-          tooltip: 'More ${label.toLowerCase()}',
+          tooltip: more ?? 'More ${label.toLowerCase()}',
           icon: const Icon(Icons.add),
           color: Colors.white,
           disabledColor: Colors.white38,
