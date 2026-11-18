@@ -253,7 +253,7 @@ Implementation notes (T2):
 - **Relationships are declared but not enforced** (`PRAGMA foreign_keys` stays off); `images.project_id` is indexed. Sync can deliver an image before its project, and records are tombstoned rather than deleted, so repositories keep references consistent instead of SQLite.
 - `device_name` is left unset in M1; M3 decides how to fill it (it is only shown in sync conflict UI).
 - The device id is created on first launch and loaded in `main()` before `runApp`, then supplied as a `deviceInfoProvider` override so repositories read it synchronously.
-- Schema workflow: `build.yaml` configures `make-migrations`. After changing tables, bump `schemaVersion`, write the migration, then run `dart run drift_dev make-migrations` to add the new dump to `drift_schemas/` and generate step tests under `test/drift/`. `test/drift/app_database/migration_test.dart` fails if `schemaVersion` has no committed dump or the live schema differs from it.
+- Schema workflow: `build.yaml` configures `make-migrations`. After changing tables, bump `schemaVersion`, run `dart run build_runner build`, then `dart run drift_dev make-migrations`: it adds the new dump to `drift_schemas/`, regenerates `test/drift/app_database/generated/` (including data classes for data-integrity tests), and writes `lib/core/db/app_database.steps.dart`, whose `stepByStep(fromNToM: …)` the migration in `AppDatabase` uses (first done in M2 T2). `test/drift/app_database/migration_test.dart` fails if `schemaVersion` has no committed dump or the live schema differs from it.
 
 Sync bookkeeping is **not** added in M1. M3 adds it in a separate table keyed by record id, and the first sync uploads everything, so no change tracking is needed before then.
 

@@ -4,7 +4,7 @@
 //
 import 'package:drift/drift.dart';
 
-class Images extends Table with TableInfo {
+class Images extends Table with TableInfo<Images, ImagesData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -138,8 +138,62 @@ class Images extends Table with TableInfo {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Never map(Map<String, dynamic> data, {String? tablePrefix}) {
-    throw UnsupportedError('TableInfo.map in schema verification code');
+  ImagesData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImagesData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      updatedByDeviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_by_device_id'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project_id'],
+      )!,
+      blobId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}blob_id'],
+      )!,
+      mimeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mime_type'],
+      )!,
+      width: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}width'],
+      )!,
+      height: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}height'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      capturedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}captured_at'],
+      ),
+      editsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}edits_json'],
+      )!,
+    );
   }
 
   @override
@@ -153,7 +207,423 @@ class Images extends Table with TableInfo {
   bool get dontWriteConstraints => true;
 }
 
-class Projects extends Table with TableInfo {
+class ImagesData extends DataClass implements Insertable<ImagesData> {
+  final String id;
+  final int createdAt;
+  final int updatedAt;
+  final String updatedByDeviceId;
+  final int? deletedAt;
+  final String projectId;
+  final String blobId;
+  final String mimeType;
+  final int width;
+  final int height;
+  final String source;
+  final int? capturedAt;
+  final String editsJson;
+  const ImagesData({
+    required this.id,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.updatedByDeviceId,
+    this.deletedAt,
+    required this.projectId,
+    required this.blobId,
+    required this.mimeType,
+    required this.width,
+    required this.height,
+    required this.source,
+    this.capturedAt,
+    required this.editsJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    map['updated_by_device_id'] = Variable<String>(updatedByDeviceId);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
+    map['project_id'] = Variable<String>(projectId);
+    map['blob_id'] = Variable<String>(blobId);
+    map['mime_type'] = Variable<String>(mimeType);
+    map['width'] = Variable<int>(width);
+    map['height'] = Variable<int>(height);
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || capturedAt != null) {
+      map['captured_at'] = Variable<int>(capturedAt);
+    }
+    map['edits_json'] = Variable<String>(editsJson);
+    return map;
+  }
+
+  ImagesCompanion toCompanion(bool nullToAbsent) {
+    return ImagesCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      updatedByDeviceId: Value(updatedByDeviceId),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      projectId: Value(projectId),
+      blobId: Value(blobId),
+      mimeType: Value(mimeType),
+      width: Value(width),
+      height: Value(height),
+      source: Value(source),
+      capturedAt: capturedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(capturedAt),
+      editsJson: Value(editsJson),
+    );
+  }
+
+  factory ImagesData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImagesData(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      updatedByDeviceId: serializer.fromJson<String>(json['updatedByDeviceId']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
+      projectId: serializer.fromJson<String>(json['projectId']),
+      blobId: serializer.fromJson<String>(json['blobId']),
+      mimeType: serializer.fromJson<String>(json['mimeType']),
+      width: serializer.fromJson<int>(json['width']),
+      height: serializer.fromJson<int>(json['height']),
+      source: serializer.fromJson<String>(json['source']),
+      capturedAt: serializer.fromJson<int?>(json['capturedAt']),
+      editsJson: serializer.fromJson<String>(json['editsJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'updatedByDeviceId': serializer.toJson<String>(updatedByDeviceId),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
+      'projectId': serializer.toJson<String>(projectId),
+      'blobId': serializer.toJson<String>(blobId),
+      'mimeType': serializer.toJson<String>(mimeType),
+      'width': serializer.toJson<int>(width),
+      'height': serializer.toJson<int>(height),
+      'source': serializer.toJson<String>(source),
+      'capturedAt': serializer.toJson<int?>(capturedAt),
+      'editsJson': serializer.toJson<String>(editsJson),
+    };
+  }
+
+  ImagesData copyWith({
+    String? id,
+    int? createdAt,
+    int? updatedAt,
+    String? updatedByDeviceId,
+    Value<int?> deletedAt = const Value.absent(),
+    String? projectId,
+    String? blobId,
+    String? mimeType,
+    int? width,
+    int? height,
+    String? source,
+    Value<int?> capturedAt = const Value.absent(),
+    String? editsJson,
+  }) => ImagesData(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    updatedByDeviceId: updatedByDeviceId ?? this.updatedByDeviceId,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    projectId: projectId ?? this.projectId,
+    blobId: blobId ?? this.blobId,
+    mimeType: mimeType ?? this.mimeType,
+    width: width ?? this.width,
+    height: height ?? this.height,
+    source: source ?? this.source,
+    capturedAt: capturedAt.present ? capturedAt.value : this.capturedAt,
+    editsJson: editsJson ?? this.editsJson,
+  );
+  ImagesData copyWithCompanion(ImagesCompanion data) {
+    return ImagesData(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      updatedByDeviceId: data.updatedByDeviceId.present
+          ? data.updatedByDeviceId.value
+          : this.updatedByDeviceId,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      blobId: data.blobId.present ? data.blobId.value : this.blobId,
+      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
+      width: data.width.present ? data.width.value : this.width,
+      height: data.height.present ? data.height.value : this.height,
+      source: data.source.present ? data.source.value : this.source,
+      capturedAt: data.capturedAt.present
+          ? data.capturedAt.value
+          : this.capturedAt,
+      editsJson: data.editsJson.present ? data.editsJson.value : this.editsJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImagesData(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('updatedByDeviceId: $updatedByDeviceId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('projectId: $projectId, ')
+          ..write('blobId: $blobId, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('source: $source, ')
+          ..write('capturedAt: $capturedAt, ')
+          ..write('editsJson: $editsJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    updatedByDeviceId,
+    deletedAt,
+    projectId,
+    blobId,
+    mimeType,
+    width,
+    height,
+    source,
+    capturedAt,
+    editsJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImagesData &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.updatedByDeviceId == this.updatedByDeviceId &&
+          other.deletedAt == this.deletedAt &&
+          other.projectId == this.projectId &&
+          other.blobId == this.blobId &&
+          other.mimeType == this.mimeType &&
+          other.width == this.width &&
+          other.height == this.height &&
+          other.source == this.source &&
+          other.capturedAt == this.capturedAt &&
+          other.editsJson == this.editsJson);
+}
+
+class ImagesCompanion extends UpdateCompanion<ImagesData> {
+  final Value<String> id;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<String> updatedByDeviceId;
+  final Value<int?> deletedAt;
+  final Value<String> projectId;
+  final Value<String> blobId;
+  final Value<String> mimeType;
+  final Value<int> width;
+  final Value<int> height;
+  final Value<String> source;
+  final Value<int?> capturedAt;
+  final Value<String> editsJson;
+  final Value<int> rowid;
+  const ImagesCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.updatedByDeviceId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.projectId = const Value.absent(),
+    this.blobId = const Value.absent(),
+    this.mimeType = const Value.absent(),
+    this.width = const Value.absent(),
+    this.height = const Value.absent(),
+    this.source = const Value.absent(),
+    this.capturedAt = const Value.absent(),
+    this.editsJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImagesCompanion.insert({
+    required String id,
+    required int createdAt,
+    required int updatedAt,
+    required String updatedByDeviceId,
+    this.deletedAt = const Value.absent(),
+    required String projectId,
+    required String blobId,
+    required String mimeType,
+    required int width,
+    required int height,
+    required String source,
+    this.capturedAt = const Value.absent(),
+    required String editsJson,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       updatedByDeviceId = Value(updatedByDeviceId),
+       projectId = Value(projectId),
+       blobId = Value(blobId),
+       mimeType = Value(mimeType),
+       width = Value(width),
+       height = Value(height),
+       source = Value(source),
+       editsJson = Value(editsJson);
+  static Insertable<ImagesData> custom({
+    Expression<String>? id,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<String>? updatedByDeviceId,
+    Expression<int>? deletedAt,
+    Expression<String>? projectId,
+    Expression<String>? blobId,
+    Expression<String>? mimeType,
+    Expression<int>? width,
+    Expression<int>? height,
+    Expression<String>? source,
+    Expression<int>? capturedAt,
+    Expression<String>? editsJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (updatedByDeviceId != null) 'updated_by_device_id': updatedByDeviceId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (projectId != null) 'project_id': projectId,
+      if (blobId != null) 'blob_id': blobId,
+      if (mimeType != null) 'mime_type': mimeType,
+      if (width != null) 'width': width,
+      if (height != null) 'height': height,
+      if (source != null) 'source': source,
+      if (capturedAt != null) 'captured_at': capturedAt,
+      if (editsJson != null) 'edits_json': editsJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImagesCompanion copyWith({
+    Value<String>? id,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<String>? updatedByDeviceId,
+    Value<int?>? deletedAt,
+    Value<String>? projectId,
+    Value<String>? blobId,
+    Value<String>? mimeType,
+    Value<int>? width,
+    Value<int>? height,
+    Value<String>? source,
+    Value<int?>? capturedAt,
+    Value<String>? editsJson,
+    Value<int>? rowid,
+  }) {
+    return ImagesCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      updatedByDeviceId: updatedByDeviceId ?? this.updatedByDeviceId,
+      deletedAt: deletedAt ?? this.deletedAt,
+      projectId: projectId ?? this.projectId,
+      blobId: blobId ?? this.blobId,
+      mimeType: mimeType ?? this.mimeType,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      source: source ?? this.source,
+      capturedAt: capturedAt ?? this.capturedAt,
+      editsJson: editsJson ?? this.editsJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (updatedByDeviceId.present) {
+      map['updated_by_device_id'] = Variable<String>(updatedByDeviceId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (projectId.present) {
+      map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (blobId.present) {
+      map['blob_id'] = Variable<String>(blobId.value);
+    }
+    if (mimeType.present) {
+      map['mime_type'] = Variable<String>(mimeType.value);
+    }
+    if (width.present) {
+      map['width'] = Variable<int>(width.value);
+    }
+    if (height.present) {
+      map['height'] = Variable<int>(height.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (capturedAt.present) {
+      map['captured_at'] = Variable<int>(capturedAt.value);
+    }
+    if (editsJson.present) {
+      map['edits_json'] = Variable<String>(editsJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImagesCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('updatedByDeviceId: $updatedByDeviceId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('projectId: $projectId, ')
+          ..write('blobId: $blobId, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('source: $source, ')
+          ..write('capturedAt: $capturedAt, ')
+          ..write('editsJson: $editsJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class Projects extends Table with TableInfo<Projects, ProjectsData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -307,8 +777,70 @@ class Projects extends Table with TableInfo {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Never map(Map<String, dynamic> data, {String? tablePrefix}) {
-    throw UnsupportedError('TableInfo.map in schema verification code');
+  ProjectsData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProjectsData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      updatedByDeviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_by_device_id'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      nameIsDefault: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}name_is_default'],
+      )!,
+      sizeKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}size_kind'],
+      )!,
+      ratioW: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}ratio_w'],
+      ),
+      ratioH: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}ratio_h'],
+      ),
+      width: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}width'],
+      ),
+      height: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}height'],
+      ),
+      unit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit'],
+      ),
+      startNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}start_notes'],
+      )!,
+      referenceImageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reference_image_id'],
+      ),
+    );
   }
 
   @override
@@ -322,7 +854,489 @@ class Projects extends Table with TableInfo {
   bool get dontWriteConstraints => true;
 }
 
-class ImageEditHistory extends Table with TableInfo {
+class ProjectsData extends DataClass implements Insertable<ProjectsData> {
+  final String id;
+  final int createdAt;
+  final int updatedAt;
+  final String updatedByDeviceId;
+  final int? deletedAt;
+  final String name;
+  final int nameIsDefault;
+  final String sizeKind;
+  final double? ratioW;
+  final double? ratioH;
+  final double? width;
+  final double? height;
+  final String? unit;
+  final String startNotes;
+  final String? referenceImageId;
+  const ProjectsData({
+    required this.id,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.updatedByDeviceId,
+    this.deletedAt,
+    required this.name,
+    required this.nameIsDefault,
+    required this.sizeKind,
+    this.ratioW,
+    this.ratioH,
+    this.width,
+    this.height,
+    this.unit,
+    required this.startNotes,
+    this.referenceImageId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    map['updated_by_device_id'] = Variable<String>(updatedByDeviceId);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
+    map['name'] = Variable<String>(name);
+    map['name_is_default'] = Variable<int>(nameIsDefault);
+    map['size_kind'] = Variable<String>(sizeKind);
+    if (!nullToAbsent || ratioW != null) {
+      map['ratio_w'] = Variable<double>(ratioW);
+    }
+    if (!nullToAbsent || ratioH != null) {
+      map['ratio_h'] = Variable<double>(ratioH);
+    }
+    if (!nullToAbsent || width != null) {
+      map['width'] = Variable<double>(width);
+    }
+    if (!nullToAbsent || height != null) {
+      map['height'] = Variable<double>(height);
+    }
+    if (!nullToAbsent || unit != null) {
+      map['unit'] = Variable<String>(unit);
+    }
+    map['start_notes'] = Variable<String>(startNotes);
+    if (!nullToAbsent || referenceImageId != null) {
+      map['reference_image_id'] = Variable<String>(referenceImageId);
+    }
+    return map;
+  }
+
+  ProjectsCompanion toCompanion(bool nullToAbsent) {
+    return ProjectsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      updatedByDeviceId: Value(updatedByDeviceId),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      name: Value(name),
+      nameIsDefault: Value(nameIsDefault),
+      sizeKind: Value(sizeKind),
+      ratioW: ratioW == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratioW),
+      ratioH: ratioH == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratioH),
+      width: width == null && nullToAbsent
+          ? const Value.absent()
+          : Value(width),
+      height: height == null && nullToAbsent
+          ? const Value.absent()
+          : Value(height),
+      unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
+      startNotes: Value(startNotes),
+      referenceImageId: referenceImageId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(referenceImageId),
+    );
+  }
+
+  factory ProjectsData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProjectsData(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      updatedByDeviceId: serializer.fromJson<String>(json['updatedByDeviceId']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
+      name: serializer.fromJson<String>(json['name']),
+      nameIsDefault: serializer.fromJson<int>(json['nameIsDefault']),
+      sizeKind: serializer.fromJson<String>(json['sizeKind']),
+      ratioW: serializer.fromJson<double?>(json['ratioW']),
+      ratioH: serializer.fromJson<double?>(json['ratioH']),
+      width: serializer.fromJson<double?>(json['width']),
+      height: serializer.fromJson<double?>(json['height']),
+      unit: serializer.fromJson<String?>(json['unit']),
+      startNotes: serializer.fromJson<String>(json['startNotes']),
+      referenceImageId: serializer.fromJson<String?>(json['referenceImageId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'updatedByDeviceId': serializer.toJson<String>(updatedByDeviceId),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
+      'name': serializer.toJson<String>(name),
+      'nameIsDefault': serializer.toJson<int>(nameIsDefault),
+      'sizeKind': serializer.toJson<String>(sizeKind),
+      'ratioW': serializer.toJson<double?>(ratioW),
+      'ratioH': serializer.toJson<double?>(ratioH),
+      'width': serializer.toJson<double?>(width),
+      'height': serializer.toJson<double?>(height),
+      'unit': serializer.toJson<String?>(unit),
+      'startNotes': serializer.toJson<String>(startNotes),
+      'referenceImageId': serializer.toJson<String?>(referenceImageId),
+    };
+  }
+
+  ProjectsData copyWith({
+    String? id,
+    int? createdAt,
+    int? updatedAt,
+    String? updatedByDeviceId,
+    Value<int?> deletedAt = const Value.absent(),
+    String? name,
+    int? nameIsDefault,
+    String? sizeKind,
+    Value<double?> ratioW = const Value.absent(),
+    Value<double?> ratioH = const Value.absent(),
+    Value<double?> width = const Value.absent(),
+    Value<double?> height = const Value.absent(),
+    Value<String?> unit = const Value.absent(),
+    String? startNotes,
+    Value<String?> referenceImageId = const Value.absent(),
+  }) => ProjectsData(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    updatedByDeviceId: updatedByDeviceId ?? this.updatedByDeviceId,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    name: name ?? this.name,
+    nameIsDefault: nameIsDefault ?? this.nameIsDefault,
+    sizeKind: sizeKind ?? this.sizeKind,
+    ratioW: ratioW.present ? ratioW.value : this.ratioW,
+    ratioH: ratioH.present ? ratioH.value : this.ratioH,
+    width: width.present ? width.value : this.width,
+    height: height.present ? height.value : this.height,
+    unit: unit.present ? unit.value : this.unit,
+    startNotes: startNotes ?? this.startNotes,
+    referenceImageId: referenceImageId.present
+        ? referenceImageId.value
+        : this.referenceImageId,
+  );
+  ProjectsData copyWithCompanion(ProjectsCompanion data) {
+    return ProjectsData(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      updatedByDeviceId: data.updatedByDeviceId.present
+          ? data.updatedByDeviceId.value
+          : this.updatedByDeviceId,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      name: data.name.present ? data.name.value : this.name,
+      nameIsDefault: data.nameIsDefault.present
+          ? data.nameIsDefault.value
+          : this.nameIsDefault,
+      sizeKind: data.sizeKind.present ? data.sizeKind.value : this.sizeKind,
+      ratioW: data.ratioW.present ? data.ratioW.value : this.ratioW,
+      ratioH: data.ratioH.present ? data.ratioH.value : this.ratioH,
+      width: data.width.present ? data.width.value : this.width,
+      height: data.height.present ? data.height.value : this.height,
+      unit: data.unit.present ? data.unit.value : this.unit,
+      startNotes: data.startNotes.present
+          ? data.startNotes.value
+          : this.startNotes,
+      referenceImageId: data.referenceImageId.present
+          ? data.referenceImageId.value
+          : this.referenceImageId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProjectsData(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('updatedByDeviceId: $updatedByDeviceId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('name: $name, ')
+          ..write('nameIsDefault: $nameIsDefault, ')
+          ..write('sizeKind: $sizeKind, ')
+          ..write('ratioW: $ratioW, ')
+          ..write('ratioH: $ratioH, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('unit: $unit, ')
+          ..write('startNotes: $startNotes, ')
+          ..write('referenceImageId: $referenceImageId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    createdAt,
+    updatedAt,
+    updatedByDeviceId,
+    deletedAt,
+    name,
+    nameIsDefault,
+    sizeKind,
+    ratioW,
+    ratioH,
+    width,
+    height,
+    unit,
+    startNotes,
+    referenceImageId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProjectsData &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.updatedByDeviceId == this.updatedByDeviceId &&
+          other.deletedAt == this.deletedAt &&
+          other.name == this.name &&
+          other.nameIsDefault == this.nameIsDefault &&
+          other.sizeKind == this.sizeKind &&
+          other.ratioW == this.ratioW &&
+          other.ratioH == this.ratioH &&
+          other.width == this.width &&
+          other.height == this.height &&
+          other.unit == this.unit &&
+          other.startNotes == this.startNotes &&
+          other.referenceImageId == this.referenceImageId);
+}
+
+class ProjectsCompanion extends UpdateCompanion<ProjectsData> {
+  final Value<String> id;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<String> updatedByDeviceId;
+  final Value<int?> deletedAt;
+  final Value<String> name;
+  final Value<int> nameIsDefault;
+  final Value<String> sizeKind;
+  final Value<double?> ratioW;
+  final Value<double?> ratioH;
+  final Value<double?> width;
+  final Value<double?> height;
+  final Value<String?> unit;
+  final Value<String> startNotes;
+  final Value<String?> referenceImageId;
+  final Value<int> rowid;
+  const ProjectsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.updatedByDeviceId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.name = const Value.absent(),
+    this.nameIsDefault = const Value.absent(),
+    this.sizeKind = const Value.absent(),
+    this.ratioW = const Value.absent(),
+    this.ratioH = const Value.absent(),
+    this.width = const Value.absent(),
+    this.height = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.startNotes = const Value.absent(),
+    this.referenceImageId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProjectsCompanion.insert({
+    required String id,
+    required int createdAt,
+    required int updatedAt,
+    required String updatedByDeviceId,
+    this.deletedAt = const Value.absent(),
+    required String name,
+    required int nameIsDefault,
+    this.sizeKind = const Value.absent(),
+    this.ratioW = const Value.absent(),
+    this.ratioH = const Value.absent(),
+    this.width = const Value.absent(),
+    this.height = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.startNotes = const Value.absent(),
+    this.referenceImageId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       updatedByDeviceId = Value(updatedByDeviceId),
+       name = Value(name),
+       nameIsDefault = Value(nameIsDefault);
+  static Insertable<ProjectsData> custom({
+    Expression<String>? id,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<String>? updatedByDeviceId,
+    Expression<int>? deletedAt,
+    Expression<String>? name,
+    Expression<int>? nameIsDefault,
+    Expression<String>? sizeKind,
+    Expression<double>? ratioW,
+    Expression<double>? ratioH,
+    Expression<double>? width,
+    Expression<double>? height,
+    Expression<String>? unit,
+    Expression<String>? startNotes,
+    Expression<String>? referenceImageId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (updatedByDeviceId != null) 'updated_by_device_id': updatedByDeviceId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (name != null) 'name': name,
+      if (nameIsDefault != null) 'name_is_default': nameIsDefault,
+      if (sizeKind != null) 'size_kind': sizeKind,
+      if (ratioW != null) 'ratio_w': ratioW,
+      if (ratioH != null) 'ratio_h': ratioH,
+      if (width != null) 'width': width,
+      if (height != null) 'height': height,
+      if (unit != null) 'unit': unit,
+      if (startNotes != null) 'start_notes': startNotes,
+      if (referenceImageId != null) 'reference_image_id': referenceImageId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProjectsCompanion copyWith({
+    Value<String>? id,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<String>? updatedByDeviceId,
+    Value<int?>? deletedAt,
+    Value<String>? name,
+    Value<int>? nameIsDefault,
+    Value<String>? sizeKind,
+    Value<double?>? ratioW,
+    Value<double?>? ratioH,
+    Value<double?>? width,
+    Value<double?>? height,
+    Value<String?>? unit,
+    Value<String>? startNotes,
+    Value<String?>? referenceImageId,
+    Value<int>? rowid,
+  }) {
+    return ProjectsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      updatedByDeviceId: updatedByDeviceId ?? this.updatedByDeviceId,
+      deletedAt: deletedAt ?? this.deletedAt,
+      name: name ?? this.name,
+      nameIsDefault: nameIsDefault ?? this.nameIsDefault,
+      sizeKind: sizeKind ?? this.sizeKind,
+      ratioW: ratioW ?? this.ratioW,
+      ratioH: ratioH ?? this.ratioH,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      unit: unit ?? this.unit,
+      startNotes: startNotes ?? this.startNotes,
+      referenceImageId: referenceImageId ?? this.referenceImageId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (updatedByDeviceId.present) {
+      map['updated_by_device_id'] = Variable<String>(updatedByDeviceId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (nameIsDefault.present) {
+      map['name_is_default'] = Variable<int>(nameIsDefault.value);
+    }
+    if (sizeKind.present) {
+      map['size_kind'] = Variable<String>(sizeKind.value);
+    }
+    if (ratioW.present) {
+      map['ratio_w'] = Variable<double>(ratioW.value);
+    }
+    if (ratioH.present) {
+      map['ratio_h'] = Variable<double>(ratioH.value);
+    }
+    if (width.present) {
+      map['width'] = Variable<double>(width.value);
+    }
+    if (height.present) {
+      map['height'] = Variable<double>(height.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
+    }
+    if (startNotes.present) {
+      map['start_notes'] = Variable<String>(startNotes.value);
+    }
+    if (referenceImageId.present) {
+      map['reference_image_id'] = Variable<String>(referenceImageId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProjectsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('updatedByDeviceId: $updatedByDeviceId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('name: $name, ')
+          ..write('nameIsDefault: $nameIsDefault, ')
+          ..write('sizeKind: $sizeKind, ')
+          ..write('ratioW: $ratioW, ')
+          ..write('ratioH: $ratioH, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('unit: $unit, ')
+          ..write('startNotes: $startNotes, ')
+          ..write('referenceImageId: $referenceImageId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class ImageEditHistory extends Table
+    with TableInfo<ImageEditHistory, ImageEditHistoryData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -361,8 +1375,22 @@ class ImageEditHistory extends Table with TableInfo {
   @override
   Set<GeneratedColumn> get $primaryKey => {imageId, seq};
   @override
-  Never map(Map<String, dynamic> data, {String? tablePrefix}) {
-    throw UnsupportedError('TableInfo.map in schema verification code');
+  ImageEditHistoryData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImageEditHistoryData(
+      imageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_id'],
+      )!,
+      seq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seq'],
+      )!,
+      editsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}edits_json'],
+      )!,
+    );
   }
 
   @override
@@ -376,7 +1404,171 @@ class ImageEditHistory extends Table with TableInfo {
   bool get dontWriteConstraints => true;
 }
 
-class ImageEditCursor extends Table with TableInfo {
+class ImageEditHistoryData extends DataClass
+    implements Insertable<ImageEditHistoryData> {
+  final String imageId;
+  final int seq;
+  final String editsJson;
+  const ImageEditHistoryData({
+    required this.imageId,
+    required this.seq,
+    required this.editsJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['image_id'] = Variable<String>(imageId);
+    map['seq'] = Variable<int>(seq);
+    map['edits_json'] = Variable<String>(editsJson);
+    return map;
+  }
+
+  ImageEditHistoryCompanion toCompanion(bool nullToAbsent) {
+    return ImageEditHistoryCompanion(
+      imageId: Value(imageId),
+      seq: Value(seq),
+      editsJson: Value(editsJson),
+    );
+  }
+
+  factory ImageEditHistoryData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImageEditHistoryData(
+      imageId: serializer.fromJson<String>(json['imageId']),
+      seq: serializer.fromJson<int>(json['seq']),
+      editsJson: serializer.fromJson<String>(json['editsJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'imageId': serializer.toJson<String>(imageId),
+      'seq': serializer.toJson<int>(seq),
+      'editsJson': serializer.toJson<String>(editsJson),
+    };
+  }
+
+  ImageEditHistoryData copyWith({
+    String? imageId,
+    int? seq,
+    String? editsJson,
+  }) => ImageEditHistoryData(
+    imageId: imageId ?? this.imageId,
+    seq: seq ?? this.seq,
+    editsJson: editsJson ?? this.editsJson,
+  );
+  ImageEditHistoryData copyWithCompanion(ImageEditHistoryCompanion data) {
+    return ImageEditHistoryData(
+      imageId: data.imageId.present ? data.imageId.value : this.imageId,
+      seq: data.seq.present ? data.seq.value : this.seq,
+      editsJson: data.editsJson.present ? data.editsJson.value : this.editsJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImageEditHistoryData(')
+          ..write('imageId: $imageId, ')
+          ..write('seq: $seq, ')
+          ..write('editsJson: $editsJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(imageId, seq, editsJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImageEditHistoryData &&
+          other.imageId == this.imageId &&
+          other.seq == this.seq &&
+          other.editsJson == this.editsJson);
+}
+
+class ImageEditHistoryCompanion extends UpdateCompanion<ImageEditHistoryData> {
+  final Value<String> imageId;
+  final Value<int> seq;
+  final Value<String> editsJson;
+  final Value<int> rowid;
+  const ImageEditHistoryCompanion({
+    this.imageId = const Value.absent(),
+    this.seq = const Value.absent(),
+    this.editsJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImageEditHistoryCompanion.insert({
+    required String imageId,
+    required int seq,
+    required String editsJson,
+    this.rowid = const Value.absent(),
+  }) : imageId = Value(imageId),
+       seq = Value(seq),
+       editsJson = Value(editsJson);
+  static Insertable<ImageEditHistoryData> custom({
+    Expression<String>? imageId,
+    Expression<int>? seq,
+    Expression<String>? editsJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (imageId != null) 'image_id': imageId,
+      if (seq != null) 'seq': seq,
+      if (editsJson != null) 'edits_json': editsJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImageEditHistoryCompanion copyWith({
+    Value<String>? imageId,
+    Value<int>? seq,
+    Value<String>? editsJson,
+    Value<int>? rowid,
+  }) {
+    return ImageEditHistoryCompanion(
+      imageId: imageId ?? this.imageId,
+      seq: seq ?? this.seq,
+      editsJson: editsJson ?? this.editsJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (imageId.present) {
+      map['image_id'] = Variable<String>(imageId.value);
+    }
+    if (seq.present) {
+      map['seq'] = Variable<int>(seq.value);
+    }
+    if (editsJson.present) {
+      map['edits_json'] = Variable<String>(editsJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImageEditHistoryCompanion(')
+          ..write('imageId: $imageId, ')
+          ..write('seq: $seq, ')
+          ..write('editsJson: $editsJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class ImageEditCursor extends Table
+    with TableInfo<ImageEditCursor, ImageEditCursorData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -407,8 +1599,18 @@ class ImageEditCursor extends Table with TableInfo {
   @override
   Set<GeneratedColumn> get $primaryKey => {imageId};
   @override
-  Never map(Map<String, dynamic> data, {String? tablePrefix}) {
-    throw UnsupportedError('TableInfo.map in schema verification code');
+  ImageEditCursorData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImageEditCursorData(
+      imageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_id'],
+      )!,
+      seq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seq'],
+      )!,
+    );
   }
 
   @override
@@ -422,7 +1624,139 @@ class ImageEditCursor extends Table with TableInfo {
   bool get dontWriteConstraints => true;
 }
 
-class AppMeta extends Table with TableInfo {
+class ImageEditCursorData extends DataClass
+    implements Insertable<ImageEditCursorData> {
+  final String imageId;
+  final int seq;
+  const ImageEditCursorData({required this.imageId, required this.seq});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['image_id'] = Variable<String>(imageId);
+    map['seq'] = Variable<int>(seq);
+    return map;
+  }
+
+  ImageEditCursorCompanion toCompanion(bool nullToAbsent) {
+    return ImageEditCursorCompanion(imageId: Value(imageId), seq: Value(seq));
+  }
+
+  factory ImageEditCursorData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImageEditCursorData(
+      imageId: serializer.fromJson<String>(json['imageId']),
+      seq: serializer.fromJson<int>(json['seq']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'imageId': serializer.toJson<String>(imageId),
+      'seq': serializer.toJson<int>(seq),
+    };
+  }
+
+  ImageEditCursorData copyWith({String? imageId, int? seq}) =>
+      ImageEditCursorData(
+        imageId: imageId ?? this.imageId,
+        seq: seq ?? this.seq,
+      );
+  ImageEditCursorData copyWithCompanion(ImageEditCursorCompanion data) {
+    return ImageEditCursorData(
+      imageId: data.imageId.present ? data.imageId.value : this.imageId,
+      seq: data.seq.present ? data.seq.value : this.seq,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImageEditCursorData(')
+          ..write('imageId: $imageId, ')
+          ..write('seq: $seq')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(imageId, seq);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImageEditCursorData &&
+          other.imageId == this.imageId &&
+          other.seq == this.seq);
+}
+
+class ImageEditCursorCompanion extends UpdateCompanion<ImageEditCursorData> {
+  final Value<String> imageId;
+  final Value<int> seq;
+  final Value<int> rowid;
+  const ImageEditCursorCompanion({
+    this.imageId = const Value.absent(),
+    this.seq = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImageEditCursorCompanion.insert({
+    required String imageId,
+    required int seq,
+    this.rowid = const Value.absent(),
+  }) : imageId = Value(imageId),
+       seq = Value(seq);
+  static Insertable<ImageEditCursorData> custom({
+    Expression<String>? imageId,
+    Expression<int>? seq,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (imageId != null) 'image_id': imageId,
+      if (seq != null) 'seq': seq,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImageEditCursorCompanion copyWith({
+    Value<String>? imageId,
+    Value<int>? seq,
+    Value<int>? rowid,
+  }) {
+    return ImageEditCursorCompanion(
+      imageId: imageId ?? this.imageId,
+      seq: seq ?? this.seq,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (imageId.present) {
+      map['image_id'] = Variable<String>(imageId.value);
+    }
+    if (seq.present) {
+      map['seq'] = Variable<int>(seq.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImageEditCursorCompanion(')
+          ..write('imageId: $imageId, ')
+          ..write('seq: $seq, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class AppMeta extends Table with TableInfo<AppMeta, AppMetaData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -453,8 +1787,18 @@ class AppMeta extends Table with TableInfo {
   @override
   Set<GeneratedColumn> get $primaryKey => {key};
   @override
-  Never map(Map<String, dynamic> data, {String? tablePrefix}) {
-    throw UnsupportedError('TableInfo.map in schema verification code');
+  AppMetaData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppMetaData(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+    );
   }
 
   @override
@@ -466,6 +1810,134 @@ class AppMeta extends Table with TableInfo {
   List<String> get customConstraints => const ['PRIMARY KEY("key")'];
   @override
   bool get dontWriteConstraints => true;
+}
+
+class AppMetaData extends DataClass implements Insertable<AppMetaData> {
+  final String key;
+  final String value;
+  const AppMetaData({required this.key, required this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  AppMetaCompanion toCompanion(bool nullToAbsent) {
+    return AppMetaCompanion(key: Value(key), value: Value(value));
+  }
+
+  factory AppMetaData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppMetaData(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  AppMetaData copyWith({String? key, String? value}) =>
+      AppMetaData(key: key ?? this.key, value: value ?? this.value);
+  AppMetaData copyWithCompanion(AppMetaCompanion data) {
+    return AppMetaData(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppMetaData(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppMetaData &&
+          other.key == this.key &&
+          other.value == this.value);
+}
+
+class AppMetaCompanion extends UpdateCompanion<AppMetaData> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<int> rowid;
+  const AppMetaCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppMetaCompanion.insert({
+    required String key,
+    required String value,
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       value = Value(value);
+  static Insertable<AppMetaData> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppMetaCompanion copyWith({
+    Value<String>? key,
+    Value<String>? value,
+    Value<int>? rowid,
+  }) {
+    return AppMetaCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppMetaCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
 }
 
 class DatabaseAtV1 extends GeneratedDatabase {
