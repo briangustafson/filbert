@@ -165,7 +165,7 @@ See [milestones/m1-design.md](milestones/m1-design.md) §4.2 for the exact forma
 | Kind | Examples | Stored where | Applied when |
 |---|---|---|---|
 | Permanent edits | crop, perspective, rotation | `Image.edits` | Always (display + export) |
-| Viewing aids | grayscale, limited colors/values, gridlines, compare overlay | `ViewPrefs` (settings) / transient view state (on/off) | On screen when toggled; on export only if selected |
+| Viewing aids | grayscale, limited colors/values, gridlines, compare overlay | `ViewPrefs` (settings, and which aids are on) | On screen when toggled; on export only if selected |
 
 Viewing aids render live on the GPU (a fragment shader over the cropped image; grayscale is computed as perceived lightness, not a color matrix), so toggling and adjusting is instant even on large photos. Display uses a downsampled decode sized to the screen; thumbnails are cached.
 

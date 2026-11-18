@@ -1,3 +1,5 @@
+import 'view_prefs.dart';
+
 /// The viewing aids on the photo-screen toolbar (m2-design §3.1).
 enum Aid {
   grid,
@@ -18,8 +20,9 @@ enum Aid {
 /// Which tone aid is on, if any.
 enum ToneAid { none, gray, valueBands, colors }
 
-/// Which aids are on and which panel is open, for one visit to the photo
-/// screen (not saved, not part of undo; m2-design §3.1, §6).
+/// Which aids are on and which panel is open on the photo screen. The aids
+/// are saved per project ([ViewAids.on], in view prefs); the panel is per
+/// visit. Not part of undo (m2-design §3.1, §6).
 class ViewAids {
   const ViewAids({
     this.grid = false,
@@ -28,7 +31,7 @@ class ViewAids {
     this.panel,
   });
 
-  /// All off, no panel: how every visit starts.
+  /// All off, no panel.
   static const off = ViewAids();
 
   final bool grid;
@@ -37,6 +40,9 @@ class ViewAids {
 
   /// The aid whose panel is open; always one that is on.
   final Aid? panel;
+
+  /// Which aids are on, as saved in view prefs.
+  AidsOn get on => AidsOn(grid: grid, tone: tone, compare: compare);
 
   bool get anyOn => grid || tone != ToneAid.none || compare;
 

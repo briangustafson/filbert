@@ -12,17 +12,49 @@ import 'view_prefs_repository.dart';
 
 part 'view_aids_providers.g.dart';
 
-/// Which aids are on for the photo screen of [projectId]. Lives while the
-/// screen watches it, so leaving the screen turns every aid off
-/// (m2-design §3.1).
+/// Which aids are on for the photo screen of [projectId], and its open
+/// panel. The aids come from the project's view prefs, so they are on again
+/// when the screen reopens; the panel lives while the screen watches this,
+/// so each visit starts with panels closed (m2-design §3.1).
 @riverpod
 class ViewAidsState extends _$ViewAidsState {
+  /// The open panel; kept across rebuilds from prefs while its aid is on.
+  Aid? _panel;
+
   @override
-  ViewAids build(String projectId) => ViewAids.off;
+  ViewAids build(String projectId) {
+    final on = ref.watch(viewPrefsProvider(projectId)).value?.on ?? AidsOn.off;
+    final aids = ViewAids(grid: on.grid, tone: on.tone, compare: on.compare);
+    final panel = _panel;
+    return panel != null && aids.isOn(panel)
+        ? ViewAids(
+            grid: aids.grid,
+            tone: aids.tone,
+            compare: aids.compare,
+            panel: panel,
+          )
+        : aids;
+  }
 
-  void tap(Aid aid) => state = state.tap(aid);
+  void tap(Aid aid) {
+    // Ignored until the prefs have loaded, so a tap can't write defaults
+    // over the project's settings.
+    final prefs = ref.read(viewPrefsProvider(projectId)).value;
+    if (prefs == null) return;
+    final next = state.tap(aid);
+    _panel = next.panel;
+    state = next;
+    if (next.on != prefs.on) {
+      ref
+          .read(viewPrefsRepositoryProvider)
+          .update(projectId, prefs.copyWith(on: next.on));
+    }
+  }
 
-  void closePanel() => state = state.closePanel();
+  void closePanel() {
+    _panel = null;
+    state = state.closePanel();
+  }
 }
 
 /// The project's aid settings, live (m2-design §4.1).

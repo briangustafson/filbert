@@ -169,8 +169,9 @@ Implementation notes (T14):
 ### 3.8 Auto-crop review
 
 - The photo with the detected quad drawn as an outline and four large draggable handles; a magnifier loupe appears under the finger while dragging.
-- If detection confidence is low, the quad starts slightly inset from the image edges and a hint says "Couldn't find the canvas edges — drag the corners."
-- Buttons: Cancel, **Full image**, **Reset** (to detected), **Apply**. Apply pushes a new edit state with perspective correction.
+- If detection confidence is low, the quad starts slightly inset from the image edges and a hint says "Couldn't find the canvas edges — drag the corners, or crop manually."
+- Buttons: Cancel, **Full image**, **Reset** (to detected), **Crop manually**, **Apply**. Apply pushes a new edit state with perspective correction.
+- **Crop manually** (added 2026-11-18, after M2) opens the rectangle crop with ratio locks (§3.7) in this screen's place, so leaving it returns to the photo. In the review queue of new photos it keeps the queue: Skip appears, Apply and Skip go on to the next photo's review (or the project after the last), Cancel and back end the queue at the project. The tool row wraps onto two lines where its three buttons don't fit.
 - Debug builds only: **Copy corners as JSON**, used to create fixture entries for the evaluation set (§6.4).
 - Implementation notes (T12):
   - The photo is shown turned by the image's `quarterTurns` (kept on Apply), so corners are dragged on the photo as seen; they're stored in the unturned original, ordered as the warp sees them (`review_geometry.dart`).

@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/routes.dart';
 import '../../app/theme.dart';
 import '../../core/imaging/crop_geometry.dart';
+import '../autocrop/review_queue.dart';
 import '../photo_viewer/photo_files.dart';
 import '../photos/data/image_providers.dart';
 import '../photos/data/image_repository.dart';
@@ -25,17 +26,27 @@ import 'crop_overlay.dart';
 ///
 /// [afterAdd]: opened for a reference just added (m1-design §3.6); Skip
 /// leaves it uncropped, and every way out returns to the project.
+///
+/// [queue]: opened with Crop manually from the review of new photos
+/// (§3.8); Skip leaves it as it is, Apply and Skip go on to the next
+/// photo's review (or the project after the last), Cancel and back end the
+/// queue at the project.
 class CropScreen extends ConsumerWidget {
   const CropScreen({
     super.key,
     required this.projectId,
     required this.imageId,
     this.afterAdd = false,
+    this.queue,
   });
 
   final String projectId;
   final String imageId;
   final bool afterAdd;
+  final ReviewQueue? queue;
+
+  /// Part of the add-photo flow: every way out goes on in the flow.
+  bool get _inFlow => afterAdd || queue != null;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,10 +67,11 @@ class CropScreen extends ConsumerWidget {
         project: project.value!,
         image: image,
         afterAdd: afterAdd,
+        queue: queue,
       );
     }
     return PopScope(
-      canPop: !afterAdd,
+      canPop: !_inFlow,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) context.go(Routes.project(projectId));
       },
@@ -80,11 +92,13 @@ class _CropView extends ConsumerStatefulWidget {
     required this.project,
     required this.image,
     this.afterAdd = false,
+    this.queue,
   });
 
   final Project project;
   final ProjectImage image;
   final bool afterAdd;
+  final ReviewQueue? queue;
 
   @override
   ConsumerState<_CropView> createState() => _CropViewState();
@@ -131,7 +145,7 @@ class _CropViewState extends ConsumerState<_CropView> {
   }
 
   void _close() {
-    if (widget.afterAdd) {
+    if (widget.afterAdd || widget.queue != null) {
       context.go(Routes.project(widget.project.id));
     } else if (context.canPop()) {
       context.pop();
@@ -144,7 +158,24 @@ class _CropViewState extends ConsumerState<_CropView> {
     await ref
         .read(imageRepositoryProvider)
         .setEdits(widget.image.id, _editor.edits);
-    if (mounted) _close();
+    if (mounted) _next();
+  }
+
+  /// After Apply or Skip: the next photo's review in the queue, else as
+  /// [_close].
+  void _next() {
+    final queue = widget.queue;
+    if (queue == null || queue.isLast) {
+      _close();
+    } else {
+      context.go(
+        Routes.autocrop(
+          widget.project.id,
+          queue.remaining.first,
+          queue: queue.advanced,
+        ),
+      );
+    }
   }
 
   @override
@@ -159,7 +190,7 @@ class _CropViewState extends ConsumerState<_CropView> {
           _TopBar(
             onCancel: _close,
             onReset: _editor.reset,
-            onSkip: widget.afterAdd ? _close : null,
+            onSkip: widget.afterAdd || widget.queue != null ? _next : null,
             onApply: _apply,
           ),
           if (_replacesPerspective)

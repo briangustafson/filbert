@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:filbert/core/units/length_unit.dart';
+import 'package:filbert/features/view_aids/domain/view_aids.dart';
 import 'package:filbert/features/view_aids/domain/view_prefs.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -18,6 +19,7 @@ void main() {
     values: ValuesPrefs(bands: 3),
     colors: ColorsPrefs(count: 12),
     compare: ComparePrefs(imageId: '0193-photo', opacity: 0.25),
+    on: AidsOn(grid: true, tone: ToneAid.valueBands, compare: true),
   );
 
   ViewPrefs parse(Object? json) => ViewPrefs.fromJson(json);
@@ -61,6 +63,7 @@ void main() {
       'values': {'bands': 3},
       'colors': {'count': 12},
       'compare': {'imageId': '0193-photo', 'opacity': 0.25},
+      'on': {'grid': true, 'tone': 'values', 'compare': true},
     });
     // Defaults that are "unset" are left out.
     final d = ViewPrefs.defaults.toJson();
@@ -80,6 +83,32 @@ void main() {
         grid: const GridPrefs(rows: 6),
         compare: const ComparePrefs(opacity: 0.8),
       ),
+    );
+  });
+
+  test('which aids are on: missing means all off; each tone by name', () {
+    expect(parse({'v': 1}).on, AidsOn.off, reason: 'rows from before');
+    for (final (name, tone) in [
+      ('none', ToneAid.none),
+      ('gray', ToneAid.gray),
+      ('values', ToneAid.valueBands),
+      ('colors', ToneAid.colors),
+      ('sepia', ToneAid.none),
+    ]) {
+      expect(
+        parse({
+          'v': 1,
+          'on': {'tone': name},
+        }).on.tone,
+        tone,
+      );
+    }
+    expect(
+      parse({
+        'v': 1,
+        'on': {'grid': 'yes', 'compare': true},
+      }).on,
+      const AidsOn(compare: true),
     );
   });
 

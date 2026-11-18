@@ -35,7 +35,7 @@ Agreed with Brian on 2026-11-17.
 | Limited colors | **Palette by k-means** in CIELAB, 2–16 colors, default 8, with the palette shown as swatches. Computed once per (photo, edits, count) and cached; mapping pixels to it is live. |
 | Aid controls | A **bottom toolbar** shown with the chrome: Grid · Gray · Values · Colors · Compare. Tap toggles; the active aid's settings sit in a small panel above the bar. |
 | Compare | **Overlay only**: the other photo drawn over this one, stretched to the same frame, with an opacity slider. Default photo: the reference. |
-| What's remembered | Aid **settings** per project (synced from M3). Which aids are **on** resets when leaving the photo screen. |
+| What's remembered | Aid **settings** per project (synced from M3), **including which aids are on** (changed 2026-11-18, after M2: they stay on until turned off, rather than resetting when leaving the photo screen). Which panel is open is per visit. |
 | Grid | **Divisions** (rows × columns) for any project, or **spacing** (e.g. every 2 in) when the project has a physical size. Optional diagonals. Color white / black / gray / red; width thin / medium / thick. |
 | Gallery | Package **`gal`** (Android MediaStore; iOS/macOS later), album "Filbert". |
 | Export | One **Export…** menu item: an Include checklist preset to what's on screen, then Save to gallery or Save as new image. |
@@ -56,7 +56,7 @@ Agreed with Brian on 2026-11-17.
 - **Gray, Values and Colors are one choice**: turning one on turns the others off (they are alternative ways to show tone). Grid and Compare combine with any of them.
 - Tapping an aid that is off turns it on and opens its panel; tapping it again while its panel is open turns it off. Tapping an aid that is on but whose panel is closed opens its panel (it stays on). Gray has no panel, so it just toggles; turning any aid on closes another aid's open panel. Tapping elsewhere on the photo closes the panel and hides the chrome, as now; Android Back with a panel open closes the panel instead of leaving the screen.
 - While a panel is open the chrome doesn't auto-hide. With the chrome hidden, the aids stay on.
-- Aids stay on while swiping between photos, and apply to whichever photo is shown. Leaving the photo screen turns them all off.
+- Aids stay on while swiping between photos, and apply to whichever photo is shown. Which aids are on is saved per project (`ViewPrefs.on`, §4.2), so they are on again the next time any photo of the project opens, until turned off; panels start closed. (Until 2026-11-18, leaving the photo screen turned them all off.)
 - **Press and hold** still shows the original, without aids (the plain unedited photo).
 - When zoomed, aids zoom with the photo; grid lines stay the same on-screen width.
 
@@ -132,10 +132,12 @@ One row per project that has changed an aid setting. Common columns (`id` UUIDv7
             "diagonals": false, "color": "white", "width": "thin" },
   "values": { "bands": 5 },
   "colors": { "count": 8 },
-  "compare": { "imageId": "0193…", "opacity": 0.5 }
+  "compare": { "imageId": "0193…", "opacity": 0.5 },
+  "on": { "grid": true, "tone": "values", "compare": false }
 }
 ```
 
+- `on`: which aids are on; `tone` is `none`, `gray`, `values` or `colors`. Rows without it (written before 2026-11-18) mean all off.
 - Every field is optional; missing fields take defaults, unknown fields are ignored (forward-compatible), and an unknown `v` falls back to defaults rather than erroring (settings are not worth blocking on).
 - `spacing` is in the project's unit. `compare.imageId` that no longer points at a live photo in the project falls back to the default.
 - Writes are debounced (≈ 500 ms) so dragging the opacity slider doesn't write on every frame. `ViewPrefsRepository.watch` shows a change at once, before it's written; pending writes are flushed when the app is hidden, since Android may then kill it.
@@ -229,7 +231,7 @@ original + edits ─▶ full-size render (existing pipeline, ≤ 6000 px) ─▶
 | `RenderService` | Full-resolution export with aids (§5.4) |
 | `GallerySaver` | Saves a file to the device gallery (§5.5) |
 | `ImageRepository` | + `importDerived` |
-| View-aids state | A notifier per photo-screen session: which aids are on, which panel is open (not persisted) |
+| View-aids state | A notifier per photo-screen visit: which aids are on (read from and saved to `ViewPrefs.on`) and which panel is open (per visit, not saved) |
 
 ---
 

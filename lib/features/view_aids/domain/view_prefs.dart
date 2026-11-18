@@ -1,10 +1,11 @@
 import 'dart:convert';
 
 import '../../../core/units/length_unit.dart';
+import 'view_aids.dart';
 
 /// A project's viewing-aid settings, stored as `view_prefs.prefs_json`
-/// (m2-design §4.2). Which aids are switched on is not stored here: that is
-/// per photo-screen session (§6).
+/// (m2-design §4.2), including which aids are on ([on]); which panel is
+/// open is per photo-screen visit (§3.1).
 ///
 /// Parsing is lenient: settings are not worth blocking on. Missing, malformed
 /// or out-of-range fields take defaults or are clamped, unknown fields are
@@ -15,6 +16,7 @@ class ViewPrefs {
     this.values = const ValuesPrefs(),
     this.colors = const ColorsPrefs(),
     this.compare = const ComparePrefs(),
+    this.on = AidsOn.off,
   });
 
   static const defaults = ViewPrefs();
@@ -27,16 +29,21 @@ class ViewPrefs {
   final ColorsPrefs colors;
   final ComparePrefs compare;
 
+  /// Which aids are on; they stay on until turned off.
+  final AidsOn on;
+
   ViewPrefs copyWith({
     GridPrefs? grid,
     ValuesPrefs? values,
     ColorsPrefs? colors,
     ComparePrefs? compare,
+    AidsOn? on,
   }) => ViewPrefs(
     grid: grid ?? this.grid,
     values: values ?? this.values,
     colors: colors ?? this.colors,
     compare: compare ?? this.compare,
+    on: on ?? this.on,
   );
 
   Map<String, Object?> toJson() => {
@@ -45,6 +52,7 @@ class ViewPrefs {
     'values': values.toJson(),
     'colors': colors.toJson(),
     'compare': compare.toJson(),
+    'on': on.toJson(),
   };
 
   String toJsonString() => jsonEncode(toJson());
@@ -56,6 +64,7 @@ class ViewPrefs {
       values: ValuesPrefs.fromJson(json['values']),
       colors: ColorsPrefs.fromJson(json['colors']),
       compare: ComparePrefs.fromJson(json['compare']),
+      on: AidsOn.fromJson(json['on']),
     );
   }
 
@@ -74,10 +83,11 @@ class ViewPrefs {
       other.grid == grid &&
       other.values == values &&
       other.colors == colors &&
-      other.compare == compare;
+      other.compare == compare &&
+      other.on == on;
 
   @override
-  int get hashCode => Object.hash(grid, values, colors, compare);
+  int get hashCode => Object.hash(grid, values, colors, compare, on);
 
   @override
   String toString() => 'ViewPrefs(${toJsonString()})';
@@ -285,6 +295,58 @@ class ComparePrefs {
 
   @override
   int get hashCode => Object.hash(imageId, opacity);
+}
+
+/// Which aids are on (m2-design §3.1): saved per project, so they are on
+/// again the next time any photo of the project is opened. Missing means
+/// all off (rows written before this field existed).
+class AidsOn {
+  const AidsOn({
+    this.grid = false,
+    this.tone = ToneAid.none,
+    this.compare = false,
+  });
+
+  static const off = AidsOn();
+
+  final bool grid;
+  final ToneAid tone;
+  final bool compare;
+
+  static const _toneNames = {
+    ToneAid.none: 'none',
+    ToneAid.gray: 'gray',
+    ToneAid.valueBands: 'values',
+    ToneAid.colors: 'colors',
+  };
+
+  Map<String, Object?> toJson() => {
+    'grid': grid,
+    'tone': _toneNames[tone],
+    'compare': compare,
+  };
+
+  factory AidsOn.fromJson(Object? json) {
+    if (json is! Map) return off;
+    final tone = json['tone'];
+    return AidsOn(
+      grid: _bool(json['grid'], false),
+      tone:
+          _toneNames.entries.where((e) => e.value == tone).firstOrNull?.key ??
+          ToneAid.none,
+      compare: _bool(json['compare'], false),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is AidsOn &&
+      other.grid == grid &&
+      other.tone == tone &&
+      other.compare == compare;
+
+  @override
+  int get hashCode => Object.hash(grid, tone, compare);
 }
 
 /// [value] rounded and clamped to [min]–[max]; [fallback] if not a number.

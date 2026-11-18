@@ -187,7 +187,7 @@ void main() {
         expect(aids(c).tone, ToneAid.colors);
       });
 
-      testWidgets('aids stay on while swiping, reset after leaving', (
+      testWidgets('aids stay on while swiping and after leaving', (
         tester,
       ) async {
         final c = await open(tester, a.id);
@@ -201,6 +201,36 @@ void main() {
         await tester.pumpAndSettle();
         c.read(routerProvider).go(Routes.photo(projectId, b.id));
         await tester.pumpAndSettle();
+        expect(
+          aids(c),
+          const ViewAids(grid: true, tone: ToneAid.gray),
+          reason: 'saved for the project; panels start closed',
+        );
+        expect(
+          prefs.of(projectId).on,
+          const AidsOn(grid: true, tone: ToneAid.gray),
+        );
+
+        // Turning them off is saved too.
+        await tapAid(tester, 'Gray');
+        await tapAid(tester, 'Grid');
+        await tapAid(tester, 'Grid');
+        expect(prefs.of(projectId).on, AidsOn.off);
+      });
+
+      testWidgets('saved aids are on when the photo opens', (tester) async {
+        prefs.update(
+          projectId,
+          const ViewPrefs(on: AidsOn(tone: ToneAid.valueBands)),
+        );
+        final c = await open(tester, a.id);
+        expect(aids(c), const ViewAids(tone: ToneAid.valueBands));
+      });
+
+      testWidgets("another project's aids are its own", (tester) async {
+        final other = projects.seed('Other').id;
+        prefs.update(other, const ViewPrefs(on: AidsOn(grid: true)));
+        final c = await open(tester, a.id);
         expect(aids(c), ViewAids.off);
       });
 
