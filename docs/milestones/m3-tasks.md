@@ -34,10 +34,11 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
   - Depends on: T2
   - *Result:* `KeyBindings` per screen (a small handler of its own, so unused keys still reach text fields) with every §3.3 shortcut, plus Esc on Settings; Delete acts on the keyboard-focused tile; tooltips name the keys on a desktop. The Mac menu gained Window → Close (⌘W) and a working Settings… (was a dead Preferences…). `PhotoDropTarget` on the project screen, its empty reference slot and the project list, with a highlight saying what a drop does; Finder files are read under their security-scoped bookmark and never deleted. `desktop_drop` 0.8.4, as 0.9 conflicts with `image_picker` (§3.4). Tests: `test/app/shortcuts_test.dart` (21) and `test/features/photos/photo_drop_test.dart` (9); both integration flows pass on the emulator; the Mac debug build compiles. Not yet checked by hand in the Mac app (a real Finder drop in particular).
 
-- [ ] **T4 — Export to a file on the Mac**
+- [x] **T4 — Export to a file on the Mac**
   - `ExportDestination`: gallery on Android, **Save to file…** on macOS with `file_selector` (§3.5); snackbar with Show in Finder.
   - *Done when:* widget tests with a fake destination; a file saved from the Mac app matches the live view.
   - Depends on: T1
+  - *Result:* `ExportDestination` (gallery, or a file where there's no gallery); Save to file… asks where first, then renders; the dialog opens in the last export's folder (`export_folder`), else Pictures; "Saved." with Show in Finder, native, so `url_launcher` waits for T12 (§3.5). `file_selector` 1.1.0. Tests drive the real `FileExportDestination` with a fake dialog and a temp folder (`export_sheet_test.dart`, `export_destination_test.dart`); 605 tests pass; the Mac debug build compiles. Not yet checked by hand in the Mac app (a saved file against the live view).
 
 ### Phase 2 — Sync
 

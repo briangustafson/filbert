@@ -1,23 +1,29 @@
 // The export sheet (m2-design §3.5): the Include checklist, Save to
 // gallery, Save as new image, progress, errors; the RenderService and the
-// gallery are fakes.
+// gallery are fakes. Save to file… (m3-design §3.5) uses the real
+// FileExportDestination with a fake save dialog and a temp folder.
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:filbert/app/routes.dart';
+import 'package:filbert/core/settings/app_settings.dart';
+import 'package:filbert/features/export/data/export_destination.dart';
 import 'package:filbert/features/export/data/gallery_saver.dart';
 import 'package:filbert/features/export/domain/gallery_file_name.dart';
 import 'package:filbert/features/photo_viewer/photo_page.dart';
 import 'package:filbert/features/photos/domain/project_image.dart';
 import 'package:filbert/features/view_aids/domain/view_aids.dart';
 import 'package:filbert/features/view_aids/domain/view_prefs.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../support/fake_export.dart';
 import '../../support/fake_photos.dart';
 import '../../support/fake_project_repository.dart';
+import '../../support/fake_settings.dart';
 import '../../support/fake_view_aids.dart';
 import '../../support/fixtures.dart';
 import '../../support/pump_app.dart';
@@ -29,6 +35,8 @@ void main() {
   late FakeRenderService exports;
   late FakeGallerySaver gallery;
   late FakeSystemSettings settings;
+  late FakeSettingsStore store;
+  ExportDestination? destination;
   late String projectId;
   late ProjectImage reference, photo;
 
@@ -39,6 +47,8 @@ void main() {
     exports = FakeRenderService();
     gallery = FakeGallerySaver();
     settings = FakeSystemSettings();
+    store = FakeSettingsStore(const AppSettings(autoCropOnAdd: false));
+    destination = null;
     projectId = projects.seed('Harbour: dusk?').id;
     reference = images.seed(projectId, asReference: true);
     photo = images.seed(projectId);
@@ -63,6 +73,8 @@ void main() {
           viewPrefs: prefs,
           exports: exports,
           gallery: gallery,
+          settings: store,
+          exportDestination: destination,
           systemSettings: settings,
           initialLocation: Routes.photo(projectId, photo.id),
         );
@@ -131,12 +143,118 @@ void main() {
         expect(options.tone, ToneAid.gray);
       });
 
-      testWidgets('no gallery (macOS): only Save as new image', (tester) async {
-        gallery.available = false;
-        await open(tester);
-        expect(find.byKey(const ValueKey('export-gallery')), findsNothing);
-        await tap(tester, find.byKey(const ValueKey('export-new-photo')));
-        expect(find.text('Saved as a new photo.'), findsOneWidget);
+      group('Save to file… (the Mac)', () {
+        late Directory folder;
+        late List<({String name, String? initial})> dialogs;
+        late List<String> revealed;
+        String? Function(String name)? answer;
+
+        /// Taps Save to file…; the copy is real file I/O, which needs real
+        /// time to finish.
+        Future<void> saveToFile(WidgetTester tester) async {
+          final button = find.byKey(const ValueKey('export-file'));
+          await tester.ensureVisible(button);
+          await tester.tap(button);
+          for (var i = 0; i < 20; i++) {
+            await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 10)),
+            );
+            await tester.pump();
+            if (find.byType(LinearProgressIndicator).evaluate().isEmpty) break;
+          }
+          await tester.pumpAndSettle();
+        }
+
+        setUp(() {
+          folder = Directory.systemTemp.createTempSync('export');
+          addTearDown(() => folder.deleteSync(recursive: true));
+          dialogs = [];
+          revealed = [];
+          answer = (name) => '${folder.path}/$name';
+          gallery.available = false;
+          destination = FileExportDestination(
+            store,
+            picturesFolder: '/Users/me/Pictures',
+            dialog: ({required suggestedName, initialDirectory}) async {
+              dialogs.add((name: suggestedName, initial: initialDirectory));
+              return answer?.call(suggestedName);
+            },
+          );
+        });
+
+        testWidgets('saves where the dialog says, then shows it in Finder', (
+          tester,
+        ) async {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(const MethodChannel('filbert/finder'), (
+                call,
+              ) async {
+                if (call.method == 'reveal') {
+                  revealed.add(call.arguments as String);
+                }
+                return null;
+              });
+          addTearDown(
+            () => TestDefaultBinaryMessengerBinding
+                .instance
+                .defaultBinaryMessenger
+                .setMockMethodCallHandler(
+                  const MethodChannel('filbert/finder'),
+                  null,
+                ),
+          );
+          await open(tester);
+          expect(find.byKey(const ValueKey('export-gallery')), findsNothing);
+          await saveToFile(tester);
+
+          final dialog = dialogs.single;
+          expect(dialog.name, startsWith('Harbour dusk-'));
+          expect(dialog.name, endsWith('.jpg'));
+          expect(dialog.initial, '/Users/me/Pictures', reason: 'first time');
+          final saved = File('${folder.path}/${dialog.name}');
+          expect(saved.readAsBytesSync(), exports.file.readAsBytesSync());
+          expect(store.folder, folder.path, reason: 'remembered');
+
+          expect(find.text('Saved.'), findsOneWidget);
+          await tester.tap(find.text('Show in Finder'));
+          await tester.pumpAndSettle();
+          expect(revealed, [saved.path]);
+        });
+
+        testWidgets('the dialog opens where the last export went', (
+          tester,
+        ) async {
+          store.folder = '/Users/me/Exports';
+          await open(tester);
+          await saveToFile(tester);
+          expect(dialogs.single.initial, '/Users/me/Exports');
+        });
+
+        testWidgets('a cancelled dialog renders nothing; the sheet stays', (
+          tester,
+        ) async {
+          answer = null;
+          await open(tester);
+          await saveToFile(tester);
+          expect(dialogs, hasLength(1));
+          expect(exports.requests, isEmpty);
+          expect(find.text('Full size, as a JPEG.'), findsOneWidget);
+          expect(store.folder, isNull);
+        });
+
+        testWidgets('a write error shows in the sheet', (tester) async {
+          answer = (name) => '${folder.path}/missing/$name';
+          await open(tester);
+          await saveToFile(tester);
+          expect(find.text("Couldn't save the file."), findsOneWidget);
+          expect(store.folder, isNull);
+        });
+
+        testWidgets('Save as new image is still there', (tester) async {
+          await open(tester);
+          await tap(tester, find.byKey(const ValueKey('export-new-photo')));
+          expect(find.text('Saved as a new photo.'), findsOneWidget);
+        });
       });
 
       testWidgets('saves to the Filbert album with the file name rule', (

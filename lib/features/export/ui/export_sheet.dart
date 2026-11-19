@@ -11,6 +11,7 @@ import '../../photos/domain/project_image.dart';
 import '../../projects/data/project_providers.dart';
 import '../../view_aids/data/view_aids_providers.dart';
 import '../../view_aids/domain/view_aids.dart';
+import '../data/export_destination.dart';
 import '../data/gallery_saver.dart';
 import '../data/render_service.dart';
 import '../domain/export_options.dart';
@@ -25,14 +26,18 @@ class SavedToGallery extends ExportOutcome {
   const SavedToGallery();
 }
 
+/// Saved by Save to file… at [path] (m3-design §3.5).
+class SavedToFile extends ExportOutcome {
+  const SavedToFile(this.path);
+
+  final String path;
+}
+
 class SavedAsNewPhoto extends ExportOutcome {
   const SavedAsNewPhoto(this.photo);
 
   final ProjectImage photo;
 }
-
-/// The gallery album exports go to.
-const galleryAlbum = 'Filbert';
 
 /// Opens the export sheet for [image] (m2-design §3.5); null if closed
 /// without exporting.
@@ -47,8 +52,9 @@ Future<ExportOutcome?> showExportSheet(
   builder: (_) => ExportSheet(image: image),
 );
 
-/// Include checklist (the aids that are on), Save to gallery, Save as new
-/// image; progress and errors in place (m2-design §3.5).
+/// Include checklist (the aids that are on), Save to gallery (Save to
+/// file… on the Mac, m3-design §3.5), Save as new image; progress and
+/// errors in place (m2-design §3.5).
 class ExportSheet extends ConsumerStatefulWidget {
   const ExportSheet({super.key, required this.image});
 
@@ -110,35 +116,41 @@ class _ExportSheetState extends ConsumerState<ExportSheet> {
     }
   }
 
-  Future<ExportOutcome> _saveToGallery(ExportOptions options) async {
-    final file = await _render(options);
+  /// Save to gallery, or Save to file…: where first (a cancelled dialog
+  /// renders nothing), then the render and the save.
+  Future<void> _saveToDestination(ExportOptions options) async {
+    final destination = ref.read(exportDestinationProvider);
     final project = ref.read(projectProvider(_projectId)).value;
-    try {
-      await ref
-          .read(gallerySaverProvider)
-          .save(
-            file,
-            album: galleryAlbum,
-            fileName: galleryFileName(
-              project?.name ?? '',
-              ref.read(clockProvider).now(),
-            ),
-          );
-    } on GallerySaveException catch (e) {
-      throw switch (e.failure) {
-        GallerySaveFailure.permissionDenied => const _ExportError(
-          'Filbert needs permission to save to the gallery.',
-          offerSettings: true,
-        ),
-        GallerySaveFailure.notEnoughSpace => const _ExportError(
-          "There isn't enough space on the device.",
-        ),
-        GallerySaveFailure.other => const _ExportError(
-          "Couldn't save to the gallery.",
-        ),
+    final location = await destination.chooseLocation(
+      galleryFileName(project?.name ?? '', ref.read(clockProvider).now()),
+    );
+    if (location == null || !mounted) return;
+    await _run(options, (options) async {
+      final file = await _render(options);
+      try {
+        await destination.save(file, location);
+      } on GallerySaveException catch (e) {
+        throw switch (e.failure) {
+          GallerySaveFailure.permissionDenied => const _ExportError(
+            'Filbert needs permission to save to the gallery.',
+            offerSettings: true,
+          ),
+          GallerySaveFailure.notEnoughSpace => const _ExportError(
+            "There isn't enough space on the device.",
+          ),
+          GallerySaveFailure.other => const _ExportError(
+            "Couldn't save to the gallery.",
+          ),
+        };
+      } on FileSystemException catch (e) {
+        debugPrint('Save to file failed: $e');
+        throw const _ExportError("Couldn't save the file.");
+      }
+      return switch (destination.kind) {
+        ExportDestinationKind.gallery => const SavedToGallery(),
+        ExportDestinationKind.file => SavedToFile(location),
       };
-    }
-    return const SavedToGallery();
+    });
   }
 
   Future<ExportOutcome> _saveAsNewPhoto(ExportOptions options) async {
@@ -171,7 +183,7 @@ class _ExportSheetState extends ConsumerState<ExportSheet> {
   Widget build(BuildContext context) {
     final base = _baseOptions();
     final theme = Theme.of(context);
-    final gallery = ref.read(gallerySaverProvider).available;
+    final destination = ref.read(exportDestinationProvider).kind;
     final items = base == null
         ? const <(_Item, String)>[]
         : [
@@ -237,18 +249,23 @@ class _ExportSheetState extends ConsumerState<ExportSheet> {
                         ? () => ref.read(systemSettingsProvider).open()
                         : null,
                   ),
-                if (gallery) ...[
-                  FilledButton.icon(
-                    key: const ValueKey('export-gallery'),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Save to gallery'),
-                    onPressed: ready
-                        ? () => _run(_options(base), _saveToGallery)
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                (gallery ? OutlinedButton.icon : FilledButton.icon)(
+                FilledButton.icon(
+                  key: ValueKey('export-${destination.name}'),
+                  icon: Icon(switch (destination) {
+                    ExportDestinationKind.gallery =>
+                      Icons.photo_library_outlined,
+                    ExportDestinationKind.file => Icons.save_alt,
+                  }),
+                  label: Text(switch (destination) {
+                    ExportDestinationKind.gallery => 'Save to gallery',
+                    ExportDestinationKind.file => 'Save to file…',
+                  }),
+                  onPressed: ready
+                      ? () => _saveToDestination(_options(base))
+                      : null,
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
                   key: const ValueKey('export-new-photo'),
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: const Text('Save as new image'),
