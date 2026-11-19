@@ -12,6 +12,7 @@ import '../../../core/imaging/image_metadata.dart';
 import '../../projects/data/project_repository.dart'
     show ProjectNotFoundException;
 import '../domain/project_image.dart';
+import 'edit_history_table.dart';
 import 'photo_source.dart';
 
 part 'image_repository.g.dart';
@@ -151,6 +152,7 @@ class DriftImageRepository implements ImageRepository {
   final Clock _clock;
   final IdGenerator _ids;
   final DeviceInfo _device;
+  late final _history = EditHistoryTable(_db);
 
   static final _noEdits = Edits.none.toJsonString();
 
@@ -305,7 +307,7 @@ class DriftImageRepository implements ImageRepository {
   }
 
   /// Undo steps kept per image; older ones are dropped.
-  static const maxUndoSteps = 50;
+  static const maxUndoSteps = EditHistoryTable.maxUndoSteps;
 
   // History rows hold successive edit states, seq ascending; the cursor
   // points at the row matching the image's current edits. Undo moves the
@@ -318,18 +320,7 @@ class DriftImageRepository implements ImageRepository {
       final image = await _liveImage(imageId);
       if (Edits.fromJsonString(image.editsJson) == edits) return;
 
-      var cursor = await _cursor(imageId);
-      final atCursor = cursor == null
-          ? null
-          : await _historyEntry(imageId, cursor);
-      // No history yet, or the edits changed without it (e.g. by a future
-      // sync): record the current edits first, so undo returns to them.
-      if (atCursor == null ||
-          Edits.fromJsonString(atCursor) !=
-              Edits.fromJsonString(image.editsJson)) {
-        cursor = await _push(imageId, cursor, image.editsJson);
-      }
-      await _push(imageId, cursor, json);
+      await _history.recordChange(imageId, image.editsJson, json);
       await _writeEdits(imageId, json);
     });
   }
@@ -372,62 +363,14 @@ class DriftImageRepository implements ImageRepository {
   Future<void> _step(String imageId, int direction) {
     return _db.transaction(() async {
       await _liveImage(imageId);
-      final cursor = await _cursor(imageId);
+      final cursor = await _history.cursor(imageId);
       if (cursor == null) return;
       final target = cursor + direction;
-      final json = await _historyEntry(imageId, target);
+      final json = await _history.entry(imageId, target);
       if (json == null) return;
-      await _setCursor(imageId, target);
+      await _history.setCursor(imageId, target);
       await _writeEdits(imageId, json);
     });
-  }
-
-  /// Appends [json] after [cursor] (dropping any redo rows), moves the
-  /// cursor to it, trims to [maxUndoSteps], and returns the new cursor.
-  Future<int> _push(String imageId, int? cursor, String json) async {
-    final seq = cursor == null ? 0 : cursor + 1;
-    await (_db.delete(_db.imageEditHistory)..where(
-          (h) => h.imageId.equals(imageId) & h.seq.isBiggerOrEqualValue(seq),
-        ))
-        .go();
-    await _db
-        .into(_db.imageEditHistory)
-        .insert(
-          ImageEditHistoryCompanion.insert(
-            imageId: imageId,
-            seq: seq,
-            editsJson: json,
-          ),
-        );
-    await (_db.delete(_db.imageEditHistory)..where(
-          (h) =>
-              h.imageId.equals(imageId) &
-              h.seq.isSmallerThanValue(seq - maxUndoSteps),
-        ))
-        .go();
-    await _setCursor(imageId, seq);
-    return seq;
-  }
-
-  Future<int?> _cursor(String imageId) async {
-    final row = await (_db.select(
-      _db.imageEditCursor,
-    )..where((c) => c.imageId.equals(imageId))).getSingleOrNull();
-    return row?.seq;
-  }
-
-  Future<void> _setCursor(String imageId, int seq) => _db
-      .into(_db.imageEditCursor)
-      .insertOnConflictUpdate(
-        ImageEditCursorCompanion.insert(imageId: imageId, seq: seq),
-      );
-
-  Future<String?> _historyEntry(String imageId, int seq) async {
-    final row =
-        await (_db.select(_db.imageEditHistory)
-              ..where((h) => h.imageId.equals(imageId) & h.seq.equals(seq)))
-            .getSingleOrNull();
-    return row?.editsJson;
   }
 
   /// The edits are synced data: stamp the change. The project's

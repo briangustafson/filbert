@@ -83,6 +83,26 @@ void main() {
     );
   });
 
+  test('whole-number decimals are written as integers', () {
+    expect(
+      canonicalJson({'w': 16.0, 'h': 20, 'x': 0.25}),
+      '{"h":20,"w":16,"x":0.25}',
+    );
+    final p = samples[RecordKind.project]!;
+    final asInts = p.edited(
+      now: p.updatedAt,
+      deviceId: p.updatedByDeviceId,
+      fields: {
+        'size': {'kind': 'physical', 'width': 16, 'height': 20, 'unit': 'in'},
+      },
+    );
+    expect(
+      codec.hash(asInts),
+      codec.hash(p),
+      reason: 'size given as 16.0 × 20.0',
+    );
+  });
+
   test('the hash is the same whatever order the fields came in', () {
     final p = samples[RecordKind.project]!;
     final reordered = SyncRecord(

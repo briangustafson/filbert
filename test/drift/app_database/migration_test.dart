@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
+import 'generated/schema_v3.dart' as v3;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -79,6 +80,53 @@ void main() {
         expect(migrated.remove('derivedFromJson'), isNull);
         expect(migrated, image.toJson());
         expect(await db.select(db.viewPrefs).get(), isEmpty);
+      },
+    );
+  });
+
+  test('v2 → v3 keeps the data; the sync tables start empty', () async {
+    const project = v2.ProjectsData(
+      id: 'p1',
+      createdAt: 1,
+      updatedAt: 2,
+      updatedByDeviceId: 'd',
+      name: 'Still life',
+      nameIsDefault: 1,
+      sizeKind: 'ratio',
+      ratioW: 4,
+      ratioH: 5,
+      startNotes: '',
+    );
+    const prefs = v2.ViewPrefsData(
+      id: 'v1',
+      createdAt: 1,
+      updatedAt: 2,
+      updatedByDeviceId: 'd',
+      projectId: 'p1',
+      prefsJson: '{"v":1}',
+    );
+    await verifier.testWithDataIntegrity(
+      oldVersion: 2,
+      newVersion: 3,
+      createOld: v2.DatabaseAtV2.new,
+      createNew: v3.DatabaseAtV3.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, old) {
+        batch.insert(old.projects, project);
+        batch.insert(old.viewPrefs, prefs);
+      },
+      validateItems: (db) async {
+        expect(
+          (await db.select(db.projects).get()).single.toJson(),
+          project.toJson(),
+        );
+        expect(
+          (await db.select(db.viewPrefs).get()).single.toJson(),
+          prefs.toJson(),
+        );
+        expect(await db.select(db.syncState).get(), isEmpty);
+        expect(await db.select(db.blobSync).get(), isEmpty);
+        expect(await db.select(db.syncConflicts).get(), isEmpty);
       },
     );
   });

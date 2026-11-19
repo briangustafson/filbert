@@ -12,7 +12,8 @@ abstract interface class DeviceInfo {
   /// UUIDv7 created on first launch and never changed afterwards.
   String get deviceId;
 
-  /// Human-readable name for sync conflict UI. Unset until M3.
+  /// Human-readable name for sync conflict UI (m3-design proposal 5); set on
+  /// the first launch with sync (T6).
   String? get deviceName;
 }
 
@@ -26,11 +27,12 @@ class StoredDeviceInfo implements DeviceInfo {
   final String? deviceName;
 
   /// Reads this device's identity from `app_meta`, creating the device id
-  /// on first launch.
+  /// on first launch, and the name from [defaultName] if there's none yet.
   static Future<StoredDeviceInfo> loadOrCreate(
     AppDatabase db,
-    IdGenerator ids,
-  ) async {
+    IdGenerator ids, {
+    Future<String> Function()? defaultName,
+  }) async {
     // Insert-or-ignore keeps an existing id even if two loads race.
     await db
         .into(db.appMeta)
@@ -47,6 +49,18 @@ class StoredDeviceInfo implements DeviceInfo {
             ))
             .get();
     final values = {for (final r in rows) r.key: r.value};
+    if (values[AppMetaKeys.deviceName] == null && defaultName != null) {
+      final name = await defaultName();
+      await db
+          .into(db.appMeta)
+          .insert(
+            AppMetaCompanion.insert(key: AppMetaKeys.deviceName, value: name),
+            mode: InsertMode.insertOrIgnore,
+          );
+      values[AppMetaKeys.deviceName] = (await (db.select(
+        db.appMeta,
+      )..where((t) => t.key.equals(AppMetaKeys.deviceName))).getSingle()).value;
+    }
     return StoredDeviceInfo(
       deviceId: values[AppMetaKeys.deviceId]!,
       deviceName: values[AppMetaKeys.deviceName],

@@ -48,11 +48,12 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
   - Depends on: —
   - *Result:* `SyncRecord` + `RecordCodec` (generic record, fields pinned per kind; nested `size`; SHA-256 hashes, one without the stamps), `LocalStore` / `RemoteStore`, `SyncEngine.syncOnce()` and `resolveConflict()` (for T10). Added in m3-design: `sync_state.held_json` for too-new records and images before their project (§4.1), the lost-reply and equal-content rules (§6.3), duplicate view prefs (§6.4). `package:sync_engine/testing.dart` has `FakeRemoteStore` (dropped and interrupted requests), `MemoryLocalStore`, and 28 shared multi-device scenarios that T6 runs against Drift; 48 tests in all, in CI. Retrying a failed upload is the engine's; resuming one is T8's.
 
-- [ ] **T6 — Schema v3 and the Drift side**
+- [x] **T6 — Schema v3 and the Drift side**
   - Drift schema 3: `sync_state`, `blob_sync`, `sync_conflicts`, new `app_meta` keys (§4); migration and migration test.
   - `DriftLocalStore` implementing the engine's `LocalStore`; device name from `device_info_plus`, editable in Settings (proposal 5).
   - *Done when:* store tests on an in-memory database; the engine's tests also pass against `DriftLocalStore` with the fake remote.
   - Depends on: T5
+  - *Result:* schema 3 with `sync_state` (+ `held_json`), `blob_sync`, `sync_conflicts`, and the sync `app_meta` keys; migration test v2 → v3. `DriftLocalStore` and `localStoreProvider`; all 28 engine scenarios pass with each device on its own Drift database (`test/features/sync/drift_local_store_test.dart`). Decided: Drive thumbnails are of the unedited original, cropped on the receiving device (§6.5, display in T9); a pulled crop goes into the undo history; the device name defaults from `device_info_plus` 13.3.0 at launch and is edited in T7. The canonical JSON now writes whole-number decimals as integers (§4.4). Checked: the app upgrades to schema 3 on the emulator; integration flows pass there; the Mac debug build compiles.
 
 - [ ] **T7 — Google Sign-In and Sync settings**
   - Write the Google Cloud setup steps for you (§11); record the scope classification (§14).

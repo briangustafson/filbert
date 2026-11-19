@@ -185,10 +185,14 @@ class RecordCodec {
       sha256.convert(utf8.encode(text)).toString();
 }
 
-/// [value] as JSON with map keys sorted at every level.
+/// [value] as JSON with map keys sorted at every level, and whole-number
+/// decimals written as integers: the app's database keeps a 16 × 20 canvas
+/// as 16.0 and 20.0, so the same record reads back the same either way.
 String canonicalJson(Object? value) => jsonEncode(_sorted(value));
 
 Object? _sorted(Object? value) => switch (value) {
+  double() when value.isFinite && value == value.truncateToDouble() =>
+    value.toInt(),
   Map() => {
     for (final key in (value.keys.map((k) => k as String).toList()..sort()))
       key: _sorted(value[key]),

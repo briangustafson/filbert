@@ -41,6 +41,29 @@ void main() {
     expect(first.deviceName, isNull);
   });
 
+  test('the default name is set once and then kept', () async {
+    var asked = 0;
+    Future<StoredDeviceInfo> load(String name) async {
+      final db = AppDatabase(NativeDatabase(dbFile));
+      try {
+        return await StoredDeviceInfo.loadOrCreate(
+          db,
+          ids,
+          defaultName: () async {
+            asked++;
+            return name;
+          },
+        );
+      } finally {
+        await db.close();
+      }
+    }
+
+    expect((await load('Pixel 11')).deviceName, 'Pixel 11');
+    expect((await load('Something else')).deviceName, 'Pixel 11');
+    expect(asked, 1, reason: 'only while there is no name');
+  });
+
   test('loading twice in one session keeps a single id', () async {
     final db = AppDatabase(NativeDatabase(dbFile));
     addTearDown(db.close);
