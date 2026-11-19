@@ -99,13 +99,21 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
   - *Done when:* integration tests pass; exit criteria confirmed by you.
   - Depends on: T10, T11, T12
 
+## Changes between tasks
+
+Done between T6 and T7, each its own PR:
+- **App icon** for Android and macOS (`assets/icon/`, `flutter_launcher_icons`).
+- **Snackbars sit above the bottom controls** on Crop and the photo screen, and Revert shows no snackbar (m1-design §3.5).
+- **Compare turns off when you leave the photo screen**; Grid and the tone aid are still saved per project (m2-design §3.1).
+- **One Crop screen** with Rectangle and Corners modes and Find canvas, replacing Crop/rotate and the auto-crop review (m1-design §3.7).
+
 ## Notes and later ideas
 
 (Add ideas that come up during M3 but belong to a later milestone here, rather than building them now.)
 
 - Right-click menus on the Mac for project cards and photo tiles (today a long press, which a mouse can do but nobody expects).
-- Return / Esc on the auto-crop review screen, like the crop screen.
+- Crop's Corners mode: ratio chips for the output's ratio (today the project's ratio, or the quad's own shape without one).
 
-- Carried over from M2: clamp panning to the photo's edges when zoomed; pinch/pan under the manual crop; frame pacing and the render benchmark on a mid-range phone; centered grid origin; tap a swatch to highlight its areas; wipe or side-by-side compare; aids on thumbnails; the snackbar covering the aid toolbar; a faster Gray export; compare overlay at preview resolution when zoomed; gallery saving on Android 7–10 untested on a device (m2-tasks notes).
+- Carried over from M2: clamp panning to the photo's edges when zoomed; pinch/pan under the manual crop; frame pacing and the render benchmark on a mid-range phone; centered grid origin; tap a swatch to highlight its areas; wipe or side-by-side compare; aids on thumbnails; a faster Gray export; compare overlay at preview resolution when zoomed; gallery saving on Android 7–10 untested on a device (m2-tasks notes).
 - Project backup (export and import) moved to the new M8 (2026-11-18); its agreed design is m3-design §8, with `archive` and `share_plus` (approved for it).
 - From the M3 design: remember the window size; a cellular-data setting for original downloads; merge projects (m3-design §14).

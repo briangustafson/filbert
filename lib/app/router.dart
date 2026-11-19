@@ -1,7 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../features/autocrop/autocrop_review_screen.dart';
 import '../features/autocrop/review_queue.dart';
 import '../features/crop/crop_screen.dart';
 import '../features/photo_viewer/photo_screen.dart';
@@ -44,14 +43,7 @@ GoRouter router(Ref ref) {
                       imageId: state.pathParameters['imageId']!,
                       afterAdd: state.uri.queryParameters['after'] == 'add',
                       queue: ReviewQueue.fromQuery(state.uri.queryParameters),
-                    ),
-                  ),
-                  GoRoute(
-                    path: 'autocrop',
-                    builder: (context, state) => AutocropReviewScreen(
-                      projectId: state.pathParameters['projectId']!,
-                      imageId: state.pathParameters['imageId']!,
-                      queue: ReviewQueue.fromQuery(state.uri.queryParameters),
+                      findCanvas: state.uri.queryParameters['find'] == 'canvas',
                     ),
                   ),
                 ],

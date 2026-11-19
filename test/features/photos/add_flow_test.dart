@@ -1,8 +1,8 @@
 import 'package:filbert/app/router.dart';
 import 'package:filbert/app/routes.dart';
 import 'package:filbert/core/settings/app_settings.dart';
-import 'package:filbert/features/autocrop/autocrop_review_screen.dart';
 import 'package:filbert/features/autocrop/review_queue.dart';
+import 'package:filbert/features/crop/crop_modes.dart';
 import 'package:filbert/features/crop/crop_screen.dart';
 import 'package:filbert/features/projects/domain/project.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +16,14 @@ import '../../support/pump_app.dart';
 
 /// What opens after adding photos (m1-design §3.6).
 void main() {
+  /// Crop in a mode (the photo itself doesn't load here: no renderer).
+  Finder cropIn(CropMode mode) => find.byWidgetPredicate(
+    (w) => w is SegmentedButton<CropMode> && w.selected.single == mode,
+  );
+
+  /// Crop in Corners mode, as auto-crop on add opens it.
+  final cornersCrop = cropIn(CropMode.corners);
+
   late FakeProjectRepository projects;
   late FakeImageRepository images;
   late FakePhotoSource source;
@@ -65,19 +73,19 @@ void main() {
   ];
 
   group('grid photos', () {
-    testWidgets('are reviewed in turn: Skip and Apply move on', (tester) async {
+    testWidgets('are cropped in turn: Skip and Apply move on', (tester) async {
       source.nextPicks = [picked('a.jpg'), picked('b.jpg'), picked('c.jpg')];
       await pumpProject(tester);
       await addFromDevice(tester, 'Add photo');
 
       final ids = gridIds();
-      expect(find.byType(AutocropReviewScreen), findsOneWidget);
+      expect(cornersCrop, findsOneWidget);
       expect(find.text('1 of 3'), findsOneWidget);
-      expect(location(), contains('/images/${ids[0]}/autocrop'));
+      expect(location(), contains('/images/${ids[0]}/crop'));
 
       await tapText(tester, 'Skip');
       expect(find.text('2 of 3'), findsOneWidget);
-      expect(location(), contains('/images/${ids[1]}/autocrop'));
+      expect(location(), contains('/images/${ids[1]}/crop'));
 
       images.calls.clear();
       await tapText(tester, 'Apply');
@@ -85,42 +93,41 @@ void main() {
       expect(find.text('3 of 3'), findsOneWidget);
 
       await tapText(tester, 'Skip');
-      expect(find.byType(AutocropReviewScreen), findsNothing);
+      expect(cornersCrop, findsNothing);
       expect(location(), Routes.project(projectId));
     });
 
-    testWidgets('Crop manually carries on with the queue', (tester) async {
+    testWidgets('Rectangle mode carries on with the queue', (tester) async {
       await projects.update(projectId, size: const RatioSize(4, 5));
       source.nextPicks = [picked('a.jpg'), picked('b.jpg'), picked('c.jpg')];
       await pumpProject(tester);
       await addFromDevice(tester, 'Add photo');
       final ids = gridIds();
 
-      // Manual crop, then Apply: on to the next photo's review.
-      await tapText(tester, 'Crop manually');
-      expect(find.byType(CropScreen), findsOneWidget);
-      expect(location(), contains('/images/${ids[0]}/crop'));
+      // Rectangle, then Apply: on to the next photo, in Corners again.
+      await tapText(tester, 'Rectangle');
+      expect(cornersCrop, findsNothing);
       expect(find.text('Skip'), findsOneWidget);
       images.calls.clear();
       await tapText(tester, 'Apply');
       expect(images.calls, ['setEdits ${ids[0]}']);
-      expect(find.byType(AutocropReviewScreen), findsOneWidget);
+      expect(cornersCrop, findsOneWidget);
       expect(find.text('2 of 3'), findsOneWidget);
 
-      // Skip in manual crop also moves on; on the last photo, to the project.
-      await tapText(tester, 'Crop manually');
+      // Skip in Rectangle also moves on; on the last photo, to the project.
+      await tapText(tester, 'Rectangle');
       await tapText(tester, 'Skip');
       expect(find.text('3 of 3'), findsOneWidget);
-      await tapText(tester, 'Crop manually');
+      await tapText(tester, 'Rectangle');
       await tapText(tester, 'Apply');
       expect(location(), Routes.project(projectId));
     });
 
-    testWidgets('Cancel in manual crop ends the queue', (tester) async {
+    testWidgets('Cancel in Rectangle mode ends the queue', (tester) async {
       source.nextPicks = [picked('a.jpg'), picked('b.jpg')];
       await pumpProject(tester);
       await addFromDevice(tester, 'Add photo');
-      await tapText(tester, 'Crop manually');
+      await tapText(tester, 'Rectangle');
       images.calls.clear();
       await tester.tap(find.byTooltip('Cancel'));
       await tester.pumpAndSettle();
@@ -158,7 +165,7 @@ void main() {
       source.nextPicks = [picked('a.jpg')];
       await pumpProject(tester);
       await addFromDevice(tester, 'Add photo');
-      expect(find.byType(AutocropReviewScreen), findsOneWidget);
+      expect(cornersCrop, findsOneWidget);
       expect(find.text('Skip'), findsOneWidget);
       expect(find.text('1 of 1'), findsNothing);
     });
@@ -169,11 +176,11 @@ void main() {
       source.nextPicks = [picked('a.jpg'), picked('b.jpg')];
       await pumpProject(tester, autoCropOnAdd: false);
       await addFromDevice(tester, 'Add photo');
-      expect(find.byType(AutocropReviewScreen), findsNothing);
+      expect(cornersCrop, findsNothing);
       expect(location(), Routes.project(projectId));
     });
 
-    testWidgets('a photo taken for a new project is reviewed', (tester) async {
+    testWidgets('a photo taken for a new project opens Crop', (tester) async {
       source.nextPhoto = picked('new.jpg');
       container = await pumpFilbertApp(
         tester,
@@ -184,7 +191,7 @@ void main() {
       );
       await tester.tap(find.byTooltip('Take photo'));
       await tester.pumpAndSettle();
-      expect(find.byType(AutocropReviewScreen), findsOneWidget);
+      expect(cornersCrop, findsOneWidget);
       await tapText(tester, 'Skip');
       expect(location(), startsWith('/projects/'));
       expect(location(), isNot(contains('/images/')));
@@ -224,7 +231,7 @@ void main() {
   });
 
   group('a new reference', () {
-    testWidgets('opens manual crop when the project has a size', (
+    testWidgets('opens Crop in Rectangle mode when the project has a size', (
       tester,
     ) async {
       await projects.update(projectId, size: const RatioSize(4, 5));
@@ -233,7 +240,7 @@ void main() {
       await addFromDevice(tester, 'Add reference');
 
       expect(find.byType(CropScreen), findsOneWidget);
-      expect(find.byType(AutocropReviewScreen), findsNothing);
+      expect(cropIn(CropMode.rectangle), findsOneWidget);
       await tapText(tester, 'Skip');
       expect(location(), Routes.project(projectId));
     });
@@ -258,13 +265,13 @@ void main() {
       addTearDown(tester.view.reset);
     }
 
-    testWidgets('the review queue', (tester) async {
+    testWidgets('the queue of new photos', (tester) async {
       narrow(tester);
       source.nextPicks = [picked('a.jpg'), picked('b.jpg')];
       await pumpProject(tester);
       await addFromDevice(tester, 'Add photo');
-      expect(find.byType(AutocropReviewScreen), findsOneWidget);
-      for (final label in ['Full image', 'Reset', 'Crop manually']) {
+      expect(cornersCrop, findsOneWidget);
+      for (final label in ['Reset', 'Rectangle', 'Corners', 'Find canvas']) {
         expect(find.text(label).hitTestable(), findsOneWidget, reason: label);
       }
       expect(tester.takeException(), isNull, reason: 'no overflow');
@@ -272,7 +279,7 @@ void main() {
       expect(find.text('2 of 2'), findsOneWidget);
     });
 
-    testWidgets('manual crop after adding a reference', (tester) async {
+    testWidgets('Crop after adding a reference', (tester) async {
       narrow(tester);
       await projects.update(projectId, size: const RatioSize(4, 5));
       source.nextPicks = [picked('ref.jpg')];
@@ -292,10 +299,11 @@ void main() {
     expect(queue.advanced.advanced.isLast, isTrue);
     expect(ReviewQueue.fromQuery(const {}), isNull);
     expect(ReviewQueue.fromQuery(const {'queue': 'a,b', 'of': '2'}), isNull);
-    expect(Uri.parse(Routes.autocrop('p', 'a', queue: queue)).queryParameters, {
-      'queue': 'b,c',
-      'of': '3',
-    });
+    expect(
+      Uri.parse(Routes.crop('p', 'a', queue: queue, findCanvas: true))
+          .queryParameters,
+      {'queue': 'b,c', 'of': '3', 'find': 'canvas'},
+    );
     expect(Uri.parse(Routes.crop('p', 'a', queue: queue)).queryParameters, {
       'queue': 'b,c',
       'of': '3',

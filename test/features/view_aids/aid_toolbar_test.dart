@@ -218,6 +218,40 @@ void main() {
         expect(prefs.of(projectId).on, AidsOn.off);
       });
 
+      testWidgets('Compare stays on while swiping and through Crop, off '
+          'after leaving', (tester) async {
+        final c = await open(tester, a.id);
+        await tapAid(tester, 'Grid');
+        await tapAid(tester, 'Compare');
+        expect(aids(c).compare, isTrue);
+        await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+        await tester.pumpAndSettle();
+        expect(aids(c).compare, isTrue, reason: 'swiping keeps it');
+
+        final shown = c.read(routerProvider).state.pathParameters['imageId']!;
+        c.read(routerProvider).go(Routes.crop(projectId, shown));
+        await tester.pumpAndSettle();
+        c.read(routerProvider).go(Routes.photo(projectId, shown));
+        await tester.pumpAndSettle();
+        expect(aids(c).compare, isTrue, reason: 'Crop opens over the photo');
+
+        c.read(routerProvider).go(Routes.project(projectId));
+        await tester.pumpAndSettle();
+        c.read(routerProvider).go(Routes.photo(projectId, a.id));
+        await tester.pumpAndSettle();
+        expect(aids(c), const ViewAids(grid: true), reason: 'Grid is saved');
+        expect(prefs.of(projectId).on, const AidsOn(grid: true));
+      });
+
+      testWidgets('a saved Compare (older rows) stays off', (tester) async {
+        prefs.update(
+          projectId,
+          const ViewPrefs(on: AidsOn(grid: true, compare: true)),
+        );
+        final c = await open(tester, a.id);
+        expect(aids(c), const ViewAids(grid: true));
+      });
+
       testWidgets('saved aids are on when the photo opens', (tester) async {
         prefs.update(
           projectId,

@@ -12,29 +12,24 @@ abstract final class Routes {
       '${project(projectId)}/images/$imageId';
 
   /// [afterAdd]: opened by the add-photo flow for a new reference
-  /// (m1-design §3.6), with Skip, returning to the project. [queue]: opened
-  /// from the auto-crop review of new photos (Crop manually, §3.8); Apply
-  /// and Skip go on to the next photo's review.
+  /// (m1-design §3.6), with Skip, returning to the project. [queue]: new
+  /// photos cropped in turn; Apply and Skip go on to the next one.
+  /// [findCanvas]: Find canvas runs on opening (auto-crop on add).
   static String crop(
     String projectId,
     String imageId, {
     bool afterAdd = false,
     ReviewQueue? queue,
+    bool findCanvas = false,
   }) {
-    final query = {if (afterAdd) 'after': 'add', ...?queue?.toQuery()};
+    final query = {
+      if (afterAdd) 'after': 'add',
+      if (findCanvas) 'find': 'canvas',
+      ...?queue?.toQuery(),
+    };
     return Uri(
       path: '${photo(projectId, imageId)}/crop',
       queryParameters: query.isEmpty ? null : query,
     ).toString();
   }
-
-  /// [queue]: opened by the add-photo flow, reviewing new photos in turn.
-  static String autocrop(
-    String projectId,
-    String imageId, {
-    ReviewQueue? queue,
-  }) => Uri(
-    path: '${photo(projectId, imageId)}/autocrop',
-    queryParameters: queue?.toQuery(),
-  ).toString();
 }

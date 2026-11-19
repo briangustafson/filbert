@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +14,9 @@ import '../../app/routes.dart';
 import '../../app/shortcuts.dart';
 import '../../app/theme.dart';
 import '../../core/imaging/crop_geometry.dart';
+import '../../core/imaging/image_metadata.dart';
+import '../autocrop/canvas_detection.dart';
+import '../autocrop/review_geometry.dart';
 import '../autocrop/review_queue.dart';
 import '../photo_viewer/photo_files.dart';
 import '../photos/data/image_providers.dart';
@@ -20,21 +25,27 @@ import '../photos/domain/project_image.dart';
 import '../projects/data/project_providers.dart';
 import '../projects/domain/project.dart';
 import '../projects/domain/size_presets.dart';
+import 'corners_canvas.dart';
 import 'crop_editor.dart';
+import 'crop_modes.dart';
 import 'crop_overlay.dart';
 
-/// Manual crop (m1-design §3.7): crop rectangle with an aspect lock,
-/// straighten slider and Rotate 90°, over the full original photo. Apply
-/// saves the crop as an undoable edit. Return applies and Esc cancels
-/// (m3-design §3.3).
+/// Crop (m1-design §3.7): the full original photo with a crop over it, in
+/// one of two modes. **Rectangle**: an upright crop with an aspect lock,
+/// straighten slider and Rotate 90°. **Corners**: four corners moved freely
+/// (with a magnifier), and Apply corrects the perspective. **Find canvas**
+/// detects the canvas and switches to Corners. Apply saves an undoable
+/// edit; Return applies and Esc cancels (m3-design §3.3).
 ///
 /// [afterAdd]: opened for a reference just added (m1-design §3.6); Skip
 /// leaves it uncropped, and every way out returns to the project.
 ///
-/// [queue]: opened with Crop manually from the review of new photos
-/// (§3.8); Skip leaves it as it is, Apply and Skip go on to the next
-/// photo's review (or the project after the last), Cancel and back end the
-/// queue at the project.
+/// [queue]: photos just added, cropped in turn (§3.6): "2 of 3" and Skip;
+/// Apply and Skip go on to the next photo (or the project after the last),
+/// Cancel and back end the queue at the project.
+///
+/// [findCanvas]: runs Find canvas on opening (adding photos with auto-crop
+/// on).
 class CropScreen extends ConsumerWidget {
   const CropScreen({
     super.key,
@@ -42,12 +53,18 @@ class CropScreen extends ConsumerWidget {
     required this.imageId,
     this.afterAdd = false,
     this.queue,
+    this.findCanvas = false,
   });
 
   final String projectId;
   final String imageId;
   final bool afterAdd;
   final ReviewQueue? queue;
+  final bool findCanvas;
+
+  /// Shown in Corners mode when detection is unsure.
+  static const lowConfidenceHint =
+      "Couldn't find the canvas edges — drag the corners into place.";
 
   /// Part of the add-photo flow: every way out goes on in the flow.
   bool get _inFlow => afterAdd || queue != null;
@@ -74,6 +91,7 @@ class CropScreen extends ConsumerWidget {
         image: image,
         afterAdd: afterAdd,
         queue: queue,
+        findCanvas: findCanvas,
       );
     }
     return PopScope(
@@ -93,49 +111,82 @@ class _CropView extends ConsumerStatefulWidget {
     required this.image,
     this.afterAdd = false,
     this.queue,
+    this.findCanvas = false,
   });
 
   final Project project;
   final ProjectImage image;
   final bool afterAdd;
   final ReviewQueue? queue;
+  final bool findCanvas;
 
   @override
   ConsumerState<_CropView> createState() => _CropViewState();
 }
 
 class _CropViewState extends ConsumerState<_CropView> {
-  late final CropEditor _editor;
+  /// Where an unsure (or failed) detection starts the corners.
+  static const unsureInset = 0.05;
 
-  /// The photo has a perspective crop manual crop can't show; Apply replaces
-  /// it.
-  late final bool _replacesPerspective;
+  late CropMode _mode;
+
+  /// Rectangle mode.
+  late CropEditor _editor;
+
+  /// Corners mode: normalized in the photo as displayed (turned by
+  /// [_cornerTurns]).
+  late List<ReviewCorner> _corners;
+  late int _cornerTurns;
+
+  /// Find canvas: running, its result (corners in the original, or null if
+  /// unsure or failed) once it has run, and whether to show the hint.
+  var _finding = false;
+  var _found = false;
+  List<NormPoint>? _detected;
+  var _showHint = false;
+
+  ProjectImage get _image => widget.image;
+
+  /// The project's ratio as the painting is seen, if it has a size.
+  CropAspect? get _projectAspect => switch (widget.project.size) {
+    RatioSize(:final w, :final h) => CropAspect(w, h),
+    PhysicalSize(:final width, :final height) => CropAspect(width, height),
+    NoSize() => null,
+  };
+
+  CropEditor _editorFor(CropState state) => CropEditor(
+    initial: state,
+    defaultAspect: _projectAspect,
+    resetFrame: CropFrame(
+      sourceWidth: _image.width,
+      sourceHeight: _image.height,
+    ),
+  );
 
   @override
   void initState() {
     super.initState();
-    final image = widget.image;
-    final defaultAspect = switch (widget.project.size) {
-      RatioSize(:final w, :final h) => CropAspect(w, h),
-      PhysicalSize(:final width, :final height) => CropAspect(width, height),
-      NoSize() => null,
-    };
+    final edits = _image.edits;
+    _cornerTurns = edits.quarterTurns;
+    _corners = cornersFromEdits(edits);
     final editor = CropEditor.forEdits(
-      image.edits,
-      sourceWidth: image.width,
-      sourceHeight: image.height,
-      defaultAspect: defaultAspect,
+      edits,
+      sourceWidth: _image.width,
+      sourceHeight: _image.height,
+      defaultAspect: _projectAspect,
     );
-    _replacesPerspective = editor == null;
-    _editor =
-        editor ??
-        CropEditor.fresh(
-          frame: CropFrame(
-            sourceWidth: image.width,
-            sourceHeight: image.height,
-          ),
-          defaultAspect: defaultAspect,
-        );
+    if (widget.findCanvas) {
+      _mode = CropMode.corners;
+      _editor = editor ?? _rectangleAroundCorners(_projectAspect);
+      _findCanvas();
+    } else if (editor == null) {
+      // A perspective crop: only Corners can show it.
+      _mode = CropMode.corners;
+      _editor = _rectangleAroundCorners(_projectAspect);
+    } else {
+      _mode = CropMode.rectangle;
+      _editor = editor;
+    }
   }
 
   @override
@@ -144,45 +195,175 @@ class _CropViewState extends ConsumerState<_CropView> {
     super.dispose();
   }
 
+  CropEditor _rectangleAroundCorners(CropAspect? aspect) => _editorFor(
+    rectangleAround(
+      _corners,
+      quarterTurns: _cornerTurns,
+      sourceWidth: _image.width,
+      sourceHeight: _image.height,
+      aspect: aspect,
+    ),
+  );
+
+  /// Switches modes, carrying the crop over: Rectangle → Corners on the
+  /// rectangle's corners; Corners → Rectangle around the corners.
+  void _setMode(CropMode mode) {
+    if (mode == _mode) return;
+    setState(() {
+      if (mode == CropMode.corners) {
+        final edits = _editor.edits;
+        _corners = cornersFromEdits(edits);
+        _cornerTurns = edits.quarterTurns;
+      } else {
+        final old = _editor;
+        _editor = _rectangleAroundCorners(old.aspect);
+        // Still listened to until this frame is built.
+        WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
+      }
+      _showHint = false;
+      _mode = mode;
+    });
+  }
+
+  /// Detects the canvas (once per visit) and puts the corners on it, in
+  /// Corners mode. Unsure: corners slightly inset, with the hint.
+  Future<void> _findCanvas() async {
+    if (_finding) return;
+    _setMode(CropMode.corners);
+    if (!_found) {
+      setState(() => _finding = true);
+      _detected = await _detect();
+      _found = true;
+      if (!mounted) return;
+    }
+    final quad = _detected;
+    var corners = quad == null
+        ? insetCorners(unsureInset)
+        : quadToDisplayed(quad, _cornerTurns);
+    if (!isValidReviewQuad(corners)) corners = insetCorners(unsureInset);
+    setState(() {
+      _finding = false;
+      _mode = CropMode.corners;
+      _corners = corners;
+      _showHint = quad == null;
+    });
+  }
+
+  /// The detected corners in the original, or null if unsure or failed.
+  Future<List<NormPoint>?> _detect() async {
+    try {
+      final aspect = _projectAspect;
+      final detection = await ref
+          .read(canvasDetectionProvider)
+          .detect(_image, aspectHint: aspect?.ratio);
+      if (detection.isLowConfidence) return null;
+      return [for (final c in detection.quad.corners) NormPoint(c.x, c.y)];
+    } on Exception catch (e) {
+      debugPrint('Canvas detection failed: $e');
+      return null;
+    }
+  }
+
+  void _rotate() {
+    if (_mode == CropMode.rectangle) {
+      _editor.rotate90();
+    } else {
+      setState(() {
+        _corners = turnCornersClockwise(_corners);
+        _cornerTurns = (_cornerTurns + 1) % 4;
+      });
+    }
+  }
+
+  /// Back to the whole, unturned photo (with the project's ratio proposed
+  /// in Rectangle mode).
+  void _reset() {
+    if (_mode == CropMode.rectangle) {
+      _editor.reset();
+    } else {
+      setState(() {
+        _corners = fullImageCorners;
+        _cornerTurns = 0;
+        _showHint = false;
+      });
+    }
+  }
+
+  Edits get _edits => switch (_mode) {
+    CropMode.rectangle => _editor.edits,
+    CropMode.corners => reviewEdits(
+      _corners,
+      quarterTurns: _cornerTurns,
+      aspect: switch (_projectAspect) {
+        final a? => (w: a.w, h: a.h),
+        null => null,
+      },
+    ),
+  };
+
   void _close() {
     if (widget.afterAdd || widget.queue != null) {
       context.go(Routes.project(widget.project.id));
     } else if (context.canPop()) {
       context.pop();
     } else {
-      context.go(Routes.photo(widget.project.id, widget.image.id));
+      context.go(Routes.photo(widget.project.id, _image.id));
     }
   }
 
   Future<void> _apply() async {
-    await ref
-        .read(imageRepositoryProvider)
-        .setEdits(widget.image.id, _editor.edits);
+    await ref.read(imageRepositoryProvider).setEdits(_image.id, _edits);
     if (mounted) _next();
   }
 
-  /// After Apply or Skip: the next photo's review in the queue, else as
-  /// [_close].
+  /// After Apply or Skip: the next photo in the queue, else as [_close].
   void _next() {
     final queue = widget.queue;
     if (queue == null || queue.isLast) {
       _close();
     } else {
       context.go(
-        Routes.autocrop(
+        Routes.crop(
           widget.project.id,
           queue.remaining.first,
           queue: queue.advanced,
+          findCanvas: true,
         ),
       );
+    }
+  }
+
+  /// Debug builds: one `expected.json` entry for the evaluation set
+  /// (m1-design §6.4), corners in the EXIF-oriented original.
+  Future<void> _copyCorners() async {
+    final quad = displayedToQuad(_corners, _cornerTurns);
+    double round(double v) => (v * 10000).round() / 10000;
+    final ext = extensionForMimeType[_image.mimeType] ?? 'jpg';
+    final json = jsonEncode({
+      'file': '${_image.id}.$ext',
+      'corners': [
+        for (final p in quad) [round(p.x), round(p.y)],
+      ],
+      'notes': '',
+    });
+    await Clipboard.setData(ClipboardData(text: json));
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Corners copied as JSON.')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final original = ref.watch(
-      previewFileProvider(widget.image.withEdits(Edits.none)),
+      previewFileProvider(_image.withEdits(Edits.none)),
     );
+    final queue = widget.queue;
+    final corners = _mode == CropMode.corners;
+    final String? hint = _finding
+        ? 'Finding the canvas…'
+        : (corners && _showHint ? CropScreen.lowConfidenceHint : null);
     return KeyBindings(
       bindings: [
         KeyBinding(const SingleActivator(LogicalKeyboardKey.enter), _apply),
@@ -198,26 +379,32 @@ class _CropViewState extends ConsumerState<_CropView> {
           body: Column(
             children: [
               _TopBar(
+                subtitle: queue != null && queue.total > 1
+                    ? '${queue.position} of ${queue.total}'
+                    : null,
                 onCancel: _close,
-                onReset: _editor.reset,
-                onSkip: widget.afterAdd || widget.queue != null ? _next : null,
+                onReset: _reset,
+                onSkip: widget.afterAdd || queue != null ? _next : null,
                 onApply: _apply,
               ),
-              if (_replacesPerspective)
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: Text(
-                    'This photo has a perspective correction. '
-                    'Applying a crop replaces it (Undo brings it back).',
-                    textAlign: TextAlign.center,
-                  ),
+              if (hint != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(hint, textAlign: TextAlign.center),
                 ),
               Expanded(
                 child: switch (original) {
-                  AsyncData(:final value) => CropCanvas(
-                    editor: _editor,
-                    photo: value,
-                  ),
+                  AsyncData(:final value) =>
+                    corners
+                        ? CornersCanvas(
+                            photo: value,
+                            sourceWidth: _image.width,
+                            sourceHeight: _image.height,
+                            quarterTurns: _cornerTurns,
+                            corners: _corners,
+                            onChanged: (c) => setState(() => _corners = c),
+                          )
+                        : CropCanvas(editor: _editor, photo: value),
                   AsyncError() => const _Message("Couldn't show this photo."),
                   _ => const Center(child: CircularProgressIndicator()),
                 },
@@ -227,11 +414,24 @@ class _CropViewState extends ConsumerState<_CropView> {
           controls: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _StraightenRow(editor: _editor),
-              _AspectRow(
-                editor: _editor,
-                hasProjectRatio: _editor.defaultAspect != null,
+              _ModeRow(
+                mode: _mode,
+                finding: _finding,
+                onMode: _setMode,
+                onFindCanvas: _findCanvas,
               ),
+              if (corners)
+                _CornersRow(
+                  onRotate: _rotate,
+                  onCopyCorners: kDebugMode ? _copyCorners : null,
+                )
+              else ...[
+                _StraightenRow(editor: _editor),
+                _AspectRow(
+                  editor: _editor,
+                  hasProjectRatio: _editor.defaultAspect != null,
+                ),
+              ],
               const SizedBox(height: 8),
             ],
           ),
@@ -246,6 +446,7 @@ class _TopBar extends StatelessWidget {
     required this.onCancel,
     required this.onReset,
     required this.onApply,
+    this.subtitle,
     this.onSkip,
   });
 
@@ -253,7 +454,10 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onReset;
   final VoidCallback onApply;
 
-  /// Shown when set (after adding a reference).
+  /// "2 of 3" when cropping new photos in turn.
+  final String? subtitle;
+
+  /// Shown when set (adding photos).
   final VoidCallback? onSkip;
 
   @override
@@ -269,11 +473,24 @@ class _TopBar extends StatelessWidget {
         const SizedBox(width: 4),
         // The title gives way on narrow screens so the buttons fit.
         Expanded(
-          child: Text(
-            'Crop',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Crop',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+            ],
           ),
         ),
         TextButton(onPressed: onReset, child: const Text('Reset')),
@@ -281,6 +498,101 @@ class _TopBar extends StatelessWidget {
           TextButton(onPressed: onSkip, child: const Text('Skip')),
         const SizedBox(width: 8),
         FilledButton(onPressed: onApply, child: const Text('Apply')),
+      ],
+    ),
+  );
+}
+
+/// Rectangle | Corners, and Find canvas. Wraps onto two lines where they
+/// don't fit (narrow phones, large text).
+class _ModeRow extends StatelessWidget {
+  const _ModeRow({
+    required this.mode,
+    required this.finding,
+    required this.onMode,
+    required this.onFindCanvas,
+  });
+
+  final CropMode mode;
+  final bool finding;
+  final ValueChanged<CropMode> onMode;
+  final VoidCallback onFindCanvas;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+    child: Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        SegmentedButton<CropMode>(
+          segments: const [
+            ButtonSegment(
+              value: CropMode.rectangle,
+              icon: Icon(Icons.crop),
+              label: Text('Rectangle'),
+            ),
+            ButtonSegment(
+              value: CropMode.corners,
+              icon: Icon(Icons.format_shapes_outlined),
+              label: Text('Corners'),
+            ),
+          ],
+          selected: {mode},
+          showSelectedIcon: false,
+          onSelectionChanged: (s) => onMode(s.single),
+        ),
+        TextButton.icon(
+          key: const ValueKey('find-canvas'),
+          onPressed: finding ? null : onFindCanvas,
+          icon: const Icon(Icons.auto_fix_high),
+          label: const Text('Find canvas'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Corners mode: what to do, and Rotate 90°. As tall as Rectangle mode's
+/// straighten and ratio rows, so the photo stays put when switching modes.
+class _CornersRow extends StatelessWidget {
+  const _CornersRow({required this.onRotate, this.onCopyCorners});
+
+  /// The straighten row (an icon button) and the ratio chips' row.
+  static const height = kMinInteractiveDimension + _AspectRow.height;
+
+  final VoidCallback onRotate;
+
+  /// Debug builds only.
+  final VoidCallback? onCopyCorners;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: height,
+    alignment: Alignment.topCenter,
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    child: Row(
+      children: [
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            "Drag each corner onto the canvas's corner.",
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        if (onCopyCorners != null)
+          IconButton(
+            tooltip: 'Copy corners as JSON',
+            icon: const Icon(Icons.data_object),
+            onPressed: onCopyCorners,
+          ),
+        IconButton(
+          tooltip: 'Rotate 90°',
+          icon: const Icon(Icons.rotate_90_degrees_cw_outlined),
+          onPressed: onRotate,
+        ),
       ],
     ),
   );
@@ -294,8 +606,9 @@ class CropCanvas extends StatefulWidget {
   final CropEditor editor;
   final File photo;
 
-  /// Room around the photo so edge handles can be grabbed.
-  static const margin = 24.0;
+  /// Room around the photo so edge handles can be grabbed; the same as
+  /// [CornersCanvas.margin], so the photo stays put when switching modes.
+  static const margin = CornersCanvas.margin;
 
   /// Touch radius of handles.
   static const cornerReach = 32.0;
@@ -457,6 +770,8 @@ class _StraightenRow extends StatelessWidget {
 class _AspectRow extends StatelessWidget {
   const _AspectRow({required this.editor, required this.hasProjectRatio});
 
+  static const height = 56.0;
+
   final CropEditor editor;
   final bool hasProjectRatio;
 
@@ -491,7 +806,7 @@ class _AspectRow extends StatelessWidget {
               ?.$1;
 
     return SizedBox(
-      height: 56,
+      height: height,
       child: Row(
         children: [
           Expanded(
