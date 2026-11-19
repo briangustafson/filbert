@@ -124,9 +124,11 @@ As built in T3 (`PhotoDropTarget`, `lib/features/photos/ui/photo_drop.dart`):
 
 ### 3.5 Export on the Mac
 
-- Until T4, Export… on the Mac shows only **Save as new image** (`GallerySaver.available` is false there), so it never asks for Photos access.
-- Export… (m2-design §3.5) shows **Save to file…** in place of Save to gallery: a save dialog (`file_selector`'s `getSaveLocation`) preset to the Pictures folder and the gallery file name rule; JPEG at the same size and quality. Snackbar "Saved." with **Show in Finder**.
-- `GallerySaver` stays the Android path; `ExportDestination` chooses by platform.
+- Export… (m2-design §3.5) shows **Save to file…** in place of Save to gallery, with Save as new image below it; the Mac never asks for Photos access. Save to file… opens a save dialog (`file_selector`'s `getSaveLocation`, JPEG only) with the gallery file name rule; JPEG at the same size and quality. Snackbar "Saved." with **Show in Finder**.
+- The dialog opens in the folder of the last Save to file… (`app_meta` `export_folder`, §4.4), the first time in Pictures (`$HOME/Pictures`: in the sandbox HOME is the container, whose Pictures links to the user's).
+- The dialog comes first and the render after, so cancelling costs nothing and leaves the sheet open. The sandbox lets the app write only the exact path the dialog returns, so the name is never changed after it.
+- Show in Finder opens the Finder with the file selected (`NSWorkspace.activateFileViewerSelecting`, over the `filbert/finder` channel), so `url_launcher` isn't needed until T12.
+- `ExportDestination` (`lib/features/export/data/export_destination.dart`) is the gallery where `GallerySaver.available`, else a file; `GallerySaver` stays the Android path.
 
 ---
 
@@ -168,7 +170,7 @@ While a conflict is pending the local record is what the app shows and edits; pu
 
 ### 4.4 `app_meta` keys
 
-`sync_enabled`, `sync_account` (email, for display only; tokens stay with the sign-in SDK), `changes_page_token`, `last_sync_at`, `device_name` (now filled, proposal 5).
+`sync_enabled`, `sync_account` (email, for display only; tokens stay with the sign-in SDK), `changes_page_token`, `last_sync_at`, `device_name` (now filled, proposal 5); `export_folder` (T4, §3.5: where the Mac's save dialog opens).
 
 ---
 
@@ -364,14 +366,14 @@ Approved by Brian (2026-11-18); versions are checked in the task that adds them.
 
 | Package | Use | Task |
 |---|---|---|
-| `file_selector` | Save dialog (Mac export) | T4 |
+| `file_selector` | Save dialog (Mac export), 1.1 | T4 |
 | `desktop_drop` | Drag and drop on macOS (0.8; see §3.4) | T3 |
 | `device_info_plus` | Default device name | T6 |
 | `google_sign_in` | Sign-in and scopes | T7 |
 | `googleapis`, `extension_google_sign_in_as_googleapis_auth` | Drive v3 client using the sign-in token | T7, T8 |
 | `http` | Photos Picker REST, resumable uploads | T8, T12 |
 | `workmanager` | Android background sync | T11 |
-| `url_launcher` | Open the Photos picker; Show in Finder | T4, T12 |
+| `url_launcher` | Open the Photos picker (Show in Finder is native, §3.5) | T12 |
 | `crypto` | SHA-256 for record hashes (§5), in `sync_engine` | T5 |
 
 ---

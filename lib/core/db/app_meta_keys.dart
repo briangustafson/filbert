@@ -6,4 +6,7 @@ abstract final class AppMetaKeys {
   static const units = 'units';
   static const lastPurgeAt = 'last_purge_at';
   static const pendingCapture = 'pending_capture';
+
+  /// The folder of the last Save to file… (m3-design §3.5).
+  static const exportFolder = 'export_folder';
 }

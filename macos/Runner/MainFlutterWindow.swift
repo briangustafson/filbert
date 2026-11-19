@@ -17,6 +17,18 @@ class MainFlutterWindow: NSWindow {
     MainFlutterWindow.menuChannel = FlutterMethodChannel(
       name: "filbert/menu",
       binaryMessenger: flutterViewController.engine.binaryMessenger)
+    // Show in Finder after Save to file… (m3-design §3.5).
+    let finder = FlutterMethodChannel(
+      name: "filbert/finder",
+      binaryMessenger: flutterViewController.engine.binaryMessenger)
+    finder.setMethodCallHandler { call, result in
+      guard call.method == "reveal", let path = call.arguments as? String else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+      result(nil)
+    }
 
     super.awakeFromNib()
   }

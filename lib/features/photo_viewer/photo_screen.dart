@@ -10,6 +10,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/layout.dart';
 import '../../app/routes.dart';
 import '../../app/shortcuts.dart';
+import '../export/data/export_destination.dart';
 import '../export/ui/export_sheet.dart';
 import '../photos/data/image_providers.dart';
 import '../photos/data/image_repository.dart';
@@ -210,6 +211,16 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
       case SavedToGallery():
         messenger.showSnackBar(
           const SnackBar(content: Text('Saved to the gallery.')),
+        );
+      case SavedToFile(:final path):
+        messenger.showSnackBar(
+          SnackBar(
+            content: const Text('Saved.'),
+            action: SnackBarAction(
+              label: 'Show in Finder',
+              onPressed: () => ref.read(exportDestinationProvider).reveal(path),
+            ),
+          ),
         );
       case SavedAsNewPhoto(:final photo):
         messenger.showSnackBar(

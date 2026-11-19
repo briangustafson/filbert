@@ -61,6 +61,12 @@ abstract interface class SettingsStore {
   Future<void> setAutoCropOnAdd(bool value);
 
   Future<void> setUnits(UnitsSetting value);
+
+  /// The folder the Mac's save dialog last saved an export to (m3-design
+  /// §3.5); null before the first.
+  Future<String?> exportFolder();
+
+  Future<void> setExportFolder(String path);
 }
 
 class DriftSettingsStore implements SettingsStore {
@@ -89,6 +95,17 @@ class DriftSettingsStore implements SettingsStore {
   @override
   Future<void> setUnits(UnitsSetting value) =>
       _put(AppMetaKeys.units, value.code);
+
+  @override
+  Future<String?> exportFolder() async =>
+      (await (_db.select(_db.appMeta)
+                ..where((m) => m.key.equals(AppMetaKeys.exportFolder)))
+              .getSingleOrNull())
+          ?.value;
+
+  @override
+  Future<void> setExportFolder(String path) =>
+      _put(AppMetaKeys.exportFolder, path);
 
   Future<void> _put(String key, String value) => _db
       .into(_db.appMeta)

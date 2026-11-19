@@ -25,6 +25,14 @@ class FakeSettingsStore implements SettingsStore {
   Future<void> setUnits(UnitsSetting value) async =>
       _set(_settings.copyWith(units: value));
 
+  String? folder;
+
+  @override
+  Future<String?> exportFolder() async => folder;
+
+  @override
+  Future<void> setExportFolder(String path) async => folder = path;
+
   void _set(AppSettings settings) {
     _settings = settings;
     _changes.add(settings);
