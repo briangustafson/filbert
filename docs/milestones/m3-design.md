@@ -49,7 +49,7 @@ project backup, export and import (M8, §8) · iOS and web (M9, M10) · macOS di
 | 5 | Device name | Filled from the device (`device_info_plus`: model on Android, computer name on Mac), editable in Settings. Settles m1-design §4.1. | Conflict choices need a recognizable label without asking the user up front. |
 | 6 | Android export of a backup (M8) | Through the **share sheet** (`share_plus`), so the user picks Files, Drive or another app; Mac uses a save dialog. Import uses a file picker on both. | Android's file pickers can't save a large file without holding it in memory; the share sheet hands over the file. `share_plus` is in the HLD for M6 anyway. |
 | 7 | macOS distribution | **Defer** to the first public release (HLD §12 said M3). M3 builds a **sandboxed** app, which keeps both the Mac App Store and a notarized DMG open. | No one but Brian runs the Mac app in M3; the sandbox is what the App Store requires and works for a DMG too. |
-| 8 | CI for macOS | A **macOS build job** (`flutter build macos --debug`), **run by hand** (`.github/workflows/macos.yml`, Run workflow; changed in T1 from "on PRs"); the macOS integration test runs locally. | Proves the Mac app compiles. macOS runners use 10× the minutes on a private repo, so it runs only when a change touches `macos/`, native packages or `pubspec.*`. |
+| 8 | CI for macOS | A **macOS build job** (`flutter build macos --debug`, `.github/workflows/macos.yml`) on every PR and on main, and by hand; the macOS integration test runs locally. | Proves the Mac app compiles. In T1 it became run-by-hand, since macOS runners used 10× the minutes on a private repo; back on PRs since the repo went public (2026-11-19), where they're free. |
 
 ### Deviations from the high-level design
 
