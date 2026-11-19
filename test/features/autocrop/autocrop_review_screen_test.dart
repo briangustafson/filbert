@@ -314,4 +314,21 @@ void main() {
     ]);
     expect(find.text('Corners copied as JSON.'), findsOneWidget);
   });
+
+  testWidgets("a snackbar doesn't cover the buttons below the photo", (
+    tester,
+  ) async {
+    await openReview(tester);
+    ScaffoldMessenger.of(tester.element(find.byType(ReviewCanvas)))
+        .showSnackBar(const SnackBar(content: Text('Hello')));
+    await tester.pumpAndSettle();
+    final snackBar = tester.getRect(find.byType(SnackBar));
+    for (final label in ['Full image', 'Reset', 'Crop manually']) {
+      expect(
+        snackBar.bottom,
+        lessThanOrEqualTo(tester.getTopLeft(find.text(label)).dy),
+        reason: label,
+      );
+    }
+  });
 }

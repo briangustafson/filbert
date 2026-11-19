@@ -3,6 +3,7 @@ import 'package:filbert/app/routes.dart';
 import 'package:filbert/features/photo_viewer/photo_page.dart';
 import 'package:filbert/features/photo_viewer/photo_screen.dart';
 import 'package:filbert/features/photos/data/image_renderer.dart';
+import 'package:filbert/features/view_aids/ui/aid_toolbar.dart';
 import 'package:filbert/features/photos/domain/project_image.dart';
 import 'package:flutter/gestures.dart'
     show kDoubleTapTimeout, kLongPressTimeout;
@@ -246,14 +247,16 @@ void main() {
       ]);
     });
 
-    testWidgets('Revert can be undone from its snackbar', (tester) async {
+    testWidgets("Revert shows no snackbar; the menu's Undo brings it back", (
+      tester,
+    ) async {
       await images.setEdits(c.id, const Edits(quarterTurns: 1));
       await open(tester, c.id);
       await menuItems(tester);
       await choose(tester, 'Revert to original');
 
       expect(images.calls.last, 'revert ${c.id}');
-      expect(find.text('Reverted to the original.'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
       // Back at the original: Undo, but nothing to revert or redo.
       expect(await menuItems(tester), [
         'Crop/rotate',
@@ -263,11 +266,7 @@ void main() {
         'Set as reference',
         'Delete',
       ]);
-      await tester.tapAt(Offset.zero); // close the menu
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.widgetWithText(SnackBarAction, 'Undo'));
-      await tester.pumpAndSettle();
+      await choose(tester, 'Undo');
       expect(images.calls.last, 'undo ${c.id}');
       expect(shown(tester), c.id);
     });
@@ -329,5 +328,21 @@ void main() {
       );
       expect(find.text('Photo deleted.'), findsOneWidget);
     });
+  });
+
+  testWidgets("a snackbar doesn't cover the aid toolbar", (tester) async {
+    await open(tester, c.id);
+    await menuItems(tester);
+    await choose(tester, 'Delete');
+    final snackBar = tester.getRect(find.byType(SnackBar));
+    expect(
+      snackBar.bottom,
+      lessThanOrEqualTo(tester.getTopLeft(find.byType(AidToolbar)).dy),
+    );
+    // The photo still runs on behind the toolbar.
+    expect(
+      tester.getRect(find.byType(PageView)).bottom,
+      tester.getSize(find.byType(MaterialApp)).height,
+    );
   });
 }

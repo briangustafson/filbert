@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/layout.dart';
 import '../../app/routes.dart';
 import '../../app/shortcuts.dart';
 import '../../app/theme.dart';
@@ -57,15 +58,17 @@ class CropScreen extends ConsumerWidget {
     final images = ref.watch(projectImagesProvider(projectId));
     final image = images.value?.where((i) => i.id == imageId).firstOrNull;
 
-    final Widget body;
+    final Widget page;
     if (!project.hasValue || !images.hasValue) {
-      body = project.hasError || images.hasError
-          ? _Missing(projectId: projectId)
-          : const Center(child: CircularProgressIndicator());
+      page = EditorScaffold(
+        body: project.hasError || images.hasError
+            ? _Missing(projectId: projectId)
+            : const Center(child: CircularProgressIndicator()),
+      );
     } else if (project.value == null || image == null) {
-      body = _Missing(projectId: projectId);
+      page = EditorScaffold(body: _Missing(projectId: projectId));
     } else {
-      body = _CropView(
+      page = _CropView(
         key: ValueKey(image.id),
         project: project.value!,
         image: image,
@@ -78,13 +81,7 @@ class CropScreen extends ConsumerWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) context.go(Routes.project(projectId));
       },
-      child: Theme(
-        data: FilbertTheme.dark,
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: SafeArea(child: body),
-        ),
-      ),
+      child: Theme(data: FilbertTheme.dark, child: page),
     );
   }
 }
@@ -197,40 +194,47 @@ class _CropViewState extends ConsumerState<_CropView> {
       ],
       child: ListenableBuilder(
         listenable: _editor,
-        builder: (context, _) => Column(
-          children: [
-            _TopBar(
-              onCancel: _close,
-              onReset: _editor.reset,
-              onSkip: widget.afterAdd || widget.queue != null ? _next : null,
-              onApply: _apply,
-            ),
-            if (_replacesPerspective)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Text(
-                  'This photo has a perspective correction. '
-                  'Applying a crop replaces it (Undo brings it back).',
-                  textAlign: TextAlign.center,
-                ),
+        builder: (context, _) => EditorScaffold(
+          body: Column(
+            children: [
+              _TopBar(
+                onCancel: _close,
+                onReset: _editor.reset,
+                onSkip: widget.afterAdd || widget.queue != null ? _next : null,
+                onApply: _apply,
               ),
-            Expanded(
-              child: switch (original) {
-                AsyncData(:final value) => CropCanvas(
-                  editor: _editor,
-                  photo: value,
+              if (_replacesPerspective)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(
+                    'This photo has a perspective correction. '
+                    'Applying a crop replaces it (Undo brings it back).',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                AsyncError() => const _Message("Couldn't show this photo."),
-                _ => const Center(child: CircularProgressIndicator()),
-              },
-            ),
-            _StraightenRow(editor: _editor),
-            _AspectRow(
-              editor: _editor,
-              hasProjectRatio: _editor.defaultAspect != null,
-            ),
-            const SizedBox(height: 8),
-          ],
+              Expanded(
+                child: switch (original) {
+                  AsyncData(:final value) => CropCanvas(
+                    editor: _editor,
+                    photo: value,
+                  ),
+                  AsyncError() => const _Message("Couldn't show this photo."),
+                  _ => const Center(child: CircularProgressIndicator()),
+                },
+              ),
+            ],
+          ),
+          controls: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _StraightenRow(editor: _editor),
+              _AspectRow(
+                editor: _editor,
+                hasProjectRatio: _editor.defaultAspect != null,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );

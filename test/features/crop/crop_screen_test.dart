@@ -2,6 +2,7 @@ import 'package:filbert/app/router.dart';
 import 'package:filbert/app/routes.dart';
 import 'package:filbert/features/crop/crop_overlay.dart';
 import 'package:filbert/features/crop/crop_screen.dart';
+import 'package:filbert/features/photo_viewer/photo_screen.dart';
 import 'package:filbert/features/photos/domain/project_image.dart';
 import 'package:filbert/features/projects/domain/project.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -230,5 +231,35 @@ void main() {
     images.calls.clear();
     await openCrop(tester);
     expect(find.textContaining('perspective correction'), findsOneWidget);
+  });
+
+  testWidgets("a snackbar from the photo screen doesn't cover the controls", (
+    tester,
+  ) async {
+    await pumpFilbertApp(
+      tester,
+      projects: projects,
+      images: images,
+      renderer: FakeImageRenderer(file: fixtureImage('plain.png')),
+      initialLocation: Routes.photo(projectId, photo.id),
+    );
+    // Any snackbar shown there, e.g. "Saved as a new photo." with Open.
+    ScaffoldMessenger.of(tester.element(find.byType(PhotoScreen)))
+        .showSnackBar(const SnackBar(content: Text('Hello')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Photo options'));
+    await tester.pumpAndSettle();
+    await tapText(tester, 'Crop/rotate');
+
+    expect(find.byType(CropScreen), findsOneWidget);
+    final snackBar = tester.getRect(find.byType(SnackBar));
+    expect(
+      snackBar.bottom,
+      lessThanOrEqualTo(tester.getTopLeft(find.byType(Slider)).dy),
+    );
+    expect(
+      snackBar.bottom,
+      lessThanOrEqualTo(tester.getTopLeft(find.byType(ChoiceChip).first).dy),
+    );
   });
 }

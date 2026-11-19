@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/layout.dart';
 import '../../app/routes.dart';
 import '../../app/theme.dart';
 import '../../core/imaging/image_metadata.dart';
@@ -51,15 +52,17 @@ class AutocropReviewScreen extends ConsumerWidget {
     final images = ref.watch(projectImagesProvider(projectId));
     final image = images.value?.where((i) => i.id == imageId).firstOrNull;
 
-    final Widget body;
+    final Widget page;
     if (!project.hasValue || !images.hasValue) {
-      body = project.hasError || images.hasError
-          ? _Missing(projectId: projectId)
-          : const Center(child: CircularProgressIndicator());
+      page = EditorScaffold(
+        body: project.hasError || images.hasError
+            ? _Missing(projectId: projectId)
+            : const Center(child: CircularProgressIndicator()),
+      );
     } else if (project.value == null || image == null) {
-      body = _Missing(projectId: projectId);
+      page = EditorScaffold(body: _Missing(projectId: projectId));
     } else {
-      body = _ReviewView(
+      page = _ReviewView(
         key: ValueKey(image.id),
         project: project.value!,
         image: image,
@@ -72,13 +75,7 @@ class AutocropReviewScreen extends ConsumerWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) context.go(Routes.project(projectId));
       },
-      child: Theme(
-        data: FilbertTheme.dark,
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: SafeArea(child: body),
-        ),
-      ),
+      child: Theme(data: FilbertTheme.dark, child: page),
     );
   }
 }
@@ -233,108 +230,110 @@ class _ReviewViewState extends ConsumerState<_ReviewView> {
     final original = ref.watch(
       previewFileProvider(widget.image.withEdits(Edits.none)),
     );
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Cancel',
-                icon: const Icon(Icons.close),
-                onPressed: _close,
-              ),
-              const SizedBox(width: 4),
-              // The title gives way on narrow screens so the buttons fit.
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Auto-crop',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    if (widget.queue case final queue? when queue.total > 1)
+    return EditorScaffold(
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Cancel',
+                  icon: const Icon(Icons.close),
+                  onPressed: _close,
+                ),
+                const SizedBox(width: 4),
+                // The title gives way on narrow screens so the buttons fit.
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        '${queue.position} of ${queue.total}',
+                        'Auto-crop',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                  ],
+                      if (widget.queue case final queue? when queue.total > 1)
+                        Text(
+                          '${queue.position} of ${queue.total}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              if (kDebugMode)
-                IconButton(
-                  tooltip: 'Copy corners as JSON',
-                  icon: const Icon(Icons.data_object),
-                  onPressed: _copyCorners,
-                ),
-              if (widget.queue != null)
-                TextButton(onPressed: _done, child: const Text('Skip')),
-              const SizedBox(width: 4),
-              FilledButton(onPressed: _apply, child: const Text('Apply')),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 24,
-          child: _detected == null
-              ? const Text('Finding the canvas…')
-              : (_lowConfidence
-                    ? const Text(
-                        AutocropReviewScreen.lowConfidenceHint,
-                        textAlign: TextAlign.center,
-                      )
-                    : null),
-        ),
-        Expanded(
-          child: switch (original) {
-            AsyncData(:final value) => ReviewCanvas(
-              photo: value,
-              sourceWidth: widget.image.width,
-              sourceHeight: widget.image.height,
-              quarterTurns: _turns,
-              corners: _corners,
-              onChanged: (corners) => setState(() => _corners = corners),
+                if (kDebugMode)
+                  IconButton(
+                    tooltip: 'Copy corners as JSON',
+                    icon: const Icon(Icons.data_object),
+                    onPressed: _copyCorners,
+                  ),
+                if (widget.queue != null)
+                  TextButton(onPressed: _done, child: const Text('Skip')),
+                const SizedBox(width: 4),
+                FilledButton(onPressed: _apply, child: const Text('Apply')),
+              ],
             ),
-            AsyncError() => const _Message("Couldn't show this photo."),
-            _ => const Center(child: CircularProgressIndicator()),
-          },
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          // Wraps onto a second line where the three don't fit (narrow
-          // phones, large text).
-          child: Wrap(
-            alignment: WrapAlignment.spaceEvenly,
-            spacing: 8,
-            children: [
-              TextButton.icon(
-                onPressed: () => setState(() => _corners = fullImageCorners),
-                icon: const Icon(Icons.fullscreen),
-                label: const Text('Full image'),
-              ),
-              TextButton.icon(
-                onPressed: _detected == null
-                    ? null
-                    : () => setState(() => _corners = _detected!),
-                icon: const Icon(Icons.restart_alt),
-                label: const Text('Reset'),
-              ),
-              TextButton.icon(
-                key: const ValueKey('autocrop-manual'),
-                onPressed: _cropManually,
-                icon: const Icon(Icons.crop),
-                label: const Text('Crop manually'),
-              ),
-            ],
           ),
+          SizedBox(
+            height: 24,
+            child: _detected == null
+                ? const Text('Finding the canvas…')
+                : (_lowConfidence
+                      ? const Text(
+                          AutocropReviewScreen.lowConfidenceHint,
+                          textAlign: TextAlign.center,
+                        )
+                      : null),
+          ),
+          Expanded(
+            child: switch (original) {
+              AsyncData(:final value) => ReviewCanvas(
+                photo: value,
+                sourceWidth: widget.image.width,
+                sourceHeight: widget.image.height,
+                quarterTurns: _turns,
+                corners: _corners,
+                onChanged: (corners) => setState(() => _corners = corners),
+              ),
+              AsyncError() => const _Message("Couldn't show this photo."),
+              _ => const Center(child: CircularProgressIndicator()),
+            },
+          ),
+        ],
+      ),
+      controls: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        // Wraps onto a second line where the three don't fit (narrow
+        // phones, large text).
+        child: Wrap(
+          alignment: WrapAlignment.spaceEvenly,
+          spacing: 8,
+          children: [
+            TextButton.icon(
+              onPressed: () => setState(() => _corners = fullImageCorners),
+              icon: const Icon(Icons.fullscreen),
+              label: const Text('Full image'),
+            ),
+            TextButton.icon(
+              onPressed: _detected == null
+                  ? null
+                  : () => setState(() => _corners = _detected!),
+              icon: const Icon(Icons.restart_alt),
+              label: const Text('Reset'),
+            ),
+            TextButton.icon(
+              key: const ValueKey('autocrop-manual'),
+              onPressed: _cropManually,
+              icon: const Icon(Icons.crop),
+              label: const Text('Crop manually'),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

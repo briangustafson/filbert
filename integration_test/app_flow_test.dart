@@ -27,7 +27,9 @@ import 'package:filbert/core/files/file_store.dart';
 import 'package:filbert/core/ids/id_generator.dart';
 import 'package:filbert/core/settings/app_settings.dart';
 import 'package:filbert/features/autocrop/autocrop_review_screen.dart';
+import 'package:filbert/features/crop/crop_screen.dart';
 import 'package:filbert/features/photo_viewer/photo_screen.dart';
+import 'package:filbert/features/view_aids/ui/aid_toolbar.dart';
 import 'package:filbert/features/photos/data/image_repository.dart';
 import 'package:filbert/features/photos/data/photo_source.dart';
 import 'package:filbert/features/photos/domain/project_image.dart';
@@ -136,8 +138,20 @@ void main() {
     await _menu(tester, 'Redo');
     expect((await image()).edits.crop, isNotNull, reason: 'redo');
     await _menu(tester, 'Revert to original');
-    await _pumpUntil(tester, find.text('Reverted to the original.'));
     expect((await image()).edits.crop, isNull, reason: 'revert');
+
+    // A snackbar sits above the toolbar, and follows into Crop above its
+    // controls.
+    _phase('crop with a snackbar');
+    ScaffoldMessenger.of(tester.element(find.byType(PhotoScreen)))
+        .showSnackBar(const SnackBar(content: Text('Hello')));
+    await tester.pump(const Duration(seconds: 1)); // it slides in
+    _expectAbove(tester, find.byType(SnackBar), find.byType(AidToolbar));
+    await _menu(tester, 'Crop/rotate');
+    await _pumpUntil(tester, find.byType(CropScreen));
+    await tester.pump(const Duration(seconds: 1));
+    _expectAbove(tester, find.byType(SnackBar), find.byType(Slider));
+    _expectAbove(tester, find.byType(SnackBar), find.byType(ChoiceChip).first);
     _phase('done');
   });
 
@@ -359,3 +373,9 @@ void _expectNear(List<NormPoint> quad, List<(double, double)> truth) {
     );
   }
 }
+
+/// [upper]'s bottom is at or above [lower]'s top: nothing covered.
+void _expectAbove(WidgetTester tester, Finder upper, Finder lower) => expect(
+  tester.getRect(upper).bottom,
+  lessThanOrEqualTo(tester.getRect(lower).top),
+);

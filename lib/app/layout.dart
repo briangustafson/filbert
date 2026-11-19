@@ -63,3 +63,22 @@ class MaxWidth extends StatelessWidget {
     ),
   );
 }
+
+/// A full-screen editor page on black (crop, auto-crop review): [body]
+/// fills the screen above [controls], which sit in the Scaffold's footer so
+/// snackbars appear above them instead of covering them.
+class EditorScaffold extends StatelessWidget {
+  const EditorScaffold({super.key, required this.body, this.controls});
+
+  final Widget body;
+  final Widget? controls;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Colors.black,
+    body: SafeArea(child: body),
+    bottomNavigationBar: controls == null
+        ? null
+        : SafeArea(top: false, child: controls!),
+  );
+}

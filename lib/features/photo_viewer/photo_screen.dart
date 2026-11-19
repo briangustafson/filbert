@@ -247,20 +247,10 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
     if (pages != null && pages.hasClients) pages.jumpToPage(index);
   }
 
-  Future<void> _revert(ProjectImage image) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final repository = ref.read(imageRepositoryProvider);
-    await repository.revert(image.id);
-    messenger.showSnackBar(
-      SnackBar(
-        content: const Text('Reverted to the original.'),
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () => repository.undo(image.id),
-        ),
-      ),
-    );
-  }
+  /// No snackbar: the photo visibly changes, and Undo (menu, ⌘Z) brings
+  /// the edits back, as for Undo and Redo themselves.
+  Future<void> _revert(ProjectImage image) =>
+      ref.read(imageRepositoryProvider).revert(image.id);
 
   /// Shows the next photo (else the previous one, else returns to the
   /// project), then deletes, with Undo.
@@ -421,6 +411,21 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
         bindings: _bindings(current, photoCount),
         child: Scaffold(
           backgroundColor: Colors.black,
+          // The photo runs on behind the toolbar; the toolbar is the footer
+          // so snackbars appear above it, not over it.
+          extendBody: true,
+          bottomNavigationBar: current == null
+              ? null
+              : _BottomChrome(
+                  hold: _holdsChrome,
+                  visible: _chrome,
+                  toolbar: AidToolbar(
+                    aids: aids,
+                    showCompare: photoCount > 1,
+                    onTap: _onAidTap,
+                  ),
+                  panel: panel == null || docked ? null : panel,
+                ),
           body: Listener(
             onPointerDown: _onPointerDown,
             child: MouseRegion(
@@ -445,17 +450,6 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
                         onPressed: () => _turnPage(1),
                       ),
                   ],
-                  if (current != null)
-                    _BottomChrome(
-                      hold: _holdsChrome,
-                      visible: _chrome,
-                      toolbar: AidToolbar(
-                        aids: aids,
-                        showCompare: photoCount > 1,
-                        onTap: _onAidTap,
-                      ),
-                      panel: panel == null || docked ? null : panel,
-                    ),
                   if (panel != null && docked)
                     _SidePanel(
                       hold: _holdsChrome,
@@ -574,8 +568,9 @@ class _SidePanel extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           child: SafeArea(
             child: Padding(
-              // Below the top bar, above the toolbar.
-              padding: const EdgeInsets.fromLTRB(0, 64, 12, 96),
+              // Below the top bar; the safe area ends above the toolbar
+              // (extendBody).
+              padding: const EdgeInsets.fromLTRB(0, 64, 12, 8),
               child: SizedBox(
                 key: const ValueKey('aid-side-panel'),
                 width: width,
@@ -597,7 +592,8 @@ class _SidePanel extends StatelessWidget {
   );
 }
 
-/// The aid toolbar and the open panel, at the bottom on a dark gradient.
+/// The aid toolbar and the open panel, at the bottom on a dark gradient:
+/// the Scaffold's footer.
 class _BottomChrome extends StatelessWidget {
   const _BottomChrome({
     this.hold = _noHold,
@@ -615,31 +611,28 @@ class _BottomChrome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: hold(
-        IgnorePointer(
-          ignoring: !visible,
-          child: AnimatedOpacity(
-            opacity: visible ? 1 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [Colors.black87, Colors.black54, Colors.transparent],
-                  stops: [0, 0.7, 1],
-                ),
+    return hold(
+      IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: const Duration(milliseconds: 200),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [Colors.black87, Colors.black54, Colors.transparent],
+                stops: [0, 0.7, 1],
               ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 24, 4, 4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [?panel, toolbar],
-                  ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 24, 4, 4),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [?panel, toolbar],
                 ),
               ),
             ),
