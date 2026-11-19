@@ -1,0 +1,14 @@
+# App icons: `dart run flutter_launcher_icons` after changing assets/icon/
+# (made by tool/make_app_icon.swift from the artwork).
+flutter_launcher_icons:
+  image_path: assets/icon/full.png
+  android: true
+  # Adaptive icon: the artwork at 0.88× on its own blue, so the launcher's
+  # mask (the middle 66%) keeps the whole F.
+  adaptive_icon_background: "#094871"
+  adaptive_icon_foreground: assets/icon/android_foreground.png
+  adaptive_icon_foreground_inset: 0
+  ios: false
+  macos:
+    generate: true
+    image_path: assets/icon/full.png
