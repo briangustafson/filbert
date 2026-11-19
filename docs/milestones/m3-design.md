@@ -85,8 +85,8 @@ The same routes and screens as the phone. Width breakpoints follow Material's wi
 
 - The Mac's minimum window (800 × 600) is medium, so the Mac never shows the phone layout. Widget tests run at 800 × 600 by default, so most tests see it too.
 - Window: resizable, minimum 800 × 600; opens at 1200 × 800, centred (`MainFlutterWindow.swift`). (Not remembered between launches in M3, which would need a window-management package.)
-- **Mouse on the photo screen** (T2): moving the pointer shows the chrome and restarts its hide timer (the phone's 3 s); it stays while the pointer is over the top bar, the toolbar, a panel or an arrow, or while a panel is open. **Previous / next buttons** appear at the left and right edges with the chrome once a mouse has moved, since Flutter doesn't drag pages with a mouse; a touch hides them again, so phones never show them. (Added in T2; T3 adds the arrow keys.) Zoom: `InteractiveViewer`'s own handling of the trackpad pinch and the mouse wheel, plus double-click; dragging pans when zoomed. Press and hold still shows the original.
-- Every icon-only button has a tooltip naming its action (checked in T2); T3 adds the shortcut to it.
+- **Mouse on the photo screen** (T2): moving the pointer shows the chrome and restarts its hide timer (the phone's 3 s); it stays while the pointer is over the top bar, the toolbar, a panel or an arrow, or while a panel is open. **Previous / next buttons** appear at the left and right edges with the chrome once a mouse has moved, since Flutter doesn't drag pages with a mouse; a touch hides them again, so phones never show them. (Added in T2; T3 added the arrow keys.) Zoom: `InteractiveViewer`'s own handling of the trackpad pinch and the mouse wheel, plus double-click; dragging pans when zoomed. Press and hold still shows the original.
+- Every icon-only button has a tooltip naming its action (checked in T2); T3 added the shortcut to it on a desktop.
 - Menus and dialogs are the phone's. Bottom sheets (the size picker, Export…, the add-photos choice) open through `showAdaptiveSheet` (`lib/app/adaptive_sheet.dart`): a sheet on phones, a centred dialog from 600 dp. Export's refusal to close mid-render guards the dialog too.
 
 ### 3.3 Keyboard shortcuts
@@ -94,19 +94,33 @@ The same routes and screens as the phone. Width breakpoints follow Material's wi
 | Where | Keys |
 |---|---|
 | Project list | ⌘N new project · Return opens the focused project |
-| Project screen | ⌘O add photos · Delete deletes the selected photo (with the usual undo snackbar) · Esc back |
+| Project screen | ⌘O add photos · Delete (or Backspace) deletes the photo whose tile has keyboard focus (Tab moves it), with the usual undo snackbar · Esc back |
 | Photo screen | ← / → previous / next photo · Esc closes a panel, else goes back · ⌘Z undo · ⇧⌘Z redo · ⌘E Export… · G grid · B gray · V values · C colors · O compare · Space (hold) shows the original · ⌘+ / ⌘− / ⌘0 zoom in / out / fit |
 | Crop screen | Return applies · Esc cancels |
+| Settings | Esc back |
 | Everywhere | ⌘, Settings · ⌘W closes the window, which quits the app (single window) |
 
-Shortcuts are `Shortcuts`/`Actions` on each screen, so they also work on Android with a hardware keyboard. The photo screen's shortcuts are disabled while a text field has focus.
+As built in T3:
+
+- Each screen wraps itself in `KeyBindings` (`lib/app/shortcuts.dart`), a focus scope that takes focus when the screen appears and handles its list of `KeyBinding`s. It is a small handler of its own rather than `Shortcuts`/`Actions` so that a key it doesn't use goes on unhandled, to a text field as text. ⌘ is Ctrl off Apple platforms, so the shortcuts also work on Android with a hardware keyboard.
+- While a text field has focus, only ⌘ shortcuts that don't edit text work (⌘N, ⌘O, ⌘,); letters, arrows, Delete, ⌘Z and Esc are the field's, and Esc then leaves the field. Return and Space are left to a focused button or card, which they activate (so Return opens the focused project).
+- ⌘+ is also ⌘= with or without Shift, and the keypad's + and −. Zoom steps by 1.5× about the centre, from fit to the photo's maximum.
+- On the Mac, ⌘W is the menu's Window → Close, and the app menu's Settings… (renamed from Preferences…) opens Settings through the `filbert/menu` channel.
+- On a desktop, tooltips name the keys ("Back (Esc)", "Grid (G)", "New project (⌘N)"); phones keep the plain tooltips.
 
 ### 3.4 Drag and drop
 
 - Dropping image files (JPEG, PNG, HEIC) on the **project screen** adds them as photos, the same as Add photos (including auto-crop on add, if on). Dropping onto the empty reference slot sets the first one as the reference.
 - Dropping on the **project list** creates a new project with the first image as its reference and the rest as photos, then opens it.
 - Other files are ignored; if nothing in the drop is an image, a snackbar says "Filbert can only add photos."
-- Package `desktop_drop` (HLD §3.3).
+- Package `desktop_drop` 0.8 (HLD §3.3); 0.9 needs `cross_file` 0.4, which `image_picker` doesn't allow yet.
+
+As built in T3 (`PhotoDropTarget`, `lib/features/photos/ui/photo_drop.dart`):
+
+- Drops are taken on a desktop only, and only by the screen on top (not the project list under a project, nor while a dialog is open).
+- While files are over it, the screen is outlined with what a drop will do: "Drop to add photos", "Drop to set the reference" over the empty slot, "Drop to start a project" on the list.
+- Images are `.jpg`, `.jpeg`, `.png`, `.heic` and `.heif`. A Finder file is the user's own (`PickedPhoto.temporary` false, never deleted) and is read under the security-scoped bookmark that comes with the drop. A promised file (dragged from Photos, for example) is the app's own copy, so import deletes it like a picker copy.
+- A dropped reference on a project with a size opens manual crop, and dropped photos open the auto-crop review if that's on, as with Add photos. A project started from a drop is deleted again if none of its files could be added.
 
 ### 3.5 Export on the Mac
 
@@ -351,7 +365,7 @@ Approved by Brian (2026-11-18); versions are checked in the task that adds them.
 | Package | Use | Task |
 |---|---|---|
 | `file_selector` | Save dialog (Mac export) | T4 |
-| `desktop_drop` | Drag and drop on macOS | T3 |
+| `desktop_drop` | Drag and drop on macOS (0.8; see §3.4) | T3 |
 | `device_info_plus` | Default device name | T6 |
 | `google_sign_in` | Sign-in and scopes | T7 |
 | `googleapis`, `extension_google_sign_in_as_googleapis_auth` | Drive v3 client using the sign-in token | T7, T8 |

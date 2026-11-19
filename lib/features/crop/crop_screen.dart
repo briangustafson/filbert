@@ -2,11 +2,13 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show DragStartBehavior;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/routes.dart';
+import '../../app/shortcuts.dart';
 import '../../app/theme.dart';
 import '../../core/imaging/crop_geometry.dart';
 import '../autocrop/review_queue.dart';
@@ -22,7 +24,8 @@ import 'crop_overlay.dart';
 
 /// Manual crop (m1-design §3.7): crop rectangle with an aspect lock,
 /// straighten slider and Rotate 90°, over the full original photo. Apply
-/// saves the crop as an undoable edit.
+/// saves the crop as an undoable edit. Return applies and Esc cancels
+/// (m3-design §3.3).
 ///
 /// [afterAdd]: opened for a reference just added (m1-design §3.6); Skip
 /// leaves it uncropped, and every way out returns to the project.
@@ -183,42 +186,52 @@ class _CropViewState extends ConsumerState<_CropView> {
     final original = ref.watch(
       previewFileProvider(widget.image.withEdits(Edits.none)),
     );
-    return ListenableBuilder(
-      listenable: _editor,
-      builder: (context, _) => Column(
-        children: [
-          _TopBar(
-            onCancel: _close,
-            onReset: _editor.reset,
-            onSkip: widget.afterAdd || widget.queue != null ? _next : null,
-            onApply: _apply,
-          ),
-          if (_replacesPerspective)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                'This photo has a perspective correction. '
-                'Applying a crop replaces it (Undo brings it back).',
-                textAlign: TextAlign.center,
-              ),
+    return KeyBindings(
+      bindings: [
+        KeyBinding(const SingleActivator(LogicalKeyboardKey.enter), _apply),
+        KeyBinding(
+          const SingleActivator(LogicalKeyboardKey.numpadEnter),
+          _apply,
+        ),
+        KeyBinding(const SingleActivator(LogicalKeyboardKey.escape), _close),
+      ],
+      child: ListenableBuilder(
+        listenable: _editor,
+        builder: (context, _) => Column(
+          children: [
+            _TopBar(
+              onCancel: _close,
+              onReset: _editor.reset,
+              onSkip: widget.afterAdd || widget.queue != null ? _next : null,
+              onApply: _apply,
             ),
-          Expanded(
-            child: switch (original) {
-              AsyncData(:final value) => CropCanvas(
-                editor: _editor,
-                photo: value,
+            if (_replacesPerspective)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text(
+                  'This photo has a perspective correction. '
+                  'Applying a crop replaces it (Undo brings it back).',
+                  textAlign: TextAlign.center,
+                ),
               ),
-              AsyncError() => const _Message("Couldn't show this photo."),
-              _ => const Center(child: CircularProgressIndicator()),
-            },
-          ),
-          _StraightenRow(editor: _editor),
-          _AspectRow(
-            editor: _editor,
-            hasProjectRatio: _editor.defaultAspect != null,
-          ),
-          const SizedBox(height: 8),
-        ],
+            Expanded(
+              child: switch (original) {
+                AsyncData(:final value) => CropCanvas(
+                  editor: _editor,
+                  photo: value,
+                ),
+                AsyncError() => const _Message("Couldn't show this photo."),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+            _StraightenRow(editor: _editor),
+            _AspectRow(
+              editor: _editor,
+              hasProjectRatio: _editor.defaultAspect != null,
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -245,7 +258,7 @@ class _TopBar extends StatelessWidget {
     child: Row(
       children: [
         IconButton(
-          tooltip: 'Cancel',
+          tooltip: withShortcut('Cancel', 'Esc'),
           icon: const Icon(Icons.close),
           onPressed: onCancel,
         ),

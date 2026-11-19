@@ -2,6 +2,9 @@ import Cocoa
 import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
+  /// Menu commands handled in Dart (`menuChannel` in lib/app/app.dart).
+  static var menuChannel: FlutterMethodChannel?
+
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     self.contentViewController = flutterViewController
@@ -11,6 +14,9 @@ class MainFlutterWindow: NSWindow {
     self.center()
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    MainFlutterWindow.menuChannel = FlutterMethodChannel(
+      name: "filbert/menu",
+      binaryMessenger: flutterViewController.engine.binaryMessenger)
 
     super.awakeFromNib()
   }

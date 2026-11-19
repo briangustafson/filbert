@@ -1,4 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
+
+/// A desktop: a mouse and keyboard are always there, and files can be
+/// dropped (m3-design §3.3, §3.4).
+bool get isDesktop => switch (defaultTargetPlatform) {
+  TargetPlatform.macOS ||
+  TargetPlatform.windows ||
+  TargetPlatform.linux => true,
+  _ => false,
+};
 
 /// Material's window size classes by width (m3-design §3.2). Phones are
 /// [compact]; layouts change only from [medium] up, so the phone layout is
