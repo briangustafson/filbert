@@ -29,22 +29,45 @@ import 'photo_files.dart';
 ///
 /// Shows the thumbnail scaled up until the preview is ready, and switches to
 /// a sharper "detail" render once zoomed past the preview's resolution.
+///
+/// The keyboard zooms it through [zoom] and holds it with [held] (m3-design
+/// §3.3).
 class PhotoPage extends ConsumerStatefulWidget {
   const PhotoPage({
     super.key,
     required this.image,
     required this.onTap,
     required this.onZoomedChanged,
+    this.zoom,
+    this.held = false,
   });
 
   final ProjectImage image;
   final VoidCallback onTap;
+
+  /// Zooms this page; given to the page on screen.
+  final PhotoZoomController? zoom;
+
+  /// Shows the original, as holding a finger on the photo does.
+  final bool held;
 
   /// Whether the photo is zoomed in (the screen stops swiping while it is).
   final ValueChanged<bool> onZoomedChanged;
 
   @override
   ConsumerState<PhotoPage> createState() => _PhotoPageState();
+}
+
+/// Keyboard zoom (⌘+ / ⌘− / ⌘0) for the [PhotoPage] it's given to.
+class PhotoZoomController {
+  _PhotoPageState? _page;
+
+  /// Each step zooms by this much, about the centre.
+  static const step = 1.5;
+
+  void zoomIn() => _page?._zoomBy(step);
+  void zoomOut() => _page?._zoomBy(1 / step);
+  void fit() => _page?._animateTo(Matrix4.identity());
 }
 
 class _PhotoPageState extends ConsumerState<PhotoPage>
@@ -81,10 +104,21 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
       final tween = _zoomTween;
       if (tween != null) _zoom.value = tween.value;
     });
+    widget.zoom?._page = this;
+  }
+
+  @override
+  void didUpdateWidget(PhotoPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.zoom != widget.zoom) {
+      if (oldWidget.zoom?._page == this) oldWidget.zoom!._page = null;
+      widget.zoom?._page = this;
+    }
   }
 
   @override
   void dispose() {
+    if (widget.zoom?._page == this) widget.zoom!._page = null;
     _zoomAnimation.dispose();
     _zoom.dispose();
     super.dispose();
@@ -137,6 +171,24 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
       final dy = (-p.dy * (s - 1)).clamp(_box.height * (1 - s), 0.0);
       target = Matrix4.diagonal3Values(s, s, 1)..setTranslationRaw(dx, dy, 0);
     }
+    _animateTo(target);
+  }
+
+  /// Zooms by [factor] about the middle of the screen, within the limits,
+  /// keeping the photo over the whole box it fills.
+  void _zoomBy(double factor) {
+    final from = _scale;
+    final s = (from * factor).clamp(1.0, _maxScale);
+    if ((s - from).abs() < 1e-6) return;
+    final t = _zoom.value.getTranslation();
+    final c = _box.center(Offset.zero);
+    final k = s / from;
+    final dx = (c.dx - k * (c.dx - t.x)).clamp(_box.width * (1 - s), 0.0);
+    final dy = (c.dy - k * (c.dy - t.y)).clamp(_box.height * (1 - s), 0.0);
+    _animateTo(Matrix4.diagonal3Values(s, s, 1)..setTranslationRaw(dx, dy, 0));
+  }
+
+  void _animateTo(Matrix4 target) {
     _zoomTween = Matrix4Tween(begin: _zoom.value, end: target).animate(
       CurvedAnimation(parent: _zoomAnimation, curve: Curves.easeOutCubic),
     );
@@ -265,7 +317,8 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
     final detail = _wantDetail ? ref.watch(detailFileProvider(image)) : null;
     // Holding shows the plain original: unedited, without aids.
     final showOriginal =
-        _holding && (!image.edits.isNone || aids != null || grid != null);
+        (_holding || widget.held) &&
+        (!image.edits.isNone || aids != null || grid != null);
     final original = showOriginal
         ? ref.watch(previewFileProvider(image.withEdits(Edits.none)))
         : null;

@@ -9,12 +9,13 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../app/layout.dart';
 import '../../app/routes.dart';
+import '../../app/shortcuts.dart';
 import '../export/ui/export_sheet.dart';
 import '../photos/data/image_providers.dart';
 import '../photos/data/image_repository.dart';
 import '../photos/domain/project_image.dart';
+import '../photos/ui/delete_photo.dart';
 import '../projects/data/project_providers.dart';
-import '../projects/ui/delete_project.dart' show projectUndoDuration;
 import '../view_aids/data/view_aids_providers.dart';
 import '../view_aids/domain/view_aids.dart';
 import '../view_aids/ui/aid_toolbar.dart';
@@ -31,6 +32,9 @@ import 'photo_page.dart';
 /// stays while the pointer is over it, and previous / next buttons appear
 /// at the sides (a mouse can't swipe pages). On wide windows an open panel
 /// docks at the right.
+///
+/// Keyboard shortcuts are in m3-design §3.3: arrows, Esc, ⌘Z / ⇧⌘Z, ⌘E,
+/// a letter per aid, Space held for the original, ⌘+ / ⌘− / ⌘0 to zoom.
 ///
 /// Swiping doesn't change the route: it stays on the photo that was opened,
 /// and Back returns to the project.
@@ -65,6 +69,11 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
 
   /// The pointer is over the chrome or a panel, which then stays.
   var _overChrome = false;
+
+  /// Space is held: the photo on screen shows its original.
+  var _spaceHeld = false;
+
+  final _zoomKeys = PhotoZoomController();
 
   @override
   void initState() {
@@ -143,8 +152,10 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
   );
 
   void _turnPage(int delta) {
+    final to = _ids.indexOf(_currentId) + delta;
+    if (to < 0 || to >= _ids.length) return;
     _pages?.animateToPage(
-      _ids.indexOf(_currentId) + delta,
+      to,
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutCubic,
     );
@@ -254,17 +265,72 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
         _zoomed = false;
       });
     }
-    await repository.delete(image.id);
-    messenger.showSnackBar(
-      SnackBar(
-        content: const Text('Photo deleted.'),
-        duration: projectUndoDuration,
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () => repository.restore(image.id),
+    await deletePhotoWithUndo(messenger, repository, image.id);
+  }
+
+  /// Esc closes an open panel, else goes back to the project.
+  void _escape() {
+    if (ref.read(_aids).panel != null) {
+      ref.read(_aids.notifier).closePanel();
+      _showChrome();
+    } else {
+      context.go(Routes.project(widget.projectId));
+    }
+  }
+
+  List<KeyBinding> _bindings(ProjectImage? current, int photoCount) {
+    const plain = SingleActivator.new;
+    return [
+      KeyBinding(const SingleActivator(LogicalKeyboardKey.escape), _escape),
+      if (current != null) ...[
+        KeyBinding(
+          const SingleActivator(LogicalKeyboardKey.arrowLeft),
+          () => _turnPage(-1),
         ),
-      ),
-    );
+        KeyBinding(
+          const SingleActivator(LogicalKeyboardKey.arrowRight),
+          () => _turnPage(1),
+        ),
+        KeyBinding(
+          command(LogicalKeyboardKey.keyZ),
+          () => ref.read(imageRepositoryProvider).undo(current.id),
+        ),
+        KeyBinding(
+          command(LogicalKeyboardKey.keyZ, shift: true),
+          () => ref.read(imageRepositoryProvider).redo(current.id),
+        ),
+        KeyBinding(command(LogicalKeyboardKey.keyE), () => _export(current)),
+        for (final aid in Aid.values)
+          if (aid != Aid.compare || photoCount > 1)
+            KeyBinding(plain(aidKey(aid)), () => _onAidTap(aid)),
+        KeyBinding(
+          const SingleActivator(LogicalKeyboardKey.space),
+          () => setState(() => _spaceHeld = true),
+          onReleased: () {
+            if (mounted) setState(() => _spaceHeld = false);
+          },
+        ),
+        // ⌘+ is ⌘= on most keyboards, with or without Shift.
+        for (final key in [
+          LogicalKeyboardKey.equal,
+          LogicalKeyboardKey.add,
+          LogicalKeyboardKey.numpadAdd,
+        ]) ...[
+          KeyBinding(command(key), _zoomKeys.zoomIn),
+          KeyBinding(command(key, shift: true), _zoomKeys.zoomIn),
+        ],
+        for (final key in [
+          LogicalKeyboardKey.minus,
+          LogicalKeyboardKey.numpadSubtract,
+        ])
+          KeyBinding(command(key), _zoomKeys.zoomOut),
+        for (final key in [
+          LogicalKeyboardKey.digit0,
+          LogicalKeyboardKey.numpad0,
+        ])
+          KeyBinding(command(key), _zoomKeys.fit),
+      ],
+    ];
   }
 
   @override
@@ -304,6 +370,8 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
           itemBuilder: (context, i) => PhotoPage(
             key: ValueKey(ordered[i].id),
             image: ordered[i],
+            zoom: ordered[i].id == _currentId ? _zoomKeys : null,
+            held: _spaceHeld && ordered[i].id == _currentId,
             onTap: _onPhotoTap,
             onZoomedChanged: (zoomed) {
               if (ordered[i].id == _currentId && zoomed != _zoomed) {
@@ -338,81 +406,84 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
           _showChrome();
         }
       },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Listener(
-          onPointerDown: _onPointerDown,
-          child: MouseRegion(
-            onHover: _onHover,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                body,
-                if (current != null && _mouse) ...[
-                  if (index > 0)
-                    _PageArrow(
+      child: KeyBindings(
+        bindings: _bindings(current, photoCount),
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Listener(
+            onPointerDown: _onPointerDown,
+            child: MouseRegion(
+              onHover: _onHover,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  body,
+                  if (current != null && _mouse) ...[
+                    if (index > 0)
+                      _PageArrow(
+                        hold: _holdsChrome,
+                        visible: _chrome,
+                        next: false,
+                        onPressed: () => _turnPage(-1),
+                      ),
+                    if (index < photoCount - 1)
+                      _PageArrow(
+                        hold: _holdsChrome,
+                        visible: _chrome,
+                        next: true,
+                        onPressed: () => _turnPage(1),
+                      ),
+                  ],
+                  if (current != null)
+                    _BottomChrome(
                       hold: _holdsChrome,
                       visible: _chrome,
-                      next: false,
-                      onPressed: () => _turnPage(-1),
+                      toolbar: AidToolbar(
+                        aids: aids,
+                        showCompare: photoCount > 1,
+                        onTap: _onAidTap,
+                      ),
+                      panel: panel == null || docked ? null : panel,
                     ),
-                  if (index < photoCount - 1)
-                    _PageArrow(
+                  if (panel != null && docked)
+                    _SidePanel(
                       hold: _holdsChrome,
                       visible: _chrome,
-                      next: true,
-                      onPressed: () => _turnPage(1),
+                      child: panel,
                     ),
+                  _Chrome(
+                    hold: _holdsChrome,
+                    visible: _chrome || current == null,
+                    onBack: () => context.go(Routes.project(widget.projectId)),
+                    menu: current == null
+                        ? null
+                        : _PhotoMenu(
+                            onCrop: () => context.go(
+                              Routes.crop(widget.projectId, current!.id),
+                            ),
+                            onAutoCrop: () => context.go(
+                              Routes.autocrop(widget.projectId, current!.id),
+                            ),
+                            canUndo: history.canUndo,
+                            canRedo: history.canRedo,
+                            canRevert: !current.edits.isNone,
+                            isReference: isReference,
+                            onOpened: _hideTimer?.cancel,
+                            onClosed: _showChrome,
+                            onUndo: () => ref
+                                .read(imageRepositoryProvider)
+                                .undo(current!.id),
+                            onRedo: () => ref
+                                .read(imageRepositoryProvider)
+                                .redo(current!.id),
+                            onRevert: () => _revert(current!),
+                            onExport: () => _export(current!),
+                            onSetAsReference: () => _setAsReference(current!),
+                            onDelete: () => _delete(current!),
+                          ),
+                  ),
                 ],
-                if (current != null)
-                  _BottomChrome(
-                    hold: _holdsChrome,
-                    visible: _chrome,
-                    toolbar: AidToolbar(
-                      aids: aids,
-                      showCompare: photoCount > 1,
-                      onTap: _onAidTap,
-                    ),
-                    panel: panel == null || docked ? null : panel,
-                  ),
-                if (panel != null && docked)
-                  _SidePanel(
-                    hold: _holdsChrome,
-                    visible: _chrome,
-                    child: panel,
-                  ),
-                _Chrome(
-                  hold: _holdsChrome,
-                  visible: _chrome || current == null,
-                  onBack: () => context.go(Routes.project(widget.projectId)),
-                  menu: current == null
-                      ? null
-                      : _PhotoMenu(
-                          onCrop: () => context.go(
-                            Routes.crop(widget.projectId, current!.id),
-                          ),
-                          onAutoCrop: () => context.go(
-                            Routes.autocrop(widget.projectId, current!.id),
-                          ),
-                          canUndo: history.canUndo,
-                          canRedo: history.canRedo,
-                          canRevert: !current.edits.isNone,
-                          isReference: isReference,
-                          onOpened: _hideTimer?.cancel,
-                          onClosed: _showChrome,
-                          onUndo: () => ref
-                              .read(imageRepositoryProvider)
-                              .undo(current!.id),
-                          onRedo: () => ref
-                              .read(imageRepositoryProvider)
-                              .redo(current!.id),
-                          onRevert: () => _revert(current!),
-                          onExport: () => _export(current!),
-                          onSetAsReference: () => _setAsReference(current!),
-                          onDelete: () => _delete(current!),
-                        ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -450,7 +521,9 @@ class _PageArrow extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: IconButton.filledTonal(
               key: ValueKey(next ? 'photo-next' : 'photo-previous'),
-              tooltip: next ? 'Next photo' : 'Previous photo',
+              tooltip: next
+                  ? withShortcut('Next photo', '→')
+                  : withShortcut('Previous photo', '←'),
               icon: Icon(next ? Icons.chevron_right : Icons.chevron_left),
               iconSize: 32,
               onPressed: onPressed,
@@ -609,7 +682,7 @@ class _Chrome extends StatelessWidget {
                     child: Row(
                       children: [
                         IconButton(
-                          tooltip: 'Back',
+                          tooltip: withShortcut('Back', 'Esc'),
                           icon: const Icon(Icons.arrow_back),
                           color: Colors.white,
                           onPressed: onBack,

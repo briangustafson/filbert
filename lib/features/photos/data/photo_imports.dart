@@ -86,6 +86,47 @@ class PhotoImports extends _$PhotoImports {
     return _import(projectId, photos, asReference: asReference);
   }
 
+  /// Adds dropped files (m3-design §3.4) to the project's grid, or the
+  /// first as its reference.
+  Future<AddPhotosResult> addDropped(
+    String projectId,
+    List<PickedPhoto> photos, {
+    bool asReference = false,
+  }) {
+    if (photos.isEmpty) return Future.value(AddPhotosResult.cancelled);
+    return _import(
+      projectId,
+      asReference ? [photos.first] : photos,
+      asReference: asReference,
+    );
+  }
+
+  /// Creates a project from dropped files: the first is its reference, the
+  /// rest its photos (m3-design §3.4). [ProjectPhotosResult.result] has the
+  /// grid photos, with the reference's failure counted. If nothing could be
+  /// added, the project is deleted again.
+  Future<ProjectPhotosResult> newProjectFromDropped(
+    List<PickedPhoto> photos,
+  ) async {
+    final project = await _projects.create();
+    final reference = await _import(project.id, [
+      photos.first,
+    ], asReference: true);
+    final rest = photos.length == 1
+        ? AddPhotosResult.cancelled
+        : await _import(project.id, photos.sublist(1));
+    if (reference.added.isEmpty && rest.added.isEmpty) {
+      await _projects.delete(project.id);
+    }
+    return (
+      projectId: project.id,
+      result: AddPhotosResult(
+        added: rest.added,
+        failed: reference.failed + rest.failed,
+      ),
+    );
+  }
+
   /// Opens the camera; on success creates a project with the photo in its
   /// grid. Null if cancelled. If the photo can't be added, the new project
   /// is deleted again and the result reports the failure.

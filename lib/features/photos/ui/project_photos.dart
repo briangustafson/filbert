@@ -1,9 +1,11 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/layout.dart';
 import '../../../app/routes.dart';
+import '../../../app/shortcuts.dart';
 import '../../../core/imaging/render_geometry.dart';
 import '../../projects/domain/project.dart';
 import '../data/image_providers.dart';
@@ -11,15 +13,20 @@ import '../data/image_repository.dart';
 import '../data/photo_imports.dart';
 import '../domain/project_image.dart';
 import 'add_photos.dart';
+import 'delete_photo.dart';
 import 'image_thumbnail.dart';
 
 /// The project's reference slot and photo grid (m1-design §3.3), as slivers
 /// for the project screen.
+///
+/// [referenceSlot] marks the empty reference slot, where a drop sets the
+/// reference (m3-design §3.4).
 List<Widget> projectPhotoSlivers(
   BuildContext context,
   WidgetRef ref,
-  Project project,
-) {
+  Project project, {
+  Key? referenceSlot,
+}) {
   final images = ref.watch(projectImagesProvider(project.id));
   final progress = ref.watch(
     photoImportsProvider.select((imports) => imports[project.id]),
@@ -48,10 +55,14 @@ List<Widget> projectPhotoSlivers(
       sliver: SliverToBoxAdapter(
         child: reference == null
             ? _EmptyReference(
+                key: referenceSlot,
                 onAdd: () =>
                     addPhotos(context, ref, project.id, asReference: true),
               )
-            : _ReferenceTile(project: project, image: reference),
+            : _DeleteKey(
+                image: reference,
+                child: _ReferenceTile(project: project, image: reference),
+              ),
       ),
     ),
     SliverPadding(
@@ -74,7 +85,9 @@ List<Widget> projectPhotoSlivers(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         sliver: SliverToBoxAdapter(
           child: Text(
-            'No photos yet. Tap Add photo to add progress shots.',
+            isDesktop
+                ? 'No photos yet. Click Add photo, or drop photos here.'
+                : 'No photos yet. Tap Add photo to add progress shots.',
             style: textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -93,15 +106,44 @@ List<Widget> projectPhotoSlivers(
             crossAxisSpacing: 4,
           ),
           itemCount: grid.length,
-          itemBuilder: (context, i) =>
-              _PhotoTile(key: ValueKey(grid[i].id), image: grid[i]),
+          itemBuilder: (context, i) => _DeleteKey(
+            key: ValueKey(grid[i].id),
+            image: grid[i],
+            child: _PhotoTile(image: grid[i]),
+          ),
         ),
       ),
   ];
 }
 
+/// Delete (or Backspace) deletes the photo while its tile has keyboard
+/// focus, with Undo (m3-design §3.3).
+class _DeleteKey extends ConsumerWidget {
+  const _DeleteKey({super.key, required this.image, required this.child});
+
+  final ProjectImage image;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    void delete() => deletePhotoWithUndo(
+      ScaffoldMessenger.of(context),
+      ref.read(imageRepositoryProvider),
+      image.id,
+    );
+    return KeyBindings(
+      scope: false,
+      bindings: [
+        KeyBinding(const SingleActivator(LogicalKeyboardKey.delete), delete),
+        KeyBinding(const SingleActivator(LogicalKeyboardKey.backspace), delete),
+      ],
+      child: child,
+    );
+  }
+}
+
 class _EmptyReference extends StatelessWidget {
-  const _EmptyReference({required this.onAdd});
+  const _EmptyReference({super.key, required this.onAdd});
 
   final VoidCallback onAdd;
 
@@ -212,7 +254,7 @@ class _ReferenceTile extends ConsumerWidget {
 enum _ReferenceAction { replace, remove }
 
 class _PhotoTile extends StatelessWidget {
-  const _PhotoTile({super.key, required this.image});
+  const _PhotoTile({required this.image});
 
   final ProjectImage image;
 

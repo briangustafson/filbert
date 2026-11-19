@@ -101,6 +101,63 @@ Future<void> addPhotos(
   }
 }
 
+/// Adds photos dropped on the project screen (m3-design §3.4) to the grid,
+/// or the first as the reference, then as [addPhotos].
+Future<void> addDroppedPhotos(
+  BuildContext context,
+  WidgetRef ref,
+  String projectId,
+  List<PickedPhoto> photos, {
+  bool asReference = false,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final result = await ref
+      .read(photoImportsProvider.notifier)
+      .addDropped(projectId, photos, asReference: asReference);
+  if (result.failed > 0) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(failedMessage(result.failed))),
+    );
+  }
+  final next = await afterAddRoute(
+    ref,
+    projectId,
+    result.added,
+    asReference: asReference,
+  );
+  if (next != null && context.mounted) context.go(next);
+}
+
+/// Starts a project from photos dropped on the project list (m3-design
+/// §3.4): the first is the reference, the rest photos. Opens it, then what
+/// follows adding the photos.
+Future<void> startProjectFromDrop(
+  BuildContext context,
+  WidgetRef ref,
+  List<PickedPhoto> photos,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final created = await ref
+      .read(photoImportsProvider.notifier)
+      .newProjectFromDropped(photos);
+  final failed = created.result.failed;
+  if (failed == photos.length) {
+    messenger.showSnackBar(SnackBar(content: Text(failedMessage(failed))));
+    return;
+  }
+  if (failed > 0) {
+    messenger.showSnackBar(SnackBar(content: Text(failedMessage(failed))));
+  }
+  if (!context.mounted) return;
+  context.go(Routes.project(created.projectId));
+  final next = await afterAddRoute(
+    ref,
+    created.projectId,
+    created.result.added,
+  );
+  if (next != null && context.mounted) context.go(next);
+}
+
 String failedMessage(int failed) => failed == 1
     ? "1 photo couldn't be added."
     : "$failed photos couldn't be added.";

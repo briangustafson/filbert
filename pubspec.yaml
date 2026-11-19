@@ -14,6 +14,8 @@ dependencies:
     path: packages/canvas_detect
   # Exact, as in packages/canvas_detect (safe_cv.dart, m1-design §7).
   dartcv4: 2.3.1
+  # 0.9 needs cross_file 0.4, which image_picker does not allow yet.
+  desktop_drop: ^0.8.4
   drift: ^2.35.4
   drift_flutter: ^0.3.1
   exif: ^3.3.0

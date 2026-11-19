@@ -1,6 +1,8 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/shortcuts.dart';
 import '../../../core/imaging/tone.dart';
 import '../../photos/domain/project_image.dart';
 import '../data/view_aids_providers.dart';
@@ -45,6 +47,16 @@ class AidToolbar extends StatelessWidget {
   }
 }
 
+/// The key that turns each aid on and off on the photo screen (m3-design
+/// §3.3).
+LogicalKeyboardKey aidKey(Aid aid) => switch (aid) {
+  Aid.grid => LogicalKeyboardKey.keyG,
+  Aid.gray => LogicalKeyboardKey.keyB,
+  Aid.valueBands => LogicalKeyboardKey.keyV,
+  Aid.colors => LogicalKeyboardKey.keyC,
+  Aid.compare => LogicalKeyboardKey.keyO,
+};
+
 class _AidButton extends StatelessWidget {
   const _AidButton({
     super.key,
@@ -76,7 +88,8 @@ class _AidButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = on ? Colors.black : Colors.white;
-    return Semantics(
+    final hint = shortcutTooltip(labelOf(aid), aidKey(aid).keyLabel);
+    final button = Semantics(
       button: true,
       toggled: on,
       label: labelOf(aid),
@@ -114,6 +127,7 @@ class _AidButton extends StatelessWidget {
         ),
       ),
     );
+    return hint == null ? button : Tooltip(message: hint, child: button);
   }
 }
 

@@ -27,11 +27,12 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
   - Depends on: T1
   - *Result:* `WindowWidth` classes and `MaxWidth`; header and Settings capped at 640 dp; 180 dp thumbnails from 600 dp; `showAdaptiveSheet` for the size picker, Export… and the add-photos choice; the aid panel docked at the right from 840 dp; the chrome follows the mouse; window 1200 × 800 (minimum 800 × 600). Added: previous / next buttons for a mouse, since Flutter doesn't drag pages with one (m3-design §3.2). Tests at 1200 × 800, 800 × 600 and 400 dp (`test/app/desktop_layout_test.dart`); both integration flows pass on macOS. Not yet checked by hand in the Mac app (trackpad zoom and panning in particular).
 
-- [ ] **T3 — Keyboard shortcuts and drag and drop**
+- [x] **T3 — Keyboard shortcuts and drag and drop**
   - The shortcuts in §3.3 with `Shortcuts`/`Actions`, disabled while typing.
   - Drag and drop (§3.4) with `desktop_drop`: onto the project screen, the reference slot, and the project list.
   - *Done when:* widget tests for each shortcut and for simulated drops; checked in the Mac app.
   - Depends on: T2
+  - *Result:* `KeyBindings` per screen (a small handler of its own, so unused keys still reach text fields) with every §3.3 shortcut, plus Esc on Settings; Delete acts on the keyboard-focused tile; tooltips name the keys on a desktop. The Mac menu gained Window → Close (⌘W) and a working Settings… (was a dead Preferences…). `PhotoDropTarget` on the project screen, its empty reference slot and the project list, with a highlight saying what a drop does; Finder files are read under their security-scoped bookmark and never deleted. `desktop_drop` 0.8.4, as 0.9 conflicts with `image_picker` (§3.4). Tests: `test/app/shortcuts_test.dart` (21) and `test/features/photos/photo_drop_test.dart` (9); both integration flows pass on the emulator; the Mac debug build compiles. Not yet checked by hand in the Mac app (a real Finder drop in particular).
 
 - [ ] **T4 — Export to a file on the Mac**
   - `ExportDestination`: gallery on Android, **Save to file…** on macOS with `file_selector` (§3.5); snackbar with Show in Finder.
@@ -98,6 +99,9 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
 ## Notes and later ideas
 
 (Add ideas that come up during M3 but belong to a later milestone here, rather than building them now.)
+
+- Right-click menus on the Mac for project cards and photo tiles (today a long press, which a mouse can do but nobody expects).
+- Return / Esc on the auto-crop review screen, like the crop screen.
 
 - Carried over from M2: clamp panning to the photo's edges when zoomed; pinch/pan under the manual crop; frame pacing and the render benchmark on a mid-range phone; centered grid origin; tap a swatch to highlight its areas; wipe or side-by-side compare; aids on thumbnails; the snackbar covering the aid toolbar; a faster Gray export; compare overlay at preview resolution when zoomed; gallery saving on Android 7–10 untested on a device (m2-tasks notes).
 - Project backup (export and import) moved to the new M8 (2026-11-18); its agreed design is m3-design §8, with `archive` and `share_plus` (approved for it).

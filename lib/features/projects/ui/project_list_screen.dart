@@ -1,13 +1,16 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/routes.dart';
+import '../../../app/shortcuts.dart';
 import '../../photos/data/image_providers.dart';
 import '../../photos/data/photo_imports.dart';
 import '../../photos/data/photo_source.dart';
 import '../../photos/domain/project_image.dart';
 import '../../photos/ui/add_photos.dart';
+import '../../photos/ui/photo_drop.dart';
 import '../../photos/ui/image_thumbnail.dart';
 import '../data/project_providers.dart';
 import '../data/project_repository.dart';
@@ -22,43 +25,60 @@ class ProjectListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final projects = ref.watch(projectListProvider);
     final covers = ref.watch(projectCoversProvider).value ?? const {};
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Projects'),
-        actions: [
-          if (ref.watch(photoSourceProvider).canTakePhoto)
-            IconButton(
-              tooltip: 'Take photo',
-              icon: const Icon(Icons.photo_camera_outlined),
-              onPressed: () => _takePhoto(context, ref),
-            ),
-          PopupMenuButton<void>(
-            tooltip: 'More',
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                onTap: () => context.go(Routes.settings),
-                child: const Text('Settings'),
+    // Return opens a focused project: the cards are buttons.
+    return PhotoDropTarget(
+      hint: (_) => 'Drop to start a project',
+      onDrop: (photos, _) => startProjectFromDrop(context, ref, photos),
+      child: KeyBindings(
+        bindings: [
+          KeyBinding(
+            command(LogicalKeyboardKey.keyN),
+            () => _createProject(context, ref),
+            whileTyping: true,
+          ),
+        ],
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Projects'),
+            actions: [
+              if (ref.watch(photoSourceProvider).canTakePhoto)
+                IconButton(
+                  tooltip: 'Take photo',
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  onPressed: () => _takePhoto(context, ref),
+                ),
+              PopupMenuButton<void>(
+                tooltip: 'More',
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    onTap: () => context.go(Routes.settings),
+                    child: const Text('Settings'),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _createProject(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('New project'),
-      ),
-      body: switch (projects) {
-        AsyncData(:final value) when value.isEmpty => const _EmptyState(),
-        AsyncData(:final value) => _ProjectGrid(
-          projects: value,
-          covers: covers,
-          onOpen: (p) => context.go(Routes.project(p.id)),
-          onDelete: (p) => confirmAndDeleteProject(context, ref, p),
+          floatingActionButton: FloatingActionButton.extended(
+            tooltip: shortcutTooltip('New project', commandKey('N')),
+            onPressed: () => _createProject(context, ref),
+            icon: const Icon(Icons.add),
+            label: const Text('New project'),
+          ),
+          body: switch (projects) {
+            AsyncData(:final value) when value.isEmpty => const _EmptyState(),
+            AsyncData(:final value) => _ProjectGrid(
+              projects: value,
+              covers: covers,
+              onOpen: (p) => context.go(Routes.project(p.id)),
+              onDelete: (p) => confirmAndDeleteProject(context, ref, p),
+            ),
+            AsyncError() => const Center(
+              child: Text("Couldn't load projects."),
+            ),
+            _ => const Center(child: CircularProgressIndicator()),
+          },
         ),
-        AsyncError() => const Center(child: Text("Couldn't load projects.")),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      ),
     );
   }
 

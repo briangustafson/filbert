@@ -95,6 +95,7 @@ class FakeImageRepository implements ImageRepository {
     bool asReference = false,
   }) async {
     calls.add('import $projectId ${photos.length}${asReference ? ' ref' : ''}');
+    imported.addAll(photos);
     if (projects.byId(projectId) == null || projects.isDeleted(projectId)) {
       throw ProjectNotFoundException(projectId);
     }
@@ -112,6 +113,9 @@ class FakeImageRepository implements ImageRepository {
     _changes.add(null);
     return results;
   }
+
+  /// Every photo given to [import], in order.
+  final imported = <PickedPhoto>[];
 
   /// `derived_from_json` of each image saved by [importDerived], by id.
   final derivedFrom = <String, String>{};
