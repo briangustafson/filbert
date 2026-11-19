@@ -1,12 +1,21 @@
 name: macOS build
 
-# Manual only (Actions → "macOS build" → Run workflow): macOS runners use
-# 10× the minutes on a private repo, so the Mac build isn't run on every
-# push (m3-design §2, proposal 8, as changed in T1). Run it before merging
-# a change that touches macos/, native packages, or pubspec.*; the macOS
-# integration test runs locally (`flutter test integration_test -d macos`).
+# Proves the Mac app compiles (m3-design §2, proposal 8). Runs on every PR
+# and on main, now that the repo is public and macOS minutes are free; it
+# can still be started by hand (Actions → "macOS build" → Run workflow).
+# The macOS integration test runs locally
+# (`flutter test integration_test -d macos`).
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: macos-${{ github.ref }}
+  # As in ci.yml: superseded PR runs are cancelled; runs on main finish, so
+  # their cache is saved for PRs.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:

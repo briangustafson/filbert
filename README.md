@@ -2,6 +2,10 @@
 
 A Flutter app for oil painters. See [docs/](docs/) for the product description, design, and milestone plans, and [CLAUDE.md](CLAUDE.md) for the development workflow.
 
+This project is still in active development. It will be available to use soon — stay tuned!
+
+All rights reserved: the code is public to read but not yet licensed for use, copying or distribution.
+
 ```bash
 flutter pub get
 dart run build_runner build
