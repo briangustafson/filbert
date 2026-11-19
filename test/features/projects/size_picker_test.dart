@@ -167,6 +167,10 @@ void main() {
     await tester.pump();
     expect(find.text('Enter 0.1–1000'), findsNothing);
 
+    // At the test's 800 × 600 the picker is a dialog (m3-design §3.2) whose
+    // Save sits below the fold.
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect(saved, [const PhysicalSize(45, 60.5, LengthUnit.centimeters)]);

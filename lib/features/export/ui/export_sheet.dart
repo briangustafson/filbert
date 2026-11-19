@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/adaptive_sheet.dart';
 import '../../../core/platform/system_settings.dart';
 import '../../../core/clock/clock.dart';
 import '../../photos/data/image_repository.dart';
@@ -38,13 +39,11 @@ const galleryAlbum = 'Filbert';
 Future<ExportOutcome?> showExportSheet(
   BuildContext context,
   ProjectImage image,
-) => showModalBottomSheet<ExportOutcome>(
-  context: context,
+) => showAdaptiveSheet<ExportOutcome>(
+  context,
   // Tapping outside asks to close, which the sheet refuses mid-render;
   // dragging can't be refused, so it's off.
   enableDrag: false,
-  showDragHandle: true,
-  isScrollControlled: true,
   builder: (_) => ExportSheet(image: image),
 );
 

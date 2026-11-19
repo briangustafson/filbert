@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/layout.dart';
 import '../../app/routes.dart';
 import '../export/ui/export_sheet.dart';
 import '../photos/data/image_providers.dart';
@@ -24,6 +26,11 @@ import 'photo_page.dart';
 /// chrome (back and menu at the top, the viewing-aid toolbar at the bottom,
 /// m2-design §3.1), which also hides itself after a few seconds unless an
 /// aid's panel is open.
+///
+/// With a mouse (m3-design §3.2): moving the pointer shows the chrome, which
+/// stays while the pointer is over it, and previous / next buttons appear
+/// at the sides (a mouse can't swipe pages). On wide windows an open panel
+/// docks at the right.
 ///
 /// Swiping doesn't change the route: it stays on the photo that was opened,
 /// and Back returns to the project.
@@ -52,6 +59,13 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
   var _chrome = true;
   Timer? _hideTimer;
 
+  /// A mouse is in use: the last pointer hovered (touch never does) and
+  /// no touch came since.
+  var _mouse = false;
+
+  /// The pointer is over the chrome or a panel, which then stays.
+  var _overChrome = false;
+
   @override
   void initState() {
     super.initState();
@@ -72,7 +86,7 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
   /// stays until the panel closes.
   void _showChrome() {
     _hideTimer?.cancel();
-    if (ref.read(_aids).panel == null) {
+    if (ref.read(_aids).panel == null && !_overChrome) {
       _hideTimer = Timer(PhotoScreen.chromeTimeout, _hideChrome);
     }
     _setChrome(true);
@@ -100,6 +114,41 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
     } else {
       _chrome ? _hideChrome() : _showChrome();
     }
+  }
+
+  void _onHover(PointerHoverEvent event) {
+    if (!_mouse) setState(() => _mouse = true);
+    _showChrome();
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    if (event.kind == PointerDeviceKind.touch && _mouse) {
+      setState(() => _mouse = false);
+    }
+  }
+
+  /// Keeps the chrome while the pointer is over [child].
+  Widget _holdsChrome(Widget child) => MouseRegion(
+    // Only over what's drawn, so it never takes taps meant for the photo.
+    hitTestBehavior: HitTestBehavior.deferToChild,
+    onEnter: (_) {
+      _overChrome = true;
+      _hideTimer?.cancel();
+    },
+    onExit: (_) {
+      _overChrome = false;
+      if (_chrome) _showChrome();
+    },
+    child: child,
+  );
+
+  void _turnPage(int delta) {
+    _pages?.animateToPage(
+      _ids.indexOf(_currentId) + delta,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+    );
+    _showChrome();
   }
 
   void _onAidTap(Aid aid) {
@@ -266,6 +315,15 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
       }
     }
 
+    final index = current == null ? -1 : _ids.indexOf(current.id);
+    final docked = WindowWidth.of(context).isExpanded;
+    final panel = current == null || aids.panel == null
+        ? null
+        : AidPanel(
+            projectId: widget.projectId,
+            image: current,
+            panel: aids.panel!,
+          );
     final isReference =
         current != null && current.id == project.value?.referenceImageId;
     final history = current == null
@@ -282,70 +340,192 @@ class _PhotoScreenState extends ConsumerState<PhotoScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            body,
-            if (current != null)
-              _BottomChrome(
-                visible: _chrome,
-                toolbar: AidToolbar(
-                  aids: aids,
-                  showCompare: photoCount > 1,
-                  onTap: _onAidTap,
-                ),
-                panel: aids.panel == null
-                    ? null
-                    : AidPanel(
-                        projectId: widget.projectId,
-                        image: current,
-                        panel: aids.panel!,
-                      ),
-              ),
-            _Chrome(
-              visible: _chrome || current == null,
-              onBack: () => context.go(Routes.project(widget.projectId)),
-              menu: current == null
-                  ? null
-                  : _PhotoMenu(
-                      onCrop: () => context.go(
-                        Routes.crop(widget.projectId, current!.id),
-                      ),
-                      onAutoCrop: () => context.go(
-                        Routes.autocrop(widget.projectId, current!.id),
-                      ),
-                      canUndo: history.canUndo,
-                      canRedo: history.canRedo,
-                      canRevert: !current.edits.isNone,
-                      isReference: isReference,
-                      onOpened: _hideTimer?.cancel,
-                      onClosed: _showChrome,
-                      onUndo: () =>
-                          ref.read(imageRepositoryProvider).undo(current!.id),
-                      onRedo: () =>
-                          ref.read(imageRepositoryProvider).redo(current!.id),
-                      onRevert: () => _revert(current!),
-                      onExport: () => _export(current!),
-                      onSetAsReference: () => _setAsReference(current!),
-                      onDelete: () => _delete(current!),
+        body: Listener(
+          onPointerDown: _onPointerDown,
+          child: MouseRegion(
+            onHover: _onHover,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                body,
+                if (current != null && _mouse) ...[
+                  if (index > 0)
+                    _PageArrow(
+                      hold: _holdsChrome,
+                      visible: _chrome,
+                      next: false,
+                      onPressed: () => _turnPage(-1),
                     ),
+                  if (index < photoCount - 1)
+                    _PageArrow(
+                      hold: _holdsChrome,
+                      visible: _chrome,
+                      next: true,
+                      onPressed: () => _turnPage(1),
+                    ),
+                ],
+                if (current != null)
+                  _BottomChrome(
+                    hold: _holdsChrome,
+                    visible: _chrome,
+                    toolbar: AidToolbar(
+                      aids: aids,
+                      showCompare: photoCount > 1,
+                      onTap: _onAidTap,
+                    ),
+                    panel: panel == null || docked ? null : panel,
+                  ),
+                if (panel != null && docked)
+                  _SidePanel(
+                    hold: _holdsChrome,
+                    visible: _chrome,
+                    child: panel,
+                  ),
+                _Chrome(
+                  hold: _holdsChrome,
+                  visible: _chrome || current == null,
+                  onBack: () => context.go(Routes.project(widget.projectId)),
+                  menu: current == null
+                      ? null
+                      : _PhotoMenu(
+                          onCrop: () => context.go(
+                            Routes.crop(widget.projectId, current!.id),
+                          ),
+                          onAutoCrop: () => context.go(
+                            Routes.autocrop(widget.projectId, current!.id),
+                          ),
+                          canUndo: history.canUndo,
+                          canRedo: history.canRedo,
+                          canRevert: !current.edits.isNone,
+                          isReference: isReference,
+                          onOpened: _hideTimer?.cancel,
+                          onClosed: _showChrome,
+                          onUndo: () => ref
+                              .read(imageRepositoryProvider)
+                              .undo(current!.id),
+                          onRedo: () => ref
+                              .read(imageRepositoryProvider)
+                              .redo(current!.id),
+                          onRevert: () => _revert(current!),
+                          onExport: () => _export(current!),
+                          onSetAsReference: () => _setAsReference(current!),
+                          onDelete: () => _delete(current!),
+                        ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
+Widget _noHold(Widget child) => child;
+
+/// Previous / next photo at a side of the screen, for a mouse.
+class _PageArrow extends StatelessWidget {
+  const _PageArrow({
+    this.hold = _noHold,
+    required this.visible,
+    required this.next,
+    required this.onPressed,
+  });
+
+  final bool visible;
+  final Widget Function(Widget) hold;
+  final bool next;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: next ? Alignment.centerRight : Alignment.centerLeft,
+    child: hold(
+      IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: const Duration(milliseconds: 200),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: IconButton.filledTonal(
+              key: ValueKey(next ? 'photo-next' : 'photo-previous'),
+              tooltip: next ? 'Next photo' : 'Previous photo',
+              icon: Icon(next ? Icons.chevron_right : Icons.chevron_left),
+              iconSize: 32,
+              onPressed: onPressed,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// An aid's panel docked at the right of a wide window, below the top bar
+/// (m3-design §3.2).
+class _SidePanel extends StatelessWidget {
+  const _SidePanel({
+    this.hold = _noHold,
+    required this.visible,
+    required this.child,
+  });
+
+  static const width = 320.0;
+
+  final bool visible;
+
+  /// Keeps the chrome while the pointer is over it.
+  final Widget Function(Widget) hold;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.topRight,
+    child: hold(
+      IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: const Duration(milliseconds: 200),
+          child: SafeArea(
+            child: Padding(
+              // Below the top bar, above the toolbar.
+              padding: const EdgeInsets.fromLTRB(0, 64, 12, 96),
+              child: SizedBox(
+                key: const ValueKey('aid-side-panel'),
+                width: width,
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(12),
+                  clipBehavior: Clip.antiAlias,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(8),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 /// The aid toolbar and the open panel, at the bottom on a dark gradient.
 class _BottomChrome extends StatelessWidget {
   const _BottomChrome({
+    this.hold = _noHold,
     required this.visible,
     required this.toolbar,
     this.panel,
   });
 
   final bool visible;
+
+  /// Keeps the chrome while the pointer is over it.
+  final Widget Function(Widget) hold;
   final Widget toolbar;
   final Widget? panel;
 
@@ -353,27 +533,29 @@ class _BottomChrome extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.bottomCenter,
-      child: IgnorePointer(
-        ignoring: !visible,
-        child: AnimatedOpacity(
-          opacity: visible ? 1 : 0,
-          duration: const Duration(milliseconds: 200),
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [Colors.black87, Colors.black54, Colors.transparent],
-                stops: [0, 0.7, 1],
+      child: hold(
+        IgnorePointer(
+          ignoring: !visible,
+          child: AnimatedOpacity(
+            opacity: visible ? 1 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black87, Colors.black54, Colors.transparent],
+                  stops: [0, 0.7, 1],
+                ),
               ),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 24, 4, 4),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [?panel, toolbar],
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 24, 4, 4),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [?panel, toolbar],
+                  ),
                 ),
               ),
             ),
@@ -386,9 +568,17 @@ class _BottomChrome extends StatelessWidget {
 
 /// Back button and menu over the photo, on a soft dark gradient.
 class _Chrome extends StatelessWidget {
-  const _Chrome({required this.visible, required this.onBack, this.menu});
+  const _Chrome({
+    this.hold = _noHold,
+    required this.visible,
+    required this.onBack,
+    this.menu,
+  });
 
   final bool visible;
+
+  /// Keeps the chrome while the pointer is over it.
+  final Widget Function(Widget) hold;
   final VoidCallback onBack;
   final Widget? menu;
 
@@ -396,36 +586,38 @@ class _Chrome extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.topCenter,
-      child: IgnorePointer(
-        ignoring: !visible,
-        child: AnimatedOpacity(
-          opacity: visible ? 1 : 0,
-          duration: const Duration(milliseconds: 200),
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.black54, Colors.transparent],
+      child: hold(
+        IgnorePointer(
+          ignoring: !visible,
+          child: AnimatedOpacity(
+            opacity: visible ? 1 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black54, Colors.transparent],
+                ),
               ),
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: IconTheme(
-                data: const IconThemeData(color: Colors.white),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        tooltip: 'Back',
-                        icon: const Icon(Icons.arrow_back),
-                        color: Colors.white,
-                        onPressed: onBack,
-                      ),
-                      const Spacer(),
-                      ?menu,
-                    ],
+              child: SafeArea(
+                bottom: false,
+                child: IconTheme(
+                  data: const IconThemeData(color: Colors.white),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Back',
+                          icon: const Icon(Icons.arrow_back),
+                          color: Colors.white,
+                          onPressed: onBack,
+                        ),
+                        const Spacer(),
+                        ?menu,
+                      ],
+                    ),
                   ),
                 ),
               ),

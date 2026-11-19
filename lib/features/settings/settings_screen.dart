@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../app/layout.dart';
 import '../../core/settings/app_settings.dart';
 
 part 'settings_screen.g.dart';
@@ -18,30 +19,32 @@ class SettingsScreen extends ConsumerWidget {
     final store = ref.read(settingsStoreProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        children: [
-          SwitchListTile(
-            title: const Text('Auto-crop photos when added'),
-            subtitle: const Text(
-              'Find the painting in new photos and show it for review',
+      body: MaxWidth(
+        child: ListView(
+          children: [
+            SwitchListTile(
+              title: const Text('Auto-crop photos when added'),
+              subtitle: const Text(
+                'Find the painting in new photos and show it for review',
+              ),
+              value: settings.autoCropOnAdd,
+              onChanged: store.setAutoCropOnAdd,
             ),
-            value: settings.autoCropOnAdd,
-            onChanged: store.setAutoCropOnAdd,
-          ),
-          ListTile(
-            title: const Text('Units'),
-            subtitle: Text(unitsLabel(settings.units)),
-            onTap: () async {
-              final chosen = await showUnitsDialog(context, settings.units);
-              if (chosen != null) await store.setUnits(chosen);
-            },
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text('About Filbert'),
-            onTap: () => _showAbout(context, ref),
-          ),
-        ],
+            ListTile(
+              title: const Text('Units'),
+              subtitle: Text(unitsLabel(settings.units)),
+              onTap: () async {
+                final chosen = await showUnitsDialog(context, settings.units);
+                if (chosen != null) await store.setUnits(chosen);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              title: const Text('About Filbert'),
+              onTap: () => _showAbout(context, ref),
+            ),
+          ],
+        ),
       ),
     );
   }

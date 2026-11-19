@@ -20,11 +20,12 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
   - Depends on: —
   - *Result:* macOS 12.0+, sandboxed, OpenCV bundled (m3-design §3.1). Import on the Mac would have deleted the user's picked file (Android hands over temp copies); `PickedPhoto.temporary` now guards it. No camera: Add photos opens the file picker directly; Export… shows only Save as new image until T4. Both integration flows pass on macOS (locally) and the emulator; eval 78.3% on the Mac; HEIC decodes. The macOS build is a manual workflow (`macos.yml`, Run workflow), per your choice; it can first run once on `main`. A stale dartcv4 keep-list broke host tests after the Mac build; recorded in §3.1.
 
-- [ ] **T2 — Desktop layout**
+- [x] **T2 — Desktop layout**
   - Width breakpoints (§3.2): more grid columns; the aid panel docked at the right at ≥ 840 dp; centered setup form; bottom sheets as dialogs at ≥ 600 dp; window 1200 × 800, minimum 800 × 600.
   - Mouse on the photo screen: chrome on pointer movement, trackpad and ⌘-scroll zoom, double-click zoom, hold for the original; tooltips on icon buttons.
   - *Done when:* widget tests at 1200 × 800 and 800 × 600 alongside the phone sizes; checked in the Mac app.
   - Depends on: T1
+  - *Result:* `WindowWidth` classes and `MaxWidth`; header and Settings capped at 640 dp; 180 dp thumbnails from 600 dp; `showAdaptiveSheet` for the size picker, Export… and the add-photos choice; the aid panel docked at the right from 840 dp; the chrome follows the mouse; window 1200 × 800 (minimum 800 × 600). Added: previous / next buttons for a mouse, since Flutter doesn't drag pages with one (m3-design §3.2). Tests at 1200 × 800, 800 × 600 and 400 dp (`test/app/desktop_layout_test.dart`); both integration flows pass on macOS. Not yet checked by hand in the Mac app (trackpad zoom and panning in particular).
 
 - [ ] **T3 — Keyboard shortcuts and drag and drop**
   - The shortcuts in §3.3 with `Shortcuts`/`Actions`, disabled while typing.

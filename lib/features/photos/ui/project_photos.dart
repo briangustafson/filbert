@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../app/layout.dart';
 import '../../../app/routes.dart';
 import '../../../core/imaging/render_geometry.dart';
 import '../../projects/domain/project.dart';
@@ -85,8 +86,9 @@ List<Widget> projectPhotoSlivers(
         // Bottom padding keeps the last row clear of the FAB.
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 140,
+          // Bigger thumbnails on wide windows (m3-design §3.2).
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: WindowWidth.of(context).isCompact ? 140 : 180,
             mainAxisSpacing: 4,
             crossAxisSpacing: 4,
           ),
