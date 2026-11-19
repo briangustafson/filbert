@@ -46,7 +46,7 @@ project backup, export and import (M8, §8) · iOS and web (M9, M10) · macOS di
 | 2 | Original downloads | **Eager**: after each pull, originals download in the background, thumbnails first; a photo opened before its original arrives downloads it first (§6.5). Resolves HLD §12. | At the easel the phone may be offline; lazy downloads would leave photos missing exactly then. Projects hold tens of photos, not thousands. |
 | 3 | Change tracking | **No dirty flags in repositories.** `sync_state` keeps the hash of each record's JSON as last synced; a record is changed locally when its current JSON hashes differently (§6.3). | Nothing in M1/M2's write paths changes, and a write can't forget to mark itself dirty. Hashing a few hundred small records per sync is cheap. |
 | 4 | View prefs in sync | Synced, but **newest wins without a prompt**; two live rows for one project (made on two devices offline) keep the newer and tombstone the other (§6.4). Settles m2-design §4.1. | Grid and opacity settings aren't worth interrupting the painter for. |
-| 5 | Device name | Filled from the device (`device_info_plus`: model on Android, computer name on Mac), editable in Settings. Settles m1-design §4.1. | Conflict choices need a recognizable label without asking the user up front. |
+| 5 | Device name | Filled from the device (`device_info_plus`: model on Android, computer name on Mac) on the first launch after the update (T6), editable in Settings → Sync (T7). Settles m1-design §4.1. | Conflict choices need a recognizable label without asking the user up front. |
 | 6 | Android export of a backup (M8) | Through the **share sheet** (`share_plus`), so the user picks Files, Drive or another app; Mac uses a save dialog. Import uses a file picker on both. | Android's file pickers can't save a large file without holding it in memory; the share sheet hands over the file. `share_plus` is in the HLD for M6 anyway. |
 | 7 | macOS distribution | **Defer** to the first public release (HLD §12 said M3). M3 builds a **sandboxed** app, which keeps both the Mac App Store and a notarized DMG open. | No one but Brian runs the Mac app in M3; the sandbox is what the App Store requires and works for a DMG too. |
 | 8 | CI for macOS | A **macOS build job** (`flutter build macos --debug`, `.github/workflows/macos.yml`) on every PR and on main, and by hand; the macOS integration test runs locally. | Proves the Mac app compiles. In T1 it became run-by-hand, since macOS runners used 10× the minutes on a private repo; back on PRs since the repo went public (2026-11-19), where they're free. |
@@ -125,7 +125,7 @@ As built in T3 (`PhotoDropTarget`, `lib/features/photos/ui/photo_drop.dart`):
 ### 3.5 Export on the Mac
 
 - Export… (m2-design §3.5) shows **Save to file…** in place of Save to gallery, with Save as new image below it; the Mac never asks for Photos access. Save to file… opens a save dialog (`file_selector`'s `getSaveLocation`, JPEG only) with the gallery file name rule; JPEG at the same size and quality. Snackbar "Saved." with **Show in Finder**.
-- The dialog opens in the folder of the last Save to file… (`app_meta` `export_folder`, §4.4), the first time in Pictures (`$HOME/Pictures`: in the sandbox HOME is the container, whose Pictures links to the user's).
+- The dialog opens in the folder of the last Save to file… (`app_meta` `export_folder`, §4.5), the first time in Pictures (`$HOME/Pictures`: in the sandbox HOME is the container, whose Pictures links to the user's).
 - The dialog comes first and the render after, so cancelling costs nothing and leaves the sheet open. The sandbox lets the app write only the exact path the dialog returns, so the name is never changed after it.
 - Show in Finder opens the Finder with the file selected (`NSWorkspace.activateFileViewerSelecting`, over the `filbert/finder` channel), so `url_launcher` isn't needed until T12.
 - `ExportDestination` (`lib/features/export/data/export_destination.dart`) is the gallery where `GallerySaver.available`, else a file; `GallerySaver` stays the Android path.
@@ -142,7 +142,7 @@ One row per synced record that has been pushed or pulled.
 
 | Column | Type | Notes |
 |---|---|---|
-| `kind` | TEXT | `project` · `image` · `view_prefs` |
+| `kind` | TEXT | `project` · `image` · `viewPrefs` (the record format's `kind`, §5) |
 | `record_id` | TEXT | Primary key with `kind` |
 | `drive_file_id` | TEXT | |
 | `remote_version` | INTEGER | Drive's file `version` when last pushed or pulled |
@@ -169,7 +169,14 @@ One row per synced record that has been pushed or pulled.
 
 While a conflict is pending the local record is what the app shows and edits; pushing that record is held until the conflict is resolved.
 
-### 4.4 `app_meta` keys
+### 4.4 Built in T6
+
+- Drift schema 3 (`from2To3` creates the three tables; migration test v2 → v3). The Dart table classes are `SyncStates`, `BlobSyncs` and `SyncConflicts`, keeping the SQL names above.
+- `DriftLocalStore` (`lib/features/sync/data/drift_local_store.dart`) is the engine's `LocalStore`: rows to records and back (`size` nested), a batch in one transaction in dependency order with tombstones first within a kind (so the one-live-view-prefs index never trips mid-batch), originals through `FileStore`, thumbnails from the renderer (§6.5).
+- A pulled change to an image's edits goes into its local undo history (decided in T6), so Undo returns to what this device had; the history itself stays local (m1-design §4.2). The history code moved to `EditHistoryTable`, shared with the image repository.
+- The database stores canvas sizes as REAL, so a 16 × 20 canvas reads back as 16.0 × 20.0; the canonical JSON (§5) writes whole-number decimals as integers, so such a record hashes the same however it was written.
+
+### 4.5 `app_meta` keys
 
 `sync_enabled`, `sync_account` (email, for display only; tokens stay with the sign-in SDK), `changes_page_token`, `last_sync_at`, `device_name` (now filled, proposal 5); `export_folder` (T4, §3.5: where the Mac's save dialog opens).
 
@@ -190,7 +197,7 @@ One JSON form per record, used by sync (§6) and later by project backups (M8, �
 
 - Field names are camelCase and stable; they are not Drift's generated `toJson` (HLD §6.3 suggested it), so renaming a Dart field can't change the format. `edits`, `derivedFrom` and view prefs embed their existing JSON (m1-design §4.2, m2-design §4.2–4.3) as objects.
 - Readers ignore unknown fields. A record with a higher `schemaVersion` than the app knows is kept as-is in `sync_state` (`held_json`) but not applied, and isn't pushed over; Settings shows "Update Filbert to sync everything." A lower one is migrated on read.
-- The hash (§6.3) is SHA-256 (`crypto`) of the record's canonical JSON: keys sorted at every level, no spaces. A second hash leaves out `updatedAt` and `updatedByDeviceId`, so the same change made on two devices compares equal (§6.3).
+- The hash (§6.3) is SHA-256 (`crypto`) of the record's canonical JSON: keys sorted at every level, no spaces, whole-number decimals as integers (§4.4). A second hash leaves out `updatedAt` and `updatedByDeviceId`, so the same change made on two devices compares equal (§6.3).
 
 As built in T5 (`packages/sync_engine`, `RecordCodec`):
 
@@ -226,7 +233,7 @@ appDataFolder/
   image-<uuid>.json
   viewprefs-<uuid>.json
   blob-<blob-uuid>.<ext>          original (immutable)
-  thumb-<blob-uuid>.jpg           the existing 512 px thumbnail
+  thumb-<blob-uuid>.jpg           512 px thumbnail of the unedited original (§6.5)
 ```
 
 - Each file has `appProperties` `{kind, id}`, so a change can be identified without downloading it.
@@ -270,6 +277,7 @@ appDataFolder/
 ### 6.5 Blobs
 
 - Originals and thumbnails are immutable, so they never conflict: upload once, download once.
+- **Thumbnails on Drive** (decided in T6): of the unedited original, uploaded once with it, so they never go stale. A device shows one with the image's crop and rotation applied locally (T9), so the grid is cropped from the start; it's softer for a tight crop until the original arrives and the usual thumbnail is rendered from it. (Uploading the edited view instead would mean a new upload per edit.)
 - **Downloads** (proposal 2): after a pull, thumbnails of new images download first (so the grids fill in), then originals, newest project first. Previews are rendered locally from the original, as now. A photo opened, cropped or exported before its original arrives shows its thumbnail with a progress ring and downloads it next.
 - Uploads use Drive's resumable upload, so an interrupted 15 MB original resumes instead of restarting.
 - **Purge on Drive**: a device's purge job (m1-design §4.4) also deletes the Drive blob and thumbnail of images tombstoned for over **60 days** (local purge stays at 30, so a device can restore from Drive for a month after purging locally). A restored image whose blob is gone everywhere shows "This photo is no longer available" in place of the photo (`blob_sync.state = missing`). (Resolves m1-design §4.4's open restore case.)

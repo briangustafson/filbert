@@ -481,8 +481,322 @@ i1.GeneratedColumn<String> _column_28(String aliasedName) =>
       type: i1.DriftSqlType.string,
       $customConstraints: 'NOT NULL',
     );
+
+final class Schema3 extends i0.VersionedSchema {
+  Schema3({required super.database}) : super(version: 3);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    images,
+    projects,
+    imageEditHistory,
+    imageEditCursor,
+    appMeta,
+    viewPrefs,
+    syncState,
+    blobSync,
+    syncConflicts,
+    imagesProjectId,
+    viewPrefsProjectId,
+  ];
+  late final Shape0 images = Shape0(
+    source: i0.VersionedTable(
+      entityName: 'images',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+        _column_6,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_11,
+        _column_12,
+        _column_13,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape1 projects = Shape1(
+    source: i0.VersionedTable(
+      entityName: 'projects',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_14,
+        _column_15,
+        _column_16,
+        _column_17,
+        _column_18,
+        _column_19,
+        _column_20,
+        _column_21,
+        _column_22,
+        _column_23,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 imageEditHistory = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'image_edit_history',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(image_id, seq)'],
+      columns: [_column_24, _column_25, _column_12],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape3 imageEditCursor = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'image_edit_cursor',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(image_id)'],
+      columns: [_column_24, _column_25],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape4 appMeta = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'app_meta',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY("key")'],
+      columns: [_column_26, _column_27],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 viewPrefs = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'view_prefs',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+        _column_28,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 syncState = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'sync_state',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(kind, record_id)'],
+      columns: [
+        _column_29,
+        _column_30,
+        _column_31,
+        _column_32,
+        _column_33,
+        _column_34,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape7 blobSync = Shape7(
+    source: i0.VersionedTable(
+      entityName: 'blob_sync',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(blob_id)'],
+      columns: [_column_6, _column_35, _column_36, _column_37],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape8 syncConflicts = Shape8(
+    source: i0.VersionedTable(
+      entityName: 'sync_conflicts',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(kind, record_id)'],
+      columns: [
+        _column_29,
+        _column_30,
+        _column_31,
+        _column_38,
+        _column_32,
+        _column_39,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index imagesProjectId = i1.Index(
+    'images_project_id',
+    'CREATE INDEX images_project_id ON images (project_id)',
+  );
+  final i1.Index viewPrefsProjectId = i1.Index(
+    'view_prefs_project_id',
+    'CREATE UNIQUE INDEX view_prefs_project_id ON view_prefs (project_id) WHERE deleted_at IS NULL',
+  );
+}
+
+class Shape6 extends i0.VersionedTable {
+  Shape6({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get kind =>
+      columnsByName['kind']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get recordId =>
+      columnsByName['record_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get driveFileId =>
+      columnsByName['drive_file_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get remoteVersion =>
+      columnsByName['remote_version']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get syncedHash =>
+      columnsByName['synced_hash']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get heldJson =>
+      columnsByName['held_json']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_29(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'kind',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_30(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'record_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_31(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'drive_file_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<int> _column_32(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'remote_version',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_33(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'synced_hash',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_34(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'held_json',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+
+class Shape7 extends i0.VersionedTable {
+  Shape7({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get blobId =>
+      columnsByName['blob_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get driveFileId =>
+      columnsByName['drive_file_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get thumbFileId =>
+      columnsByName['thumb_file_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get state =>
+      columnsByName['state']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_35(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'drive_file_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_36(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'thumb_file_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_37(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'state',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+
+class Shape8 extends i0.VersionedTable {
+  Shape8({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get kind =>
+      columnsByName['kind']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get recordId =>
+      columnsByName['record_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get driveFileId =>
+      columnsByName['drive_file_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get remoteJson =>
+      columnsByName['remote_json']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get remoteVersion =>
+      columnsByName['remote_version']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get detectedAt =>
+      columnsByName['detected_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_38(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'remote_json',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<int> _column_39(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'detected_at',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -491,6 +805,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from1To2(migrator, schema);
         return 2;
+      case 2:
+        final schema = Schema3(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from2To3(migrator, schema);
+        return 3;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -499,6 +818,7 @@ i0.MigrationStepWithVersion migrationSteps({
 
 i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) => i0.VersionedSchema.stepByStepHelper(
-  step: migrationSteps(from1To2: from1To2),
+  step: migrationSteps(from1To2: from1To2, from2To3: from2To3),
 );

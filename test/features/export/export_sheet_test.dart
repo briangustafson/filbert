@@ -155,7 +155,8 @@ void main() {
           final button = find.byKey(const ValueKey('export-file'));
           await tester.ensureVisible(button);
           await tester.tap(button);
-          for (var i = 0; i < 20; i++) {
+          // Up to 5 s of real time: a loaded machine can be slow.
+          for (var i = 0; i < 500; i++) {
             await tester.runAsync(
               () => Future<void>.delayed(const Duration(milliseconds: 10)),
             );

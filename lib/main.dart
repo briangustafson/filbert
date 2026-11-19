@@ -7,6 +7,7 @@ import 'app/app.dart';
 import 'core/clock/clock.dart';
 import 'core/db/app_database.dart';
 import 'core/device/device_info.dart';
+import 'core/device/device_name.dart';
 import 'core/files/file_store.dart';
 import 'core/ids/id_generator.dart';
 import 'features/photos/data/purge_job.dart';
@@ -19,6 +20,7 @@ Future<void> main() async {
   final device = await StoredDeviceInfo.loadOrCreate(
     db,
     UuidV7IdGenerator(clock),
+    defaultName: platformDeviceName,
   );
   final files = await LocalFileStore.open();
 

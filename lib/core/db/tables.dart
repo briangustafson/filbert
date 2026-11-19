@@ -6,8 +6,8 @@ import '../units/length_unit.dart';
 export '../imaging/image_origin.dart';
 export '../units/length_unit.dart';
 
-// Schema v2 (m1-design §4.1; v2 adds view_prefs and derived images,
-// m2-design §4). Any change here needs a schema version bump,
+// Schema v3 (m1-design §4.1; v2 adds view_prefs and derived images,
+// m2-design §4; v3 adds the local-only sync tables, m3-design §4). Any change here needs a schema version bump,
 // a migration, and `dart run drift_dev make-migrations`.
 //
 // Timestamps are UTC epoch milliseconds. Relationships are declared with
@@ -119,4 +119,59 @@ class AppMeta extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {key};
+}
+
+// ------------------------------------------------- sync (local only, v3)
+
+/// Where each synced record stands with Drive (m3-design §4.1). Never
+/// synced itself.
+@DataClassName('SyncStateRow')
+class SyncStates extends Table {
+  @override
+  String get tableName => 'sync_state';
+
+  /// `project` · `image` · `viewPrefs` (the record format's `kind`).
+  TextColumn get kind => text()();
+  TextColumn get recordId => text()();
+  TextColumn get driveFileId => text()();
+  IntColumn get remoteVersion => integer()();
+  TextColumn get syncedHash => text().nullable()();
+
+  /// A pulled version not applied yet (from a newer Filbert, or waiting for
+  /// its project).
+  TextColumn get heldJson => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {kind, recordId};
+}
+
+/// Each original's sync state (m3-design §4.2).
+@DataClassName('BlobSyncRow')
+class BlobSyncs extends Table {
+  @override
+  String get tableName => 'blob_sync';
+
+  TextColumn get blobId => text()();
+  TextColumn get driveFileId => text().nullable()();
+  TextColumn get thumbFileId => text().nullable()();
+
+  /// `local` · `synced` · `remoteOnly` · `missing`.
+  TextColumn get state => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {blobId};
+}
+
+/// Records changed on two devices, waiting for the user (m3-design §4.3).
+@DataClassName('SyncConflictRow')
+class SyncConflicts extends Table {
+  TextColumn get kind => text()();
+  TextColumn get recordId => text()();
+  TextColumn get driveFileId => text()();
+  TextColumn get remoteJson => text()();
+  IntColumn get remoteVersion => integer()();
+  IntColumn get detectedAt => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {kind, recordId};
 }

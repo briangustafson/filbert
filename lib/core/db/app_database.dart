@@ -17,6 +17,9 @@ part 'app_database.g.dart';
     ImageEditCursor,
     AppMeta,
     ViewPrefs,
+    SyncStates,
+    BlobSyncs,
+    SyncConflicts,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -26,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : super(driftDatabase(name: 'filbert'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -39,6 +42,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(schema.viewPrefs);
         await m.createIndex(schema.viewPrefsProjectId);
         await m.addColumn(schema.images, schema.images.derivedFromJson);
+      },
+      // Local-only sync tables (m3-design §4).
+      from2To3: (m, schema) async {
+        await m.createTable(schema.syncState);
+        await m.createTable(schema.blobSync);
+        await m.createTable(schema.syncConflicts);
       },
     ),
   );

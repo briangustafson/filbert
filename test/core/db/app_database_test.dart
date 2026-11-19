@@ -32,8 +32,8 @@ void main() {
     editsJson: '{"v":1,"quarterTurns":0}',
   );
 
-  test('schema version is 2', () {
-    expect(db.schemaVersion, 2);
+  test('schema version is 3', () {
+    expect(db.schemaVersion, 3);
   });
 
   test('projects: defaults and round-trip', () async {

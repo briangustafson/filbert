@@ -2875,6 +2875,1206 @@ class ViewPrefsCompanion extends UpdateCompanion<ViewPrefsRecord> {
   }
 }
 
+class $SyncStatesTable extends SyncStates
+    with TableInfo<$SyncStatesTable, SyncStateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recordIdMeta = const VerificationMeta(
+    'recordId',
+  );
+  @override
+  late final GeneratedColumn<String> recordId = GeneratedColumn<String>(
+    'record_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driveFileIdMeta = const VerificationMeta(
+    'driveFileId',
+  );
+  @override
+  late final GeneratedColumn<String> driveFileId = GeneratedColumn<String>(
+    'drive_file_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteVersionMeta = const VerificationMeta(
+    'remoteVersion',
+  );
+  @override
+  late final GeneratedColumn<int> remoteVersion = GeneratedColumn<int>(
+    'remote_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedHashMeta = const VerificationMeta(
+    'syncedHash',
+  );
+  @override
+  late final GeneratedColumn<String> syncedHash = GeneratedColumn<String>(
+    'synced_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _heldJsonMeta = const VerificationMeta(
+    'heldJson',
+  );
+  @override
+  late final GeneratedColumn<String> heldJson = GeneratedColumn<String>(
+    'held_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    kind,
+    recordId,
+    driveFileId,
+    remoteVersion,
+    syncedHash,
+    heldJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_state';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncStateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('record_id')) {
+      context.handle(
+        _recordIdMeta,
+        recordId.isAcceptableOrUnknown(data['record_id']!, _recordIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recordIdMeta);
+    }
+    if (data.containsKey('drive_file_id')) {
+      context.handle(
+        _driveFileIdMeta,
+        driveFileId.isAcceptableOrUnknown(
+          data['drive_file_id']!,
+          _driveFileIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_driveFileIdMeta);
+    }
+    if (data.containsKey('remote_version')) {
+      context.handle(
+        _remoteVersionMeta,
+        remoteVersion.isAcceptableOrUnknown(
+          data['remote_version']!,
+          _remoteVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_remoteVersionMeta);
+    }
+    if (data.containsKey('synced_hash')) {
+      context.handle(
+        _syncedHashMeta,
+        syncedHash.isAcceptableOrUnknown(data['synced_hash']!, _syncedHashMeta),
+      );
+    }
+    if (data.containsKey('held_json')) {
+      context.handle(
+        _heldJsonMeta,
+        heldJson.isAcceptableOrUnknown(data['held_json']!, _heldJsonMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {kind, recordId};
+  @override
+  SyncStateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncStateRow(
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      recordId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}record_id'],
+      )!,
+      driveFileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}drive_file_id'],
+      )!,
+      remoteVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_version'],
+      )!,
+      syncedHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}synced_hash'],
+      ),
+      heldJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}held_json'],
+      ),
+    );
+  }
+
+  @override
+  $SyncStatesTable createAlias(String alias) {
+    return $SyncStatesTable(attachedDatabase, alias);
+  }
+}
+
+class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
+  /// `project` · `image` · `viewPrefs` (the record format's `kind`).
+  final String kind;
+  final String recordId;
+  final String driveFileId;
+  final int remoteVersion;
+  final String? syncedHash;
+
+  /// A pulled version not applied yet (from a newer Filbert, or waiting for
+  /// its project).
+  final String? heldJson;
+  const SyncStateRow({
+    required this.kind,
+    required this.recordId,
+    required this.driveFileId,
+    required this.remoteVersion,
+    this.syncedHash,
+    this.heldJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['kind'] = Variable<String>(kind);
+    map['record_id'] = Variable<String>(recordId);
+    map['drive_file_id'] = Variable<String>(driveFileId);
+    map['remote_version'] = Variable<int>(remoteVersion);
+    if (!nullToAbsent || syncedHash != null) {
+      map['synced_hash'] = Variable<String>(syncedHash);
+    }
+    if (!nullToAbsent || heldJson != null) {
+      map['held_json'] = Variable<String>(heldJson);
+    }
+    return map;
+  }
+
+  SyncStatesCompanion toCompanion(bool nullToAbsent) {
+    return SyncStatesCompanion(
+      kind: Value(kind),
+      recordId: Value(recordId),
+      driveFileId: Value(driveFileId),
+      remoteVersion: Value(remoteVersion),
+      syncedHash: syncedHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedHash),
+      heldJson: heldJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(heldJson),
+    );
+  }
+
+  factory SyncStateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncStateRow(
+      kind: serializer.fromJson<String>(json['kind']),
+      recordId: serializer.fromJson<String>(json['recordId']),
+      driveFileId: serializer.fromJson<String>(json['driveFileId']),
+      remoteVersion: serializer.fromJson<int>(json['remoteVersion']),
+      syncedHash: serializer.fromJson<String?>(json['syncedHash']),
+      heldJson: serializer.fromJson<String?>(json['heldJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'kind': serializer.toJson<String>(kind),
+      'recordId': serializer.toJson<String>(recordId),
+      'driveFileId': serializer.toJson<String>(driveFileId),
+      'remoteVersion': serializer.toJson<int>(remoteVersion),
+      'syncedHash': serializer.toJson<String?>(syncedHash),
+      'heldJson': serializer.toJson<String?>(heldJson),
+    };
+  }
+
+  SyncStateRow copyWith({
+    String? kind,
+    String? recordId,
+    String? driveFileId,
+    int? remoteVersion,
+    Value<String?> syncedHash = const Value.absent(),
+    Value<String?> heldJson = const Value.absent(),
+  }) => SyncStateRow(
+    kind: kind ?? this.kind,
+    recordId: recordId ?? this.recordId,
+    driveFileId: driveFileId ?? this.driveFileId,
+    remoteVersion: remoteVersion ?? this.remoteVersion,
+    syncedHash: syncedHash.present ? syncedHash.value : this.syncedHash,
+    heldJson: heldJson.present ? heldJson.value : this.heldJson,
+  );
+  SyncStateRow copyWithCompanion(SyncStatesCompanion data) {
+    return SyncStateRow(
+      kind: data.kind.present ? data.kind.value : this.kind,
+      recordId: data.recordId.present ? data.recordId.value : this.recordId,
+      driveFileId: data.driveFileId.present
+          ? data.driveFileId.value
+          : this.driveFileId,
+      remoteVersion: data.remoteVersion.present
+          ? data.remoteVersion.value
+          : this.remoteVersion,
+      syncedHash: data.syncedHash.present
+          ? data.syncedHash.value
+          : this.syncedHash,
+      heldJson: data.heldJson.present ? data.heldJson.value : this.heldJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncStateRow(')
+          ..write('kind: $kind, ')
+          ..write('recordId: $recordId, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('remoteVersion: $remoteVersion, ')
+          ..write('syncedHash: $syncedHash, ')
+          ..write('heldJson: $heldJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    kind,
+    recordId,
+    driveFileId,
+    remoteVersion,
+    syncedHash,
+    heldJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncStateRow &&
+          other.kind == this.kind &&
+          other.recordId == this.recordId &&
+          other.driveFileId == this.driveFileId &&
+          other.remoteVersion == this.remoteVersion &&
+          other.syncedHash == this.syncedHash &&
+          other.heldJson == this.heldJson);
+}
+
+class SyncStatesCompanion extends UpdateCompanion<SyncStateRow> {
+  final Value<String> kind;
+  final Value<String> recordId;
+  final Value<String> driveFileId;
+  final Value<int> remoteVersion;
+  final Value<String?> syncedHash;
+  final Value<String?> heldJson;
+  final Value<int> rowid;
+  const SyncStatesCompanion({
+    this.kind = const Value.absent(),
+    this.recordId = const Value.absent(),
+    this.driveFileId = const Value.absent(),
+    this.remoteVersion = const Value.absent(),
+    this.syncedHash = const Value.absent(),
+    this.heldJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncStatesCompanion.insert({
+    required String kind,
+    required String recordId,
+    required String driveFileId,
+    required int remoteVersion,
+    this.syncedHash = const Value.absent(),
+    this.heldJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : kind = Value(kind),
+       recordId = Value(recordId),
+       driveFileId = Value(driveFileId),
+       remoteVersion = Value(remoteVersion);
+  static Insertable<SyncStateRow> custom({
+    Expression<String>? kind,
+    Expression<String>? recordId,
+    Expression<String>? driveFileId,
+    Expression<int>? remoteVersion,
+    Expression<String>? syncedHash,
+    Expression<String>? heldJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (kind != null) 'kind': kind,
+      if (recordId != null) 'record_id': recordId,
+      if (driveFileId != null) 'drive_file_id': driveFileId,
+      if (remoteVersion != null) 'remote_version': remoteVersion,
+      if (syncedHash != null) 'synced_hash': syncedHash,
+      if (heldJson != null) 'held_json': heldJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncStatesCompanion copyWith({
+    Value<String>? kind,
+    Value<String>? recordId,
+    Value<String>? driveFileId,
+    Value<int>? remoteVersion,
+    Value<String?>? syncedHash,
+    Value<String?>? heldJson,
+    Value<int>? rowid,
+  }) {
+    return SyncStatesCompanion(
+      kind: kind ?? this.kind,
+      recordId: recordId ?? this.recordId,
+      driveFileId: driveFileId ?? this.driveFileId,
+      remoteVersion: remoteVersion ?? this.remoteVersion,
+      syncedHash: syncedHash ?? this.syncedHash,
+      heldJson: heldJson ?? this.heldJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (recordId.present) {
+      map['record_id'] = Variable<String>(recordId.value);
+    }
+    if (driveFileId.present) {
+      map['drive_file_id'] = Variable<String>(driveFileId.value);
+    }
+    if (remoteVersion.present) {
+      map['remote_version'] = Variable<int>(remoteVersion.value);
+    }
+    if (syncedHash.present) {
+      map['synced_hash'] = Variable<String>(syncedHash.value);
+    }
+    if (heldJson.present) {
+      map['held_json'] = Variable<String>(heldJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncStatesCompanion(')
+          ..write('kind: $kind, ')
+          ..write('recordId: $recordId, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('remoteVersion: $remoteVersion, ')
+          ..write('syncedHash: $syncedHash, ')
+          ..write('heldJson: $heldJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BlobSyncsTable extends BlobSyncs
+    with TableInfo<$BlobSyncsTable, BlobSyncRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BlobSyncsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _blobIdMeta = const VerificationMeta('blobId');
+  @override
+  late final GeneratedColumn<String> blobId = GeneratedColumn<String>(
+    'blob_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driveFileIdMeta = const VerificationMeta(
+    'driveFileId',
+  );
+  @override
+  late final GeneratedColumn<String> driveFileId = GeneratedColumn<String>(
+    'drive_file_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _thumbFileIdMeta = const VerificationMeta(
+    'thumbFileId',
+  );
+  @override
+  late final GeneratedColumn<String> thumbFileId = GeneratedColumn<String>(
+    'thumb_file_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    blobId,
+    driveFileId,
+    thumbFileId,
+    state,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'blob_sync';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BlobSyncRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('blob_id')) {
+      context.handle(
+        _blobIdMeta,
+        blobId.isAcceptableOrUnknown(data['blob_id']!, _blobIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_blobIdMeta);
+    }
+    if (data.containsKey('drive_file_id')) {
+      context.handle(
+        _driveFileIdMeta,
+        driveFileId.isAcceptableOrUnknown(
+          data['drive_file_id']!,
+          _driveFileIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('thumb_file_id')) {
+      context.handle(
+        _thumbFileIdMeta,
+        thumbFileId.isAcceptableOrUnknown(
+          data['thumb_file_id']!,
+          _thumbFileIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {blobId};
+  @override
+  BlobSyncRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BlobSyncRow(
+      blobId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}blob_id'],
+      )!,
+      driveFileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}drive_file_id'],
+      ),
+      thumbFileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}thumb_file_id'],
+      ),
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+    );
+  }
+
+  @override
+  $BlobSyncsTable createAlias(String alias) {
+    return $BlobSyncsTable(attachedDatabase, alias);
+  }
+}
+
+class BlobSyncRow extends DataClass implements Insertable<BlobSyncRow> {
+  final String blobId;
+  final String? driveFileId;
+  final String? thumbFileId;
+
+  /// `local` · `synced` · `remoteOnly` · `missing`.
+  final String state;
+  const BlobSyncRow({
+    required this.blobId,
+    this.driveFileId,
+    this.thumbFileId,
+    required this.state,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['blob_id'] = Variable<String>(blobId);
+    if (!nullToAbsent || driveFileId != null) {
+      map['drive_file_id'] = Variable<String>(driveFileId);
+    }
+    if (!nullToAbsent || thumbFileId != null) {
+      map['thumb_file_id'] = Variable<String>(thumbFileId);
+    }
+    map['state'] = Variable<String>(state);
+    return map;
+  }
+
+  BlobSyncsCompanion toCompanion(bool nullToAbsent) {
+    return BlobSyncsCompanion(
+      blobId: Value(blobId),
+      driveFileId: driveFileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(driveFileId),
+      thumbFileId: thumbFileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thumbFileId),
+      state: Value(state),
+    );
+  }
+
+  factory BlobSyncRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BlobSyncRow(
+      blobId: serializer.fromJson<String>(json['blobId']),
+      driveFileId: serializer.fromJson<String?>(json['driveFileId']),
+      thumbFileId: serializer.fromJson<String?>(json['thumbFileId']),
+      state: serializer.fromJson<String>(json['state']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'blobId': serializer.toJson<String>(blobId),
+      'driveFileId': serializer.toJson<String?>(driveFileId),
+      'thumbFileId': serializer.toJson<String?>(thumbFileId),
+      'state': serializer.toJson<String>(state),
+    };
+  }
+
+  BlobSyncRow copyWith({
+    String? blobId,
+    Value<String?> driveFileId = const Value.absent(),
+    Value<String?> thumbFileId = const Value.absent(),
+    String? state,
+  }) => BlobSyncRow(
+    blobId: blobId ?? this.blobId,
+    driveFileId: driveFileId.present ? driveFileId.value : this.driveFileId,
+    thumbFileId: thumbFileId.present ? thumbFileId.value : this.thumbFileId,
+    state: state ?? this.state,
+  );
+  BlobSyncRow copyWithCompanion(BlobSyncsCompanion data) {
+    return BlobSyncRow(
+      blobId: data.blobId.present ? data.blobId.value : this.blobId,
+      driveFileId: data.driveFileId.present
+          ? data.driveFileId.value
+          : this.driveFileId,
+      thumbFileId: data.thumbFileId.present
+          ? data.thumbFileId.value
+          : this.thumbFileId,
+      state: data.state.present ? data.state.value : this.state,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BlobSyncRow(')
+          ..write('blobId: $blobId, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('thumbFileId: $thumbFileId, ')
+          ..write('state: $state')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(blobId, driveFileId, thumbFileId, state);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BlobSyncRow &&
+          other.blobId == this.blobId &&
+          other.driveFileId == this.driveFileId &&
+          other.thumbFileId == this.thumbFileId &&
+          other.state == this.state);
+}
+
+class BlobSyncsCompanion extends UpdateCompanion<BlobSyncRow> {
+  final Value<String> blobId;
+  final Value<String?> driveFileId;
+  final Value<String?> thumbFileId;
+  final Value<String> state;
+  final Value<int> rowid;
+  const BlobSyncsCompanion({
+    this.blobId = const Value.absent(),
+    this.driveFileId = const Value.absent(),
+    this.thumbFileId = const Value.absent(),
+    this.state = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BlobSyncsCompanion.insert({
+    required String blobId,
+    this.driveFileId = const Value.absent(),
+    this.thumbFileId = const Value.absent(),
+    required String state,
+    this.rowid = const Value.absent(),
+  }) : blobId = Value(blobId),
+       state = Value(state);
+  static Insertable<BlobSyncRow> custom({
+    Expression<String>? blobId,
+    Expression<String>? driveFileId,
+    Expression<String>? thumbFileId,
+    Expression<String>? state,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (blobId != null) 'blob_id': blobId,
+      if (driveFileId != null) 'drive_file_id': driveFileId,
+      if (thumbFileId != null) 'thumb_file_id': thumbFileId,
+      if (state != null) 'state': state,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BlobSyncsCompanion copyWith({
+    Value<String>? blobId,
+    Value<String?>? driveFileId,
+    Value<String?>? thumbFileId,
+    Value<String>? state,
+    Value<int>? rowid,
+  }) {
+    return BlobSyncsCompanion(
+      blobId: blobId ?? this.blobId,
+      driveFileId: driveFileId ?? this.driveFileId,
+      thumbFileId: thumbFileId ?? this.thumbFileId,
+      state: state ?? this.state,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (blobId.present) {
+      map['blob_id'] = Variable<String>(blobId.value);
+    }
+    if (driveFileId.present) {
+      map['drive_file_id'] = Variable<String>(driveFileId.value);
+    }
+    if (thumbFileId.present) {
+      map['thumb_file_id'] = Variable<String>(thumbFileId.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BlobSyncsCompanion(')
+          ..write('blobId: $blobId, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('thumbFileId: $thumbFileId, ')
+          ..write('state: $state, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncConflictsTable extends SyncConflicts
+    with TableInfo<$SyncConflictsTable, SyncConflictRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncConflictsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recordIdMeta = const VerificationMeta(
+    'recordId',
+  );
+  @override
+  late final GeneratedColumn<String> recordId = GeneratedColumn<String>(
+    'record_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driveFileIdMeta = const VerificationMeta(
+    'driveFileId',
+  );
+  @override
+  late final GeneratedColumn<String> driveFileId = GeneratedColumn<String>(
+    'drive_file_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteJsonMeta = const VerificationMeta(
+    'remoteJson',
+  );
+  @override
+  late final GeneratedColumn<String> remoteJson = GeneratedColumn<String>(
+    'remote_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteVersionMeta = const VerificationMeta(
+    'remoteVersion',
+  );
+  @override
+  late final GeneratedColumn<int> remoteVersion = GeneratedColumn<int>(
+    'remote_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _detectedAtMeta = const VerificationMeta(
+    'detectedAt',
+  );
+  @override
+  late final GeneratedColumn<int> detectedAt = GeneratedColumn<int>(
+    'detected_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    kind,
+    recordId,
+    driveFileId,
+    remoteJson,
+    remoteVersion,
+    detectedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_conflicts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncConflictRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('record_id')) {
+      context.handle(
+        _recordIdMeta,
+        recordId.isAcceptableOrUnknown(data['record_id']!, _recordIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recordIdMeta);
+    }
+    if (data.containsKey('drive_file_id')) {
+      context.handle(
+        _driveFileIdMeta,
+        driveFileId.isAcceptableOrUnknown(
+          data['drive_file_id']!,
+          _driveFileIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_driveFileIdMeta);
+    }
+    if (data.containsKey('remote_json')) {
+      context.handle(
+        _remoteJsonMeta,
+        remoteJson.isAcceptableOrUnknown(data['remote_json']!, _remoteJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_remoteJsonMeta);
+    }
+    if (data.containsKey('remote_version')) {
+      context.handle(
+        _remoteVersionMeta,
+        remoteVersion.isAcceptableOrUnknown(
+          data['remote_version']!,
+          _remoteVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_remoteVersionMeta);
+    }
+    if (data.containsKey('detected_at')) {
+      context.handle(
+        _detectedAtMeta,
+        detectedAt.isAcceptableOrUnknown(data['detected_at']!, _detectedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_detectedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {kind, recordId};
+  @override
+  SyncConflictRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncConflictRow(
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      recordId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}record_id'],
+      )!,
+      driveFileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}drive_file_id'],
+      )!,
+      remoteJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_json'],
+      )!,
+      remoteVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_version'],
+      )!,
+      detectedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}detected_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncConflictsTable createAlias(String alias) {
+    return $SyncConflictsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
+  final String kind;
+  final String recordId;
+  final String driveFileId;
+  final String remoteJson;
+  final int remoteVersion;
+  final int detectedAt;
+  const SyncConflictRow({
+    required this.kind,
+    required this.recordId,
+    required this.driveFileId,
+    required this.remoteJson,
+    required this.remoteVersion,
+    required this.detectedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['kind'] = Variable<String>(kind);
+    map['record_id'] = Variable<String>(recordId);
+    map['drive_file_id'] = Variable<String>(driveFileId);
+    map['remote_json'] = Variable<String>(remoteJson);
+    map['remote_version'] = Variable<int>(remoteVersion);
+    map['detected_at'] = Variable<int>(detectedAt);
+    return map;
+  }
+
+  SyncConflictsCompanion toCompanion(bool nullToAbsent) {
+    return SyncConflictsCompanion(
+      kind: Value(kind),
+      recordId: Value(recordId),
+      driveFileId: Value(driveFileId),
+      remoteJson: Value(remoteJson),
+      remoteVersion: Value(remoteVersion),
+      detectedAt: Value(detectedAt),
+    );
+  }
+
+  factory SyncConflictRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncConflictRow(
+      kind: serializer.fromJson<String>(json['kind']),
+      recordId: serializer.fromJson<String>(json['recordId']),
+      driveFileId: serializer.fromJson<String>(json['driveFileId']),
+      remoteJson: serializer.fromJson<String>(json['remoteJson']),
+      remoteVersion: serializer.fromJson<int>(json['remoteVersion']),
+      detectedAt: serializer.fromJson<int>(json['detectedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'kind': serializer.toJson<String>(kind),
+      'recordId': serializer.toJson<String>(recordId),
+      'driveFileId': serializer.toJson<String>(driveFileId),
+      'remoteJson': serializer.toJson<String>(remoteJson),
+      'remoteVersion': serializer.toJson<int>(remoteVersion),
+      'detectedAt': serializer.toJson<int>(detectedAt),
+    };
+  }
+
+  SyncConflictRow copyWith({
+    String? kind,
+    String? recordId,
+    String? driveFileId,
+    String? remoteJson,
+    int? remoteVersion,
+    int? detectedAt,
+  }) => SyncConflictRow(
+    kind: kind ?? this.kind,
+    recordId: recordId ?? this.recordId,
+    driveFileId: driveFileId ?? this.driveFileId,
+    remoteJson: remoteJson ?? this.remoteJson,
+    remoteVersion: remoteVersion ?? this.remoteVersion,
+    detectedAt: detectedAt ?? this.detectedAt,
+  );
+  SyncConflictRow copyWithCompanion(SyncConflictsCompanion data) {
+    return SyncConflictRow(
+      kind: data.kind.present ? data.kind.value : this.kind,
+      recordId: data.recordId.present ? data.recordId.value : this.recordId,
+      driveFileId: data.driveFileId.present
+          ? data.driveFileId.value
+          : this.driveFileId,
+      remoteJson: data.remoteJson.present
+          ? data.remoteJson.value
+          : this.remoteJson,
+      remoteVersion: data.remoteVersion.present
+          ? data.remoteVersion.value
+          : this.remoteVersion,
+      detectedAt: data.detectedAt.present
+          ? data.detectedAt.value
+          : this.detectedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncConflictRow(')
+          ..write('kind: $kind, ')
+          ..write('recordId: $recordId, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('remoteJson: $remoteJson, ')
+          ..write('remoteVersion: $remoteVersion, ')
+          ..write('detectedAt: $detectedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    kind,
+    recordId,
+    driveFileId,
+    remoteJson,
+    remoteVersion,
+    detectedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncConflictRow &&
+          other.kind == this.kind &&
+          other.recordId == this.recordId &&
+          other.driveFileId == this.driveFileId &&
+          other.remoteJson == this.remoteJson &&
+          other.remoteVersion == this.remoteVersion &&
+          other.detectedAt == this.detectedAt);
+}
+
+class SyncConflictsCompanion extends UpdateCompanion<SyncConflictRow> {
+  final Value<String> kind;
+  final Value<String> recordId;
+  final Value<String> driveFileId;
+  final Value<String> remoteJson;
+  final Value<int> remoteVersion;
+  final Value<int> detectedAt;
+  final Value<int> rowid;
+  const SyncConflictsCompanion({
+    this.kind = const Value.absent(),
+    this.recordId = const Value.absent(),
+    this.driveFileId = const Value.absent(),
+    this.remoteJson = const Value.absent(),
+    this.remoteVersion = const Value.absent(),
+    this.detectedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncConflictsCompanion.insert({
+    required String kind,
+    required String recordId,
+    required String driveFileId,
+    required String remoteJson,
+    required int remoteVersion,
+    required int detectedAt,
+    this.rowid = const Value.absent(),
+  }) : kind = Value(kind),
+       recordId = Value(recordId),
+       driveFileId = Value(driveFileId),
+       remoteJson = Value(remoteJson),
+       remoteVersion = Value(remoteVersion),
+       detectedAt = Value(detectedAt);
+  static Insertable<SyncConflictRow> custom({
+    Expression<String>? kind,
+    Expression<String>? recordId,
+    Expression<String>? driveFileId,
+    Expression<String>? remoteJson,
+    Expression<int>? remoteVersion,
+    Expression<int>? detectedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (kind != null) 'kind': kind,
+      if (recordId != null) 'record_id': recordId,
+      if (driveFileId != null) 'drive_file_id': driveFileId,
+      if (remoteJson != null) 'remote_json': remoteJson,
+      if (remoteVersion != null) 'remote_version': remoteVersion,
+      if (detectedAt != null) 'detected_at': detectedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncConflictsCompanion copyWith({
+    Value<String>? kind,
+    Value<String>? recordId,
+    Value<String>? driveFileId,
+    Value<String>? remoteJson,
+    Value<int>? remoteVersion,
+    Value<int>? detectedAt,
+    Value<int>? rowid,
+  }) {
+    return SyncConflictsCompanion(
+      kind: kind ?? this.kind,
+      recordId: recordId ?? this.recordId,
+      driveFileId: driveFileId ?? this.driveFileId,
+      remoteJson: remoteJson ?? this.remoteJson,
+      remoteVersion: remoteVersion ?? this.remoteVersion,
+      detectedAt: detectedAt ?? this.detectedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (recordId.present) {
+      map['record_id'] = Variable<String>(recordId.value);
+    }
+    if (driveFileId.present) {
+      map['drive_file_id'] = Variable<String>(driveFileId.value);
+    }
+    if (remoteJson.present) {
+      map['remote_json'] = Variable<String>(remoteJson.value);
+    }
+    if (remoteVersion.present) {
+      map['remote_version'] = Variable<int>(remoteVersion.value);
+    }
+    if (detectedAt.present) {
+      map['detected_at'] = Variable<int>(detectedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncConflictsCompanion(')
+          ..write('kind: $kind, ')
+          ..write('recordId: $recordId, ')
+          ..write('driveFileId: $driveFileId, ')
+          ..write('remoteJson: $remoteJson, ')
+          ..write('remoteVersion: $remoteVersion, ')
+          ..write('detectedAt: $detectedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2888,6 +4088,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $AppMetaTable appMeta = $AppMetaTable(this);
   late final $ViewPrefsTable viewPrefs = $ViewPrefsTable(this);
+  late final $SyncStatesTable syncStates = $SyncStatesTable(this);
+  late final $BlobSyncsTable blobSyncs = $BlobSyncsTable(this);
+  late final $SyncConflictsTable syncConflicts = $SyncConflictsTable(this);
   late final Index imagesProjectId = Index(
     'images_project_id',
     'CREATE INDEX images_project_id ON images (project_id)',
@@ -2907,6 +4110,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     imageEditCursor,
     appMeta,
     viewPrefs,
+    syncStates,
+    blobSyncs,
+    syncConflicts,
     imagesProjectId,
     viewPrefsProjectId,
   ];
@@ -5453,6 +6659,666 @@ typedef $$ViewPrefsTableProcessedTableManager =
       ViewPrefsRecord,
       PrefetchHooks Function({bool projectId})
     >;
+typedef $$SyncStatesTableCreateCompanionBuilder = SyncStatesCompanion Function({
+  required String kind,
+  required String recordId,
+  required String driveFileId,
+  required int remoteVersion,
+  Value<String?> syncedHash,
+  Value<String?> heldJson,
+  Value<int> rowid,
+});
+typedef $$SyncStatesTableUpdateCompanionBuilder = SyncStatesCompanion Function({
+  Value<String> kind,
+  Value<String> recordId,
+  Value<String> driveFileId,
+  Value<int> remoteVersion,
+  Value<String?> syncedHash,
+  Value<String?> heldJson,
+  Value<int> rowid,
+});
+
+class $$SyncStatesTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncStatesTable> {
+  $$SyncStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recordId => $composableBuilder(
+    column: $table.recordId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteVersion => $composableBuilder(
+    column: $table.remoteVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncedHash => $composableBuilder(
+    column: $table.syncedHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get heldJson => $composableBuilder(
+    column: $table.heldJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncStatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncStatesTable> {
+  $$SyncStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recordId => $composableBuilder(
+    column: $table.recordId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteVersion => $composableBuilder(
+    column: $table.remoteVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncedHash => $composableBuilder(
+    column: $table.syncedHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get heldJson => $composableBuilder(
+    column: $table.heldJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncStatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncStatesTable> {
+  $$SyncStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get recordId =>
+      $composableBuilder(column: $table.recordId, builder: (column) => column);
+
+  GeneratedColumn<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get remoteVersion => $composableBuilder(
+    column: $table.remoteVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get syncedHash => $composableBuilder(
+    column: $table.syncedHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get heldJson =>
+      $composableBuilder(column: $table.heldJson, builder: (column) => column);
+}
+
+class $$SyncStatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncStatesTable,
+          SyncStateRow,
+          $$SyncStatesTableFilterComposer,
+          $$SyncStatesTableOrderingComposer,
+          $$SyncStatesTableAnnotationComposer,
+          $$SyncStatesTableCreateCompanionBuilder,
+          $$SyncStatesTableUpdateCompanionBuilder,
+          (
+            SyncStateRow,
+            BaseReferences<_$AppDatabase, $SyncStatesTable, SyncStateRow>,
+          ),
+          SyncStateRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncStatesTableTableManager(_$AppDatabase db, $SyncStatesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncStatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncStatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncStatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> kind = const Value.absent(),
+                Value<String> recordId = const Value.absent(),
+                Value<String> driveFileId = const Value.absent(),
+                Value<int> remoteVersion = const Value.absent(),
+                Value<String?> syncedHash = const Value.absent(),
+                Value<String?> heldJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncStatesCompanion(
+                kind: kind,
+                recordId: recordId,
+                driveFileId: driveFileId,
+                remoteVersion: remoteVersion,
+                syncedHash: syncedHash,
+                heldJson: heldJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String kind,
+                required String recordId,
+                required String driveFileId,
+                required int remoteVersion,
+                Value<String?> syncedHash = const Value.absent(),
+                Value<String?> heldJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncStatesCompanion.insert(
+                kind: kind,
+                recordId: recordId,
+                driveFileId: driveFileId,
+                remoteVersion: remoteVersion,
+                syncedHash: syncedHash,
+                heldJson: heldJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SyncStatesTable, SyncStateRow>(table),
+                  BaseReferences<_$AppDatabase, $SyncStatesTable, SyncStateRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncStatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncStatesTable,
+      SyncStateRow,
+      $$SyncStatesTableFilterComposer,
+      $$SyncStatesTableOrderingComposer,
+      $$SyncStatesTableAnnotationComposer,
+      $$SyncStatesTableCreateCompanionBuilder,
+      $$SyncStatesTableUpdateCompanionBuilder,
+      (
+        SyncStateRow,
+        BaseReferences<_$AppDatabase, $SyncStatesTable, SyncStateRow>,
+      ),
+      SyncStateRow,
+      PrefetchHooks Function()
+    >;
+typedef $$BlobSyncsTableCreateCompanionBuilder = BlobSyncsCompanion Function({
+  required String blobId,
+  Value<String?> driveFileId,
+  Value<String?> thumbFileId,
+  required String state,
+  Value<int> rowid,
+});
+typedef $$BlobSyncsTableUpdateCompanionBuilder = BlobSyncsCompanion Function({
+  Value<String> blobId,
+  Value<String?> driveFileId,
+  Value<String?> thumbFileId,
+  Value<String> state,
+  Value<int> rowid,
+});
+
+class $$BlobSyncsTableFilterComposer
+    extends Composer<_$AppDatabase, $BlobSyncsTable> {
+  $$BlobSyncsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get blobId => $composableBuilder(
+    column: $table.blobId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get thumbFileId => $composableBuilder(
+    column: $table.thumbFileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BlobSyncsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BlobSyncsTable> {
+  $$BlobSyncsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get blobId => $composableBuilder(
+    column: $table.blobId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get thumbFileId => $composableBuilder(
+    column: $table.thumbFileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BlobSyncsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BlobSyncsTable> {
+  $$BlobSyncsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get blobId =>
+      $composableBuilder(column: $table.blobId, builder: (column) => column);
+
+  GeneratedColumn<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get thumbFileId => $composableBuilder(
+    column: $table.thumbFileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+}
+
+class $$BlobSyncsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BlobSyncsTable,
+          BlobSyncRow,
+          $$BlobSyncsTableFilterComposer,
+          $$BlobSyncsTableOrderingComposer,
+          $$BlobSyncsTableAnnotationComposer,
+          $$BlobSyncsTableCreateCompanionBuilder,
+          $$BlobSyncsTableUpdateCompanionBuilder,
+          (
+            BlobSyncRow,
+            BaseReferences<_$AppDatabase, $BlobSyncsTable, BlobSyncRow>,
+          ),
+          BlobSyncRow,
+          PrefetchHooks Function()
+        > {
+  $$BlobSyncsTableTableManager(_$AppDatabase db, $BlobSyncsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BlobSyncsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BlobSyncsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BlobSyncsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> blobId = const Value.absent(),
+                Value<String?> driveFileId = const Value.absent(),
+                Value<String?> thumbFileId = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BlobSyncsCompanion(
+                blobId: blobId,
+                driveFileId: driveFileId,
+                thumbFileId: thumbFileId,
+                state: state,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String blobId,
+                Value<String?> driveFileId = const Value.absent(),
+                Value<String?> thumbFileId = const Value.absent(),
+                required String state,
+                Value<int> rowid = const Value.absent(),
+              }) => BlobSyncsCompanion.insert(
+                blobId: blobId,
+                driveFileId: driveFileId,
+                thumbFileId: thumbFileId,
+                state: state,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$BlobSyncsTable, BlobSyncRow>(table),
+                  BaseReferences<_$AppDatabase, $BlobSyncsTable, BlobSyncRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BlobSyncsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BlobSyncsTable,
+      BlobSyncRow,
+      $$BlobSyncsTableFilterComposer,
+      $$BlobSyncsTableOrderingComposer,
+      $$BlobSyncsTableAnnotationComposer,
+      $$BlobSyncsTableCreateCompanionBuilder,
+      $$BlobSyncsTableUpdateCompanionBuilder,
+      (
+        BlobSyncRow,
+        BaseReferences<_$AppDatabase, $BlobSyncsTable, BlobSyncRow>,
+      ),
+      BlobSyncRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncConflictsTableCreateCompanionBuilder =
+    SyncConflictsCompanion Function({
+      required String kind,
+      required String recordId,
+      required String driveFileId,
+      required String remoteJson,
+      required int remoteVersion,
+      required int detectedAt,
+      Value<int> rowid,
+    });
+typedef $$SyncConflictsTableUpdateCompanionBuilder =
+    SyncConflictsCompanion Function({
+      Value<String> kind,
+      Value<String> recordId,
+      Value<String> driveFileId,
+      Value<String> remoteJson,
+      Value<int> remoteVersion,
+      Value<int> detectedAt,
+      Value<int> rowid,
+    });
+
+class $$SyncConflictsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncConflictsTable> {
+  $$SyncConflictsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recordId => $composableBuilder(
+    column: $table.recordId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteJson => $composableBuilder(
+    column: $table.remoteJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteVersion => $composableBuilder(
+    column: $table.remoteVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get detectedAt => $composableBuilder(
+    column: $table.detectedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncConflictsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncConflictsTable> {
+  $$SyncConflictsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recordId => $composableBuilder(
+    column: $table.recordId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteJson => $composableBuilder(
+    column: $table.remoteJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remoteVersion => $composableBuilder(
+    column: $table.remoteVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get detectedAt => $composableBuilder(
+    column: $table.detectedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncConflictsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncConflictsTable> {
+  $$SyncConflictsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get recordId =>
+      $composableBuilder(column: $table.recordId, builder: (column) => column);
+
+  GeneratedColumn<String> get driveFileId => $composableBuilder(
+    column: $table.driveFileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get remoteJson => $composableBuilder(
+    column: $table.remoteJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get remoteVersion => $composableBuilder(
+    column: $table.remoteVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get detectedAt => $composableBuilder(
+    column: $table.detectedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$SyncConflictsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncConflictsTable,
+          SyncConflictRow,
+          $$SyncConflictsTableFilterComposer,
+          $$SyncConflictsTableOrderingComposer,
+          $$SyncConflictsTableAnnotationComposer,
+          $$SyncConflictsTableCreateCompanionBuilder,
+          $$SyncConflictsTableUpdateCompanionBuilder,
+          (
+            SyncConflictRow,
+            BaseReferences<_$AppDatabase, $SyncConflictsTable, SyncConflictRow>,
+          ),
+          SyncConflictRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncConflictsTableTableManager(_$AppDatabase db, $SyncConflictsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncConflictsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncConflictsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncConflictsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> kind = const Value.absent(),
+                Value<String> recordId = const Value.absent(),
+                Value<String> driveFileId = const Value.absent(),
+                Value<String> remoteJson = const Value.absent(),
+                Value<int> remoteVersion = const Value.absent(),
+                Value<int> detectedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncConflictsCompanion(
+                kind: kind,
+                recordId: recordId,
+                driveFileId: driveFileId,
+                remoteJson: remoteJson,
+                remoteVersion: remoteVersion,
+                detectedAt: detectedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String kind,
+                required String recordId,
+                required String driveFileId,
+                required String remoteJson,
+                required int remoteVersion,
+                required int detectedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncConflictsCompanion.insert(
+                kind: kind,
+                recordId: recordId,
+                driveFileId: driveFileId,
+                remoteJson: remoteJson,
+                remoteVersion: remoteVersion,
+                detectedAt: detectedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SyncConflictsTable, SyncConflictRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SyncConflictsTable,
+                    SyncConflictRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncConflictsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncConflictsTable,
+      SyncConflictRow,
+      $$SyncConflictsTableFilterComposer,
+      $$SyncConflictsTableOrderingComposer,
+      $$SyncConflictsTableAnnotationComposer,
+      $$SyncConflictsTableCreateCompanionBuilder,
+      $$SyncConflictsTableUpdateCompanionBuilder,
+      (
+        SyncConflictRow,
+        BaseReferences<_$AppDatabase, $SyncConflictsTable, SyncConflictRow>,
+      ),
+      SyncConflictRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5469,6 +7335,12 @@ class $AppDatabaseManager {
       $$AppMetaTableTableManager(_db, _db.appMeta);
   $$ViewPrefsTableTableManager get viewPrefs =>
       $$ViewPrefsTableTableManager(_db, _db.viewPrefs);
+  $$SyncStatesTableTableManager get syncStates =>
+      $$SyncStatesTableTableManager(_db, _db.syncStates);
+  $$BlobSyncsTableTableManager get blobSyncs =>
+      $$BlobSyncsTableTableManager(_db, _db.blobSyncs);
+  $$SyncConflictsTableTableManager get syncConflicts =>
+      $$SyncConflictsTableTableManager(_db, _db.syncConflicts);
 }
 
 // **************************************************************************
