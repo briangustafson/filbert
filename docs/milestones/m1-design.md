@@ -128,7 +128,7 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
   - Zoom: `InteractiveViewer` per page; swiping is off while zoomed. Double-tap toggles fit ↔ 100% of the full-resolution edited view (at least 2×), centred on the tap. Zooming past the preview's resolution requests a **detail** render (up to 4096 px, cached as `previews/<imageId>-<editsHash>-4096.jpg`) and swaps it in.
   - Press and hold shows the original (a preview rendered with no edits) with an "Original" label; for an unedited photo nothing changes.
   - Chrome (back, menu) hides after 3 s and with it Android's system bars (immersive mode); a tap toggles both. Android shows its own one-time "Viewing full screen" notice the first time. The background is always black.
-  - Menu so far: **Crop/rotate** (T11) · **Undo** · **Redo** · **Revert to original** (each only when it applies, T10) · **Set as reference** (hidden for the reference) · **Delete**. Revert shows a snackbar with **Undo**; Undo and Redo show nothing, since the photo visibly changes. Delete moves to the next photo (else the previous, else back to the project) and shows a snackbar with **Undo** for 6 s; a deleted reference returns as the reference.
+  - Menu so far: **Crop/rotate** (T11) · **Undo** · **Redo** · **Revert to original** (each only when it applies, T10) · **Set as reference** (hidden for the reference) · **Delete**. Undo, Redo and Revert show nothing, since the photo visibly changes and the menu's Undo (⌘Z on the Mac) takes back a Revert (the Revert snackbar with Undo was dropped in M3). Delete moves to the next photo (else the previous, else back to the project) and shows a snackbar with **Undo** for 6 s; a deleted reference returns as the reference.
   - Smoothness on the emulator (profile mode, performance overlay): the UI thread averages < 1 ms per frame; raster time is dominated by the emulator's GPU (the plain project screen is slower than the photo screen), so frame pacing needs a real phone (T15).
 
 ### 3.6 Add-photo flow
@@ -164,7 +164,7 @@ Implementation notes (T14):
   - **Aspect lock:** chips for Project (if the project has a size or ratio), Original (the photo's own ratio), Freeform, and the ratio presets. A preset takes the current crop's orientation; a portrait/landscape button flips a non-square lock. Default: the project's ratio as stored (it describes the painting as seen, so it applies to the displayed photo), else Freeform; an uncropped photo opens with the largest crop of the default proposed.
   - Rotate 90° turns the photo, the crop and the lock together. Reset returns to unstraightened, unturned, with the default proposed.
   - Pinch/pan of the photo underneath is deferred (see m1-tasks, later ideas).
-  - Verified on the emulator: crop + straighten → Apply renders exactly the region shown; Undo / Redo / Revert (and Undo from its snackbar) from the photo menu; reopening shows the saved crop and angle.
+  - Verified on the emulator: crop + straighten → Apply renders exactly the region shown; Undo / Redo / Revert from the photo menu; reopening shows the saved crop and angle.
 
 ### 3.8 Auto-crop review
 
