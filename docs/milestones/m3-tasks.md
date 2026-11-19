@@ -42,10 +42,11 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
 
 ### Phase 2 — Sync
 
-- [ ] **T5 — Sync engine package**
+- [x] **T5 — Sync engine package**
   - `packages/sync_engine`: `RecordCodec` (§5), `LocalStore` / `RemoteStore` interfaces, `SyncEngine` (one pass, §6.3), conflict detection and view-prefs rule (§6.4), duplicate default names, blobs before records, duplicate Drive files, schema versions; `FakeRemoteStore` with dropped and interrupted requests.
   - *Done when:* the multi-device tests in §12 pass (`dart test` in the package, in CI).
   - Depends on: —
+  - *Result:* `SyncRecord` + `RecordCodec` (generic record, fields pinned per kind; nested `size`; SHA-256 hashes, one without the stamps), `LocalStore` / `RemoteStore`, `SyncEngine.syncOnce()` and `resolveConflict()` (for T10). Added in m3-design: `sync_state.held_json` for too-new records and images before their project (§4.1), the lost-reply and equal-content rules (§6.3), duplicate view prefs (§6.4). `package:sync_engine/testing.dart` has `FakeRemoteStore` (dropped and interrupted requests), `MemoryLocalStore`, and 28 shared multi-device scenarios that T6 runs against Drift; 48 tests in all, in CI. Retrying a failed upload is the engine's; resuming one is T8's.
 
 - [ ] **T6 — Schema v3 and the Drift side**
   - Drift schema 3: `sync_state`, `blob_sync`, `sync_conflicts`, new `app_meta` keys (§4); migration and migration test.

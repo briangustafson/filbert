@@ -146,7 +146,8 @@ One row per synced record that has been pushed or pulled.
 | `record_id` | TEXT | Primary key with `kind` |
 | `drive_file_id` | TEXT | |
 | `remote_version` | INTEGER | Drive's file `version` when last pushed or pulled |
-| `synced_hash` | TEXT | Hash of the record JSON (§6.1) when last pushed or pulled |
+| `synced_hash` | TEXT | Hash of the record JSON (§5) when last pushed or pulled; null if the remote version was never applied |
+| `held_json` | TEXT | A pulled version not applied yet, retried every pass: from a newer Filbert (§5), or an image or view prefs whose project hasn't arrived (§6.3). Added in T5 |
 
 ### 4.2 `blob_sync` (local only)
 
@@ -188,8 +189,15 @@ One JSON form per record, used by sync (§6) and later by project backups (M8, �
 ```
 
 - Field names are camelCase and stable; they are not Drift's generated `toJson` (HLD §6.3 suggested it), so renaming a Dart field can't change the format. `edits`, `derivedFrom` and view prefs embed their existing JSON (m1-design §4.2, m2-design §4.2–4.3) as objects.
-- Readers ignore unknown fields. A record with a higher `schemaVersion` than the app knows is kept as-is in `sync_state` but not applied; Settings shows "Update Filbert to sync everything." A lower one is migrated on read.
-- The hash (§6.3) is SHA-256 of the record's canonical JSON (keys sorted), with the same `stableHash` approach as M2's caches.
+- Readers ignore unknown fields. A record with a higher `schemaVersion` than the app knows is kept as-is in `sync_state` (`held_json`) but not applied, and isn't pushed over; Settings shows "Update Filbert to sync everything." A lower one is migrated on read.
+- The hash (§6.3) is SHA-256 (`crypto`) of the record's canonical JSON: keys sorted at every level, no spaces. A second hash leaves out `updatedAt` and `updatedByDeviceId`, so the same change made on two devices compares equal (§6.3).
+
+As built in T5 (`packages/sync_engine`, `RecordCodec`):
+
+- A record is one `SyncRecord`: the common columns typed, the kind's own fields as JSON values, pinned down by `RecordCodec.fieldsOf` (names, types, which may be null). The engine reads only `projectId`, `blobId`, `mimeType`, `name` and `nameIsDefault`.
+- Project fields: `name`, `nameIsDefault`, `size`, `startNotes`, `referenceImageId`. `size` mirrors the app's `ProjectSize`: `{"kind": "none"}`, `{"kind": "ratio", "w": 4, "h": 5}` or `{"kind": "physical", "width": 16, "height": 20, "unit": "in"}`, not the table's flat columns.
+- Image fields: `projectId`, `blobId`, `mimeType`, `width`, `height`, `source`, `capturedAt`, `edits`, `derivedFrom`. View prefs: `projectId`, `prefs`.
+- The JSON `kind` is `project`, `image` or `viewPrefs`; file names use `project-`, `image-`, `viewprefs-` (§6.2).
 
 ---
 
@@ -239,14 +247,22 @@ appDataFolder/
 3. **Push**: every local record whose hash differs from `synced_hash` (or has no `sync_state`) and has no pending conflict. Upload its blob and thumbnail first if `blob_sync` says `local`, then the record. Just before updating a record file, re-read its `version`; if it moved, go back to step 2 for that record.
 4. Save the new page token and `last_sync_at`.
 
-- Records are applied in dependency order (projects, then images, then view prefs) in one Drift transaction per batch, so the UI's streams update once. An image whose project hasn't arrived yet waits for the next pass.
+- Records are applied in dependency order (projects, then images, then view prefs) in one Drift transaction per batch, so the UI's streams update once. An image (or view prefs) whose project hasn't arrived yet is held (`held_json`) and retried every pass.
+- As built in T5:
+  - **Equal JSONs** means equal apart from `updatedAt` and `updatedByDeviceId` (§5), so the same edit on two devices, such as the same renumbered name, isn't a conflict; the remote copy is taken.
+  - **A lost reply**: a remote version last written by this device, no newer than the local record, is this device's own push whose reply was lost (an interrupted create or update), not a remote edit; the local record is kept and pushed if it changed since.
+  - **Duplicates** are handled in the pull (two files for one record in the changes) and before a create (a lookup by name finds a file a lost reply left behind).
+  - **Echoes**: a changed file at the version `sync_state` already has is this device's own push; it isn't read.
+  - **What a failure keeps**: the pull is one batch with its page token, then each upload and each pushed record saves its state as it goes, so a failed request (`RemoteUnavailable`) stops the pass without losing work and the next pass carries on.
+  - **Blobs**: an original found on Drive by name (an upload whose reply was lost) isn't uploaded again. Resuming a half-done upload is the Drive store's (T8); the engine only retries.
 - Drive v3 has no conditional update (to verify in T8), so step 3's re-read leaves a small race between one person's devices; a lost race overwrites the other device's push, which is the accepted cost (it needs two devices pushing the same record within the same second).
 - Turning sync on with projects already on the device merges them: everything local is pushed, everything remote is pulled. Nothing is deleted.
 
 ### 6.4 Conflicts
 
 - **Projects and images**: both versions are kept (§4.3) and the user chooses (§7). Applies also to deleted-on-one-edited-on-the-other.
-- **View prefs**: newer `updatedAt` wins, no prompt (proposal 4).
+- **View prefs**: newer `updatedAt` wins, no prompt (proposal 4); ties broken by id.
+- **Two view prefs records for one project** (each device made one before syncing; m2-design §4.1 left this to M3): the newer is kept and the other tombstoned, and the tombstone syncs. Every device picks the same one (ties broken by id), and the schema's one-live-row-per-project rule always holds.
 - **New images on both devices**: separate records, no conflict (HLD §4.2).
 - **Duplicate default names** (HLD §6.6): after a pull, if two live projects both have `nameIsDefault` and the same name, the one created later is renumbered ("2026-11-12 (2)") by whichever device notices; the renumbering is an ordinary edit and syncs. Both devices compute the same answer (ties broken by id), so they don't fight.
 - **Reference photo**: `referenceImageId` pointing at an image this device doesn't have yet is kept and resolves when the image arrives; pointing at a deleted image shows no reference (as now).

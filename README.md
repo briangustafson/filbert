@@ -12,6 +12,7 @@ dart run build_runner build
 flutter analyze
 flutter test
 (cd packages/canvas_detect && dart test)
+(cd packages/sync_engine && dart test)
 ```
 
 The end-to-end test runs on an Android emulator. Afterwards it uninstalls the app, which deletes the app's data on that device, so never point it at a phone you use:
