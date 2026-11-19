@@ -76,6 +76,11 @@ jobs:
         working-directory: packages/canvas_detect
         run: dart test
 
+      # The record format and the multi-device sync scenarios (m3-design §12).
+      - name: Test sync_engine
+        working-directory: packages/sync_engine
+        run: dart test
+
       # Fails if detection gets worse on the evaluation set (m1-design §6.5).
       - name: Evaluate canvas detection
         working-directory: packages/canvas_detect

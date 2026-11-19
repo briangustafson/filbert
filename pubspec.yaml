@@ -8,6 +8,7 @@ environment:
 
 workspace:
   - packages/canvas_detect
+  - packages/sync_engine
 
 dependencies:
   canvas_detect:
