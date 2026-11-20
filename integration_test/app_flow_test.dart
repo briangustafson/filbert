@@ -26,7 +26,7 @@ import 'package:filbert/core/device/device_info.dart';
 import 'package:filbert/core/files/file_store.dart';
 import 'package:filbert/core/ids/id_generator.dart';
 import 'package:filbert/core/settings/app_settings.dart';
-import 'package:filbert/features/autocrop/autocrop_review_screen.dart';
+import 'package:filbert/features/crop/corners_canvas.dart';
 import 'package:filbert/features/crop/crop_screen.dart';
 import 'package:filbert/features/photo_viewer/photo_screen.dart';
 import 'package:filbert/features/view_aids/ui/aid_toolbar.dart';
@@ -94,7 +94,7 @@ Future<String> _newProject(
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('M1: new project → add photo → auto-crop review → apply → '
+  testWidgets('M1: new project → add photo → Crop finds the canvas → apply → '
       'undo → redo → revert', (tester) async {
     final (:container, db: _, files: _) = await _pumpApp(tester);
 
@@ -102,13 +102,13 @@ void main() {
     final projectId = await _newProject(tester, container);
 
     _phase('add photo');
-    // Add a photo: the auto-crop review opens ("Auto-crop photos when
-    // added" is on by default) and detection fills in the corners.
+    // Add a photo: Crop opens in Corners mode ("Auto-crop photos when
+    // added" is on by default) and Find canvas fills in the corners.
     await _tap(tester, find.text('Add photo'));
     await _chooseFromDevice(tester);
-    await _pumpUntil(tester, find.byType(AutocropReviewScreen));
+    await _pumpUntil(tester, find.byType(CornersCanvas));
     _phase('waiting for detection');
-    await _pumpUntil(tester, _enabledButton('Reset'));
+    await _pumpUntil(tester, _enabledButton('Find canvas'));
     expect(
       find.textContaining("Couldn't find the canvas edges"),
       findsNothing,
@@ -152,6 +152,18 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     _expectAbove(tester, find.byType(SnackBar), find.byType(Slider));
     _expectAbove(tester, find.byType(SnackBar), find.byType(ChoiceChip).first);
+
+    // Crop/rotate opens in Rectangle mode; Find canvas switches to Corners.
+    _phase('find canvas from Crop/rotate');
+    await _tap(tester, find.text('Find canvas'));
+    await _pumpUntil(tester, find.byType(CornersCanvas));
+    await _pumpUntil(tester, _enabledButton('Find canvas'));
+    await _tap(tester, find.text('Apply'));
+    await _pumpUntil(tester, find.byType(PhotoScreen));
+    _expectNear(
+      (await image()).edits.crop!.quad,
+      SyntheticCanvas.normalizedCorners,
+    );
     _phase('done');
   });
 

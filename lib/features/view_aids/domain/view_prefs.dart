@@ -311,6 +311,9 @@ class AidsOn {
 
   final bool grid;
   final ToneAid tone;
+
+  /// No longer read: Compare isn't saved (m2-design §3.1), so this is
+  /// written as false. Kept for rows that still have it.
   final bool compare;
 
   static const _toneNames = {

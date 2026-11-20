@@ -1,5 +1,6 @@
 import 'package:filbert/app/router.dart';
 import 'package:filbert/app/routes.dart';
+import 'package:filbert/features/crop/corners_canvas.dart';
 import 'package:filbert/features/crop/crop_overlay.dart';
 import 'package:filbert/features/crop/crop_screen.dart';
 import 'package:filbert/features/photo_viewer/photo_screen.dart';
@@ -123,7 +124,8 @@ void main() {
       final small = crop(tester);
 
       await drag(tester, small.center, const Offset(400, 400));
-      expect(crop(tester).size, small.size);
+      expect(crop(tester).width, closeTo(small.width, 1e-6));
+      expect(crop(tester).height, closeTo(small.height, 1e-6));
       expect(crop(tester).bottomRight.dx, closeTo(full.right, 0.5));
       expect(crop(tester).bottomRight.dy, closeTo(full.bottom, 0.5));
     });
@@ -214,9 +216,7 @@ void main() {
     });
   });
 
-  testWidgets('a perspective crop shows a hint and can be replaced', (
-    tester,
-  ) async {
+  testWidgets('a perspective crop opens in Corners mode', (tester) async {
     final perspective = Edits(
       crop: CropEdit(
         quad: const [
@@ -230,7 +230,8 @@ void main() {
     await images.setEdits(photo.id, perspective);
     images.calls.clear();
     await openCrop(tester);
-    expect(find.textContaining('perspective correction'), findsOneWidget);
+    expect(find.byType(CornersCanvas), findsOneWidget);
+    expect(find.byType(CropCanvas), findsNothing);
   });
 
   testWidgets("a snackbar from the photo screen doesn't cover the controls", (

@@ -120,7 +120,7 @@ As built in T3 (`PhotoDropTarget`, `lib/features/photos/ui/photo_drop.dart`):
 - Drops are taken on a desktop only, and only by the screen on top (not the project list under a project, nor while a dialog is open).
 - While files are over it, the screen is outlined with what a drop will do: "Drop to add photos", "Drop to set the reference" over the empty slot, "Drop to start a project" on the list.
 - Images are `.jpg`, `.jpeg`, `.png`, `.heic` and `.heif`. A Finder file is the user's own (`PickedPhoto.temporary` false, never deleted) and is read under the security-scoped bookmark that comes with the drop. A promised file (dragged from Photos, for example) is the app's own copy, so import deletes it like a picker copy.
-- A dropped reference on a project with a size opens manual crop, and dropped photos open the auto-crop review if that's on, as with Add photos. A project started from a drop is deleted again if none of its files could be added.
+- A dropped reference on a project with a size opens Crop in Rectangle mode, and dropped photos open Crop in Corners mode with Find canvas if auto-crop on add is on, as with Add photos. A project started from a drop is deleted again if none of its files could be added.
 
 ### 3.5 Export on the Mac
 

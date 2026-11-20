@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:filbert/features/autocrop/autocrop_review_screen.dart';
 import 'package:filbert/features/crop/crop_screen.dart';
 import 'package:filbert/features/photo_viewer/photo_screen.dart';
 
@@ -61,18 +60,11 @@ void main() {
     expect(location(container), Routes.photo(p, i));
     expect(find.byType(PhotoScreen), findsOneWidget);
 
-    // Both are in the photo menu (tested in their own screen tests); here
-    // they're reached by deep link.
+    // In the photo menu (tested in its own screen test); here it's reached
+    // by deep link.
     container.read(routerProvider).go(Routes.crop(p, i));
     await tester.pumpAndSettle();
     expect(find.byType(CropScreen), findsOneWidget);
-    await tester.tap(find.byTooltip('Cancel'));
-    await tester.pumpAndSettle();
-    expect(location(container), Routes.photo(p, i));
-
-    container.read(routerProvider).go(Routes.autocrop(p, i));
-    await tester.pumpAndSettle();
-    expect(find.byType(AutocropReviewScreen), findsOneWidget);
     await tester.tap(find.byTooltip('Cancel'));
     await tester.pumpAndSettle();
     expect(location(container), Routes.photo(p, i));
@@ -99,10 +91,10 @@ void main() {
   testWidgets('deep links to a missing photo offer a way back', (tester) async {
     final project = projects.seed('Harbor');
     final container = await pumpFilbertApp(tester, projects: projects);
-    container.read(routerProvider).go(Routes.autocrop(project.id, 'gone'));
+    container.read(routerProvider).go(Routes.crop(project.id, 'gone'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AutocropReviewScreen), findsOneWidget);
+    expect(find.byType(CropScreen), findsOneWidget);
     expect(find.text('This photo no longer exists.'), findsOneWidget);
     await tester.tap(find.text('Back'));
     await tester.pumpAndSettle();

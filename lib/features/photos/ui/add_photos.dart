@@ -162,10 +162,10 @@ String failedMessage(int failed) => failed == 1
     ? "1 photo couldn't be added."
     : "$failed photos couldn't be added.";
 
-/// What opens after photos are added (m1-design §3.6), or null: the
-/// auto-crop review queue for new grid photos if "Auto-crop photos when
-/// added" is on, or manual crop at the project's ratio for a new reference
-/// if the project has a size or ratio.
+/// What opens after photos are added (m1-design §3.6), or null: Crop with
+/// Find canvas for each new grid photo in turn if "Auto-crop photos when
+/// added" is on, or Crop at the project's ratio for a new reference if the
+/// project has a size or ratio.
 Future<String?> afterAddRoute(
   WidgetRef ref,
   String projectId,
@@ -182,9 +182,10 @@ Future<String?> afterAddRoute(
   // unlistened provider is paused (Riverpod 3), so its future never completes.
   final settings = await ref.read(settingsStoreProvider).watch().first;
   if (!settings.autoCropOnAdd) return null;
-  return Routes.autocrop(
+  return Routes.crop(
     projectId,
     added.first.id,
     queue: ReviewQueue.start([for (final image in added) image.id]),
+    findCanvas: true,
   );
 }

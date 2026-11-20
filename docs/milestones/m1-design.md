@@ -34,14 +34,14 @@ Gridlines, grayscale, limited colors, compare, export/save-to-gallery, "Save as 
 | Undo history | Persisted locally in SQLite per image; **never synced**. The current edit state syncs (M3). Revert to original always available. |
 | Quick use | "New project" creates a project instantly with defaults and opens it; nothing is required. A **Take photo** action on the project list creates a project with that photo in one step. |
 | Camera | System camera via `image_picker`; no in-app camera in M1. |
-| Auto-crop trigger | Runs automatically on photos added to the project's photo grid and opens the review screen; a setting turns this off. Photos added to the reference slot open manual crop at the project's ratio instead (skipped if the project has no size). |
+| Auto-crop trigger | Runs automatically on photos added to the project's photo grid and opens Crop in Corners mode with the detected corners (the separate review screen until M3, §3.7); a setting turns this off. Photos added to the reference slot open manual crop at the project's ratio instead (skipped if the project has no size). |
 | Application ID | `com.example.filbert` placeholder; must be replaced before the first Play Store upload. |
 | Auto-crop test set | ~20–40 of the user's real photos, downscaled to ~1600 px long edge, committed to `packages/canvas_detect/test/fixtures/` with expected corners. |
 | Theme | Material 3 with a neutral-gray palette (no saturated accents near images, to avoid skewing color/value perception); light and dark, follows system. |
 | Android minSdk | Flutter default (currently 24); photo picker via the AndroidX backport. |
 | Import | Original bytes stored unchanged; EXIF orientation applied on decode; thumbnails generated locally. |
 | Delete | Confirm dialog, then an **Undo** snackbar. Records are tombstoned; local files are purged 30 days after deletion. |
-| Photo menu | Crop/rotate, Auto-crop, Undo, Redo, Revert to original, Set as reference, Delete. Later features are added when built, never shown disabled. |
+| Photo menu | Crop/rotate, Undo, Redo, Revert to original, Set as reference, Delete (Auto-crop until M3, now **Find canvas** inside Crop). Later features are added when built, never shown disabled. |
 | Packages | `packages/canvas_detect` created in M1; `packages/sync_engine` deferred to M3. |
 
 ### Deviations from the high-level design
@@ -62,8 +62,7 @@ Gridlines, grayscale, limited colors, compare, export/save-to-gallery, "Save as 
 | `/` | Project list |
 | `/projects/:projectId` | Project screen |
 | `/projects/:projectId/images/:imageId` | Photo screen |
-| `/projects/:projectId/images/:imageId/crop` | Manual crop |
-| `/projects/:projectId/images/:imageId/autocrop` | Auto-crop review |
+| `/projects/:projectId/images/:imageId/crop` | Crop, Rectangle or Corners mode (§3.7). `?find=canvas` runs Find canvas on opening; `?queue=…&of=…` crops new photos in turn; `?after=add` a new reference. (`…/autocrop`, the separate review screen, was removed in M3.) |
 | `/settings` | Settings |
 
 Routes use ids only, so they stay valid across renames and can be deep-linked later.
@@ -121,22 +120,22 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
 - Full-screen image, the *edited* view (crop applied). Pinch to zoom, double-tap to toggle fit/100%, swipe left/right through the project's photos (reference first, then grid order).
 - Tap toggles minimal chrome: back button and a menu button. Chrome auto-hides.
 - **Press and hold** shows the original (unedited) image while held.
-- Menu: Crop/rotate · Auto-crop · Undo · Redo · Revert to original · Set as reference · Delete. Undo/Redo/Revert appear only when applicable.
+- Menu: Crop/rotate · Undo · Redo · Revert to original · Set as reference · Delete (Auto-crop until M3). Undo/Redo/Revert appear only when applicable.
 - Implementation notes (T9):
   - Swiping doesn't change the route: it stays on the photo that was opened, and Back returns to the project. Menu actions apply to the photo shown.
   - Each page shows the thumbnail scaled up at once, then the 2048 px preview. Fitted to the screen, images are decoded at screen size (less GPU and memory while swiping); once zoomed, at full resolution.
   - Zoom: `InteractiveViewer` per page; swiping is off while zoomed. Double-tap toggles fit ↔ 100% of the full-resolution edited view (at least 2×), centred on the tap. Zooming past the preview's resolution requests a **detail** render (up to 4096 px, cached as `previews/<imageId>-<editsHash>-4096.jpg`) and swaps it in.
   - Press and hold shows the original (a preview rendered with no edits) with an "Original" label; for an unedited photo nothing changes.
   - Chrome (back, menu) hides after 3 s and with it Android's system bars (immersive mode); a tap toggles both. Android shows its own one-time "Viewing full screen" notice the first time. The background is always black.
-  - Menu so far: **Crop/rotate** (T11) · **Undo** · **Redo** · **Revert to original** (each only when it applies, T10) · **Set as reference** (hidden for the reference) · **Delete**. Undo, Redo and Revert show nothing, since the photo visibly changes and the menu's Undo (⌘Z on the Mac) takes back a Revert (the Revert snackbar with Undo was dropped in M3). Delete moves to the next photo (else the previous, else back to the project) and shows a snackbar with **Undo** for 6 s; a deleted reference returns as the reference.
+  - Menu so far: **Crop/rotate** (T11; Auto-crop was its own item until M3) · **Undo** · **Redo** · **Revert to original** (each only when it applies, T10) · **Set as reference** (hidden for the reference) · **Delete**. Undo, Redo and Revert show nothing, since the photo visibly changes and the menu's Undo (⌘Z on the Mac) takes back a Revert (the Revert snackbar with Undo was dropped in M3). Delete moves to the next photo (else the previous, else back to the project) and shows a snackbar with **Undo** for 6 s; a deleted reference returns as the reference.
   - Smoothness on the emulator (profile mode, performance overlay): the UI thread averages < 1 ms per frame; raster time is dominated by the emulator's GPU (the plain project screen is slower than the photo screen), so frame pacing needs a real phone (T15).
 
 ### 3.6 Add-photo flow
 
 1. User picks one or more photos (or takes one).
 2. Each is imported (§5.2); thumbnails appear immediately with a progress indicator.
-3. If added to the **grid** and "auto-crop on add" is on: the auto-crop review screen opens for each new photo in turn (queue with "1 of 3"; **Skip** leaves it uncropped).
-4. If added to the **reference slot** and the project has a size/ratio: manual crop opens locked to that ratio (**Skip** allowed).
+3. If added to the **grid** and "auto-crop on add" is on: Crop opens in Corners mode with Find canvas for each new photo in turn (queue with "1 of 3"; **Skip** leaves it uncropped).
+4. If added to the **reference slot** and the project has a size/ratio: Crop opens in Rectangle mode locked to that ratio (**Skip** allowed).
 
 Implementation notes (T8):
 
@@ -148,10 +147,26 @@ Implementation notes (T8):
 Implementation notes (T14):
 
 - `afterAddRoute` (`features/photos/ui/add_photos.dart`) decides what opens after an add, for the project screen's Add photo / Add reference and the project list's Take photo. Photos recovered at start-up (above) don't open anything: they keep the snackbar with **Open**, so launching the app never lands on an unexpected screen.
-- **Review queue:** carried in the review route's query, `…/autocrop?queue=<id>,<id>&of=<total>` (`ReviewQueue`), so nothing global holds it. In queue mode the review screen shows "2 of 3" under its title (not for a single photo) and **Skip**; Apply and Skip go on to the next photo; Cancel, Android back, or finishing the last photo return to the project screen.
+- **Review queue:** carried in the crop route's query, `…/crop?find=canvas&queue=<id>,<id>&of=<total>` (`ReviewQueue`; `…/autocrop` until M3), so nothing global holds it. In queue mode Crop shows "2 of 3" under its title (not for a single photo) and **Skip**; Apply and Skip go on to the next photo; Cancel, Android back, or finishing the last photo return to the project screen.
 - **New reference:** `…/crop?after=add` adds **Skip**; Apply, Skip, Cancel and back all return to the project. The lock starts at the project's ratio, as manual crop always does (§3.7).
 
-### 3.7 Manual crop
+### 3.7 Crop
+
+**Combined in M3** (after T6): Crop/rotate and Auto-crop were two screens, one with an upright rectangle and one with free corners. They are now one **Crop** screen with two modes. The rectangle crop below is **Rectangle** mode; §3.8, the former auto-crop review, is **Corners** mode.
+
+- **Layout.** The top bar has ✕ (Cancel), Crop ("2 of 3" under it in a queue), Reset, Skip (adding photos only) and Apply. A hint line shows "Finding the canvas…", or the low-confidence hint in Corners mode. Below the photo:
+  - a **Rectangle | Corners** switch and **Find canvas**;
+  - Rectangle mode: the straighten row and the ratio chips;
+  - Corners mode: "Drag each corner onto the canvas's corner." and Rotate 90° (plus Copy corners as JSON in debug builds), in a row as tall as Rectangle's two, so the photo doesn't move when switching.
+  - Return applies and Esc cancels in both modes (m3-design §3.3).
+- **Which mode opens:** Rectangle from the photo menu, unless the photo has a perspective crop (not a straightened rectangle), which only Corners can show. Adding grid photos with auto-crop on opens Corners and runs Find canvas (§3.6). Adding a reference opens Rectangle at the project's ratio.
+- **Switching modes** carries the crop over (`crop_modes.dart`):
+  - Rectangle → Corners puts the corners on the rectangle's corners, straightened and turned as shown.
+  - Corners → Rectangle starts from the smallest upright rectangle containing the corners, grown to the current ratio lock (the project's by default), then kept inside the photo. The angle is 0.
+- **Find canvas** runs detection once per visit and switches to Corners with the detected corners. When unsure or failed, they start 5% inset, with the hint. Run again, it restores the detection. It's disabled while running.
+- **Reset**, in either mode, returns to the whole, unturned photo; Rectangle proposes the project's ratio. This replaces the review's Full image and "Reset to detected"; Find canvas does the latter.
+- **Rotate 90°** in Corners turns the photo and the corners with it.
+- **Apply** saves Rectangle's crop as before, or Corners' perspective crop with the project's ratio as the output (§3.8). The perspective note ("Applying a crop replaces it") is gone, since such a photo opens in Corners.
 
 - Crop rectangle over the image with an aspect lock: project ratio (default if set), the ratio presets, or Freeform. Orientation toggle for the lock.
 - Drag corners/edges; pinch/pan the image underneath.
@@ -166,7 +181,9 @@ Implementation notes (T14):
   - Pinch/pan of the photo underneath is deferred (see m1-tasks, later ideas).
   - Verified on the emulator: crop + straighten → Apply renders exactly the region shown; Undo / Redo / Revert from the photo menu; reopening shows the saved crop and angle.
 
-### 3.8 Auto-crop review
+### 3.8 Corners mode (the auto-crop review until M3)
+
+*Since M3 this is Crop's Corners mode (§3.7). The review screen's Full image, Reset (to detected) and Crop manually became Reset, Find canvas and the mode switch. Below is the original M1 design.*
 
 - The photo with the detected quad drawn as an outline and four large draggable handles; a magnifier loupe appears under the finger while dragging.
 - If detection confidence is low, the quad starts slightly inset from the image edges and a hint says "Couldn't find the canvas edges — drag the corners, or crop manually."
@@ -472,7 +489,7 @@ When applying an auto-crop:
 | Rendering | Golden tests: axis-aligned crop, straightened crop, perspective quad, quarter turns |
 | Canvas detection | Unit tests for scoring; evaluation run against fixtures |
 | Widgets | Project list (empty/non-empty), project screen reference slot, size picker, crop handles |
-| Integration (emulator; `integration_test/app_flow_test.dart`, named `m1_flow_test.dart` until M2 T10; T15) | New project → add photo → auto-crop review → apply → undo → redo → revert. Real database (in memory), files (temp folder), rendering and OpenCV detection; only the photo picker is faked, handing over a generated canvas photo (`test/support/synthetic_canvas.dart`, checked on the host by `synthetic_canvas_test.dart`) |
+| Integration (emulator; `integration_test/app_flow_test.dart`, named `m1_flow_test.dart` until M2 T10; T15) | New project → add photo → Crop finds the canvas (auto-crop review until M3) → apply → undo → redo → revert. Real database (in memory), files (temp folder), rendering and OpenCV detection; only the photo picker is faked, handing over a generated canvas photo (`test/support/synthetic_canvas.dart`, checked on the host by `synthetic_canvas_test.dart`) |
 | Migrations | Schema v1 dump committed; harness ready for v2 |
 
 ---

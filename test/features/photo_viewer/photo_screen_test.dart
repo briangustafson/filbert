@@ -189,7 +189,6 @@ void main() {
       await open(tester, c.id);
       expect(await menuItems(tester), [
         'Crop/rotate',
-        'Auto-crop',
         'Export…',
         'Set as reference',
         'Delete',
@@ -199,12 +198,7 @@ void main() {
     testWidgets('the reference: Delete only', (tester) async {
       await images.setAsReference(projectId, a.id);
       await open(tester, a.id);
-      expect(await menuItems(tester), [
-        'Crop/rotate',
-        'Auto-crop',
-        'Export…',
-        'Delete',
-      ]);
+      expect(await menuItems(tester), ['Crop/rotate', 'Export…', 'Delete']);
     });
 
     testWidgets('Undo, Redo, Revert appear only when they apply', (
@@ -215,7 +209,6 @@ void main() {
       await open(tester, c.id);
       expect(await menuItems(tester), [
         'Crop/rotate',
-        'Auto-crop',
         'Undo',
         'Revert to original',
         'Export…',
@@ -227,7 +220,6 @@ void main() {
       expect(images.calls.last, 'undo ${c.id}');
       expect(await menuItems(tester), [
         'Crop/rotate',
-        'Auto-crop',
         'Redo',
         'Export…',
         'Set as reference',
@@ -238,7 +230,6 @@ void main() {
       expect(images.calls.last, 'redo ${c.id}');
       expect(await menuItems(tester), [
         'Crop/rotate',
-        'Auto-crop',
         'Undo',
         'Revert to original',
         'Export…',
@@ -260,7 +251,6 @@ void main() {
       // Back at the original: Undo, but nothing to revert or redo.
       expect(await menuItems(tester), [
         'Crop/rotate',
-        'Auto-crop',
         'Undo',
         'Export…',
         'Set as reference',

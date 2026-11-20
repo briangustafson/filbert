@@ -56,7 +56,7 @@ Agreed with Brian on 2026-11-17.
 - **Gray, Values and Colors are one choice**: turning one on turns the others off (they are alternative ways to show tone). Grid and Compare combine with any of them.
 - Tapping an aid that is off turns it on and opens its panel; tapping it again while its panel is open turns it off. Tapping an aid that is on but whose panel is closed opens its panel (it stays on). Gray has no panel, so it just toggles; turning any aid on closes another aid's open panel. Tapping elsewhere on the photo closes the panel and hides the chrome, as now; Android Back with a panel open closes the panel instead of leaving the screen.
 - While a panel is open the chrome doesn't auto-hide. With the chrome hidden, the aids stay on.
-- Aids stay on while swiping between photos, and apply to whichever photo is shown. Which aids are on is saved per project (`ViewPrefs.on`, §4.2), so they are on again the next time any photo of the project opens, until turned off; panels start closed. (Until 2026-11-18, leaving the photo screen turned them all off.)
+- Aids stay on while swiping between photos, and apply to whichever photo is shown. Grid and the tone aid (Gray, Values or Colors) are saved per project (`ViewPrefs.on`, §4.2), so they are on again the next time any photo of the project opens, until turned off; panels start closed. **Compare is not saved**: it stays on while swiping (and through Crop and Export, which open over the photo screen) but is off once you leave the photo screen (changed in M3: a remembered overlay was confusing on the next visit). (Until 2026-11-18, leaving the photo screen turned all aids off.)
 - **Press and hold** still shows the original, without aids (the plain unedited photo).
 - When zoomed, aids zoom with the photo; grid lines stay the same on-screen width.
 
@@ -102,7 +102,7 @@ Panels are compact (one or two rows) so most of the photo stays visible; on a na
 
 ### 3.6 Menu
 
-Photo menu after M2: Crop/rotate · Auto-crop · Undo · Redo · Revert to original · **Export…** · Set as reference · Delete. Undo, Redo and Revert concern edits only; aids are not part of undo history.
+Photo menu after M2: Crop/rotate · Auto-crop (folded into Crop in M3) · Undo · Redo · Revert to original · **Export…** · Set as reference · Delete. Undo, Redo and Revert concern edits only; aids are not part of undo history.
 
 ---
 
@@ -137,7 +137,7 @@ One row per project that has changed an aid setting. Common columns (`id` UUIDv7
 }
 ```
 
-- `on`: which aids are on; `tone` is `none`, `gray`, `values` or `colors`. Rows without it (written before 2026-11-18) mean all off.
+- `on`: which aids are on; `tone` is `none`, `gray`, `values` or `colors`. Rows without it (written before 2026-11-18) mean all off. `on.compare` is no longer read and is written as `false` (Compare isn't saved, §3.1); older rows may still have `true`.
 - Every field is optional; missing fields take defaults, unknown fields are ignored (forward-compatible), and an unknown `v` falls back to defaults rather than erroring (settings are not worth blocking on).
 - `spacing` is in the project's unit. `compare.imageId` that no longer points at a live photo in the project falls back to the default.
 - Writes are debounced (≈ 500 ms) so dragging the opacity slider doesn't write on every frame. `ViewPrefsRepository.watch` shows a change at once, before it's written; pending writes are flushed when the app is hidden, since Android may then kill it.
