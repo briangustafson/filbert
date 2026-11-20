@@ -4,10 +4,11 @@
 //   swift tool/make_app_icon.swift <artwork.jpg|png>
 //
 // - source.png: the artwork as it is.
-// - full.png: the subject enlarged 1.25× around its centre, for icons shown
+// - full.png: the subject enlarged 1.2× around its centre, for icons shown
 //   whole (macOS, legacy Android).
-// - android_foreground.png: the subject at 0.88×, so the round masks of
-//   Android's adaptive icons (middle 66%) don't clip the flourish.
+// - android_foreground.png: the subject at 0.78×, so the round masks of
+//   Android's adaptive icons (safe circle: the middle 61%) don't clip the
+//   brush's ends, which reach 394 px from the centre.
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -20,7 +21,7 @@ let out = URL(fileURLWithPath: "assets/icon", isDirectory: true)
 try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
 
 /// The subject's centre in the artwork, in pixels from the top left.
-let centre = CGPoint(x: 547, y: 512)
+let centre = CGPoint(x: 510, y: 508)
 
 func render(_ name: String, scale: CGFloat, around c: CGPoint, fill: CGColor?) {
   // Opaque RGB (no alpha channel in the PNG).
@@ -65,5 +66,5 @@ func borderColour() -> CGColor {
 
 let mid = CGPoint(x: size / 2, y: size / 2)
 render("source.png", scale: 1, around: mid, fill: nil)
-render("full.png", scale: 1.25, around: centre, fill: nil)
-render("android_foreground.png", scale: 0.88, around: mid, fill: borderColour())
+render("full.png", scale: 1.2, around: centre, fill: nil)
+render("android_foreground.png", scale: 0.78, around: mid, fill: borderColour())

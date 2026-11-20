@@ -3,9 +3,9 @@
 flutter_launcher_icons:
   image_path: assets/icon/full.png
   android: true
-  # Adaptive icon: the artwork at 0.88× on its own blue, so the launcher's
-  # mask (the middle 66%) keeps the whole F.
-  adaptive_icon_background: "#094871"
+  # Adaptive icon: the artwork at 0.78× on its own teal, so the launcher's
+  # mask (safe circle: the middle 61%) keeps the whole brush.
+  adaptive_icon_background: "#32A6A7"
   adaptive_icon_foreground: assets/icon/android_foreground.png
   adaptive_icon_foreground_inset: 0
   ios: false
