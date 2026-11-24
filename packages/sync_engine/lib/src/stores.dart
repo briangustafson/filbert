@@ -225,8 +225,8 @@ class RemoteNotFound implements Exception {
   String toString() => 'RemoteNotFound($fileId)';
 }
 
-/// Drive's side (m3-design §6.1, §6.2): the flat `appDataFolder`. The Drive
-/// implementation is T8; [FakeRemoteStore] is for tests.
+/// Drive's side (m3-design §6.1, §6.2): the flat `appDataFolder`.
+/// `DriveRemoteStore` in the app (T8); [FakeRemoteStore] in tests.
 abstract interface class RemoteStore {
   /// Changes since [pageToken]; with null, every file (a first sync).
   Future<RemoteChanges> changes(String? pageToken);
@@ -245,6 +245,9 @@ abstract interface class RemoteStore {
 
   /// Uploads an original or thumbnail (resumable on Drive, T8).
   Future<RemoteFile> upload(String name, Uint8List bytes, String mimeType);
+
+  /// An uploaded original's or thumbnail's bytes (for T9's downloads).
+  Future<Uint8List> download(String fileId);
 
   Future<void> delete(String fileId);
 }

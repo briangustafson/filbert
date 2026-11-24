@@ -1,9 +1,13 @@
 import 'package:filbert/app/routes.dart';
 import 'package:filbert/core/auth/auth_service.dart';
+import 'package:filbert/features/sync/data/sync_providers.dart';
 import 'package:filbert/features/sync/data/sync_settings.dart';
 import 'package:filbert/features/sync/ui/sync_settings_section.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:sync_engine/src/testing/fake_remote_store.dart';
+import 'package:sync_engine/src/testing/memory_local_store.dart';
+import 'package:sync_engine/sync_engine.dart';
 
 import '../../support/fake_sync.dart';
 import '../../support/pump_app.dart';
@@ -165,5 +169,42 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(store.settings.deviceName, 'Studio phone');
+  });
+
+  testWidgets('Sync now (debug) runs one pass and shows what moved', (
+    tester,
+  ) async {
+    store = FakeSyncSettingsStore(
+      const SyncSettings(enabled: true, account: 'painter@example.com'),
+    );
+    final remote = FakeRemoteStore();
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pumpFilbertApp(
+      tester,
+      auth: auth,
+      syncSettings: store,
+      initialLocation: Routes.settings,
+      overrides: [
+        syncEngineProvider.overrideWithValue(
+          SyncEngine(
+            local: MemoryLocalStore(),
+            remote: remote,
+            deviceId: 'd1',
+            now: () => 0,
+          ),
+        ),
+      ],
+    );
+    await tester.tap(find.text('Sync now (debug)'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('SyncReport(pulled 0'), findsOneWidget);
+    expect(remote.requests.first, 'changes all');
+
+    remote.failNext();
+    await tester.tap(find.text('Sync now (debug)'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Sync failed'), findsOneWidget);
   });
 }

@@ -236,7 +236,9 @@ appDataFolder/
   thumb-<blob-uuid>.jpg           512 px thumbnail of the unedited original (§6.5)
 ```
 
-- Each file has `appProperties` `{kind, id}`, so a change can be identified without downloading it.
+- Each file has `appProperties` `{kind, id}`, so a change can be identified without downloading it (originals and thumbnails: kind `blob` / `thumb`, id the blob id).
+- **`DriveRemoteStore`** (T8, `lib/features/sync/data/`): `googleapis` Drive v3 over `DriveAuthClient`, an `http` client that adds the access token from `AuthService` to each request and, after a 401, drops it and retries once. A first sync takes the start page token before listing every file, so nothing changed during the listing is missed; it also writes `manifest.json` if there's none (nothing reads it yet). Later syncs follow the Changes pages (`spaces=appDataFolder`, removed and trashed files reported as removed) to `newStartPageToken`. `read` gets the version before the content, so a file changed in between is read again next pass. Offline, timeouts, 5xx, 403 and 429 are `RemoteUnavailable`; a 404 on a file is `RemoteNotFound`. `RemoteStore.download` was added for T9's downloads.
+- Until the sync controller (T9), **Sync now (debug)** in Settings → Sync (debug builds only) runs one pass and shows its report.
 - Drive allows two files with one name. A retried create could make a duplicate; the engine looks up a record's file by name before creating it, and when it finds duplicates keeps the one with the highest `version` and deletes the rest.
 
 ### 6.3 One sync pass
@@ -262,7 +264,7 @@ appDataFolder/
   - **Echoes**: a changed file at the version `sync_state` already has is this device's own push; it isn't read.
   - **What a failure keeps**: the pull is one batch with its page token, then each upload and each pushed record saves its state as it goes, so a failed request (`RemoteUnavailable`) stops the pass without losing work and the next pass carries on.
   - **Blobs**: an original found on Drive by name (an upload whose reply was lost) isn't uploaded again. Resuming a half-done upload is the Drive store's (T8); the engine only retries.
-- Drive v3 has no conditional update (to verify in T8), so step 3's re-read leaves a small race between one person's devices; a lost race overwrites the other device's push, which is the accepted cost (it needs two devices pushing the same record within the same second).
+- Drive v3 has no conditional update (T8: its files carry no ETag, and update takes no precondition), so step 3's re-read leaves a small race between one person's devices; a lost race overwrites the other device's push, which is the accepted cost (it needs two devices pushing the same record within the same second).
 - Turning sync on with projects already on the device merges them: everything local is pushed, everything remote is pulled. Nothing is deleted.
 
 ### 6.4 Conflicts
@@ -279,7 +281,7 @@ appDataFolder/
 - Originals and thumbnails are immutable, so they never conflict: upload once, download once.
 - **Thumbnails on Drive** (decided in T6): of the unedited original, uploaded once with it, so they never go stale. A device shows one with the image's crop and rotation applied locally (T9), so the grid is cropped from the start; it's softer for a tight crop until the original arrives and the usual thumbnail is rendered from it. (Uploading the edited view instead would mean a new upload per edit.)
 - **Downloads** (proposal 2): after a pull, thumbnails of new images download first (so the grids fill in), then originals, newest project first. Previews are rendered locally from the original, as now. A photo opened, cropped or exported before its original arrives shows its thumbnail with a progress ring and downloads it next.
-- Uploads use Drive's resumable upload, so an interrupted 15 MB original resumes instead of restarting.
+- Uploads use Drive's resumable upload in 4 MB pieces, so a failed piece is retried without starting over. An upload cut off by quitting or losing the connection starts again on the next pass (decided in T8: keeping the upload session across passes would need stored state for at most ~15 MB saved).
 - **Purge on Drive**: a device's purge job (m1-design §4.4) also deletes the Drive blob and thumbnail of images tombstoned for over **60 days** (local purge stays at 30, so a device can restore from Drive for a month after purging locally). A restored image whose blob is gone everywhere shows "This photo is no longer available" in place of the photo (`blob_sync.state = missing`). (Resolves m1-design §4.4's open restore case.)
 
 ### 6.6 When sync runs
@@ -291,7 +293,7 @@ appDataFolder/
 
 ### 6.7 Sign-in (`AuthService`)
 
-- `google_sign_in` 7.x: sign in (authentication), then ask for scopes when needed (authorization): `drive.appdata` when turning on sync; `photospicker.mediaitems.readonly` at first Google Photos import (macOS only, so Android only ever asks for Drive). API calls use the access token through `extension_google_sign_in_as_googleapis_auth` and `googleapis` (Drive v3).
+- `google_sign_in` 7.x: sign in (authentication), then ask for scopes when needed (authorization): `drive.appdata` when turning on sync; `photospicker.mediaitems.readonly` at first Google Photos import (macOS only, so Android only ever asks for Drive). API calls use the access token through `DriveAuthClient` (§6.2) and `googleapis` (Drive v3).
 - Tokens stay with the platform SDK (Credential Manager on Android, the keychain on macOS); Filbert stores only the account email for display.
 - **`AuthService`** (T7, `lib/core/auth/`): `restore()` without UI, `signIn()` with Google's account picker, `authorizeDrive()` (consent screen only if not granted yet), `driveAccessToken()` without UI for T8/T9, `signOut()`. Drive access is asked for only by Turn on; the launch-time `restore()` is called by the sync controller's launch trigger (T9), only when sync is on. The client ids are committed in `lib/core/auth/google_client_ids.dart` (public identifiers; the Mac's URL scheme is the reversed iOS id in `AppInfo.xcconfig`).
 - **Scopes** (T7): `drive.appdata` is **non-sensitive**, so publishing needs only basic brand verification. `photospicker.mediaitems.readonly`'s classification isn't published; Google requires the OAuth verification review for Photos API apps, and T12 records the console's label. See `docs/google-cloud-setup.md`.
@@ -396,8 +398,8 @@ Approved by Brian (2026-11-18); versions are checked in the task that adds them.
 | `desktop_drop` | Drag and drop on macOS (0.8; see §3.4) | T3 |
 | `device_info_plus` | Default device name | T6 |
 | `google_sign_in` | Sign-in and scopes (7.2) | T7 |
-| `googleapis`, `extension_google_sign_in_as_googleapis_auth` | Drive v3 client using the sign-in token (added with the Drive store; T7 needs neither) | T8 |
-| `http` | Photos Picker REST, resumable uploads | T8, T12 |
+| `googleapis` | Drive v3 client (19.0; `extension_google_sign_in_as_googleapis_auth` dropped in T8: `DriveAuthClient` adds the token) | T8 |
+| `http` | The Drive client (1.6), Photos Picker REST | T8, T12 |
 | `workmanager` | Android background sync | T11 |
 | `url_launcher` | Open the Photos picker (Show in Finder is native, §3.5) | T12 |
 | `crypto` | SHA-256 for record hashes (§5), in `sync_engine` | T5 |
@@ -408,7 +410,7 @@ Approved by Brian (2026-11-18); versions are checked in the task that adds them.
 
 | Item | When |
 |---|---|
-| Does Drive v3 support a conditional update (If-Match or similar)? If so, use it in §6.3 step 3 | T8 |
+| ~~Does Drive v3 support a conditional update (If-Match or similar)?~~ No (T8, §6.3) | — |
 | Can `google_sign_in` give an access token in a WorkManager isolate? | T11 |
 | ~~Classification of `drive.appdata`~~ non-sensitive, basic verification only (T7, §6.7); `photospicker.mediaitems.readonly`'s label from the console | T12 |
 | ~~Does HEIC import work on macOS through the existing decode path?~~ Yes (T1, §3.1) | — |

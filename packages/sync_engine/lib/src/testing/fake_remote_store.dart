@@ -126,6 +126,12 @@ class FakeRemoteStore implements RemoteStore {
       _request('upload', name, () => _create(name, bytes));
 
   @override
+  Future<Uint8List> download(String fileId) => _request('download', fileId, () {
+    _fileOrThrow(fileId);
+    return _files[fileId]!.bytes;
+  });
+
+  @override
   Future<void> delete(String fileId) => _request('delete', fileId, () {
     if (_files.remove(fileId) != null) _log.add(fileId);
   });

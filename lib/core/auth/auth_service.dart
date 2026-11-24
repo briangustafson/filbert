@@ -62,6 +62,10 @@ abstract interface class AuthService {
   /// user has to sign in or grant access again (T8, T9).
   Future<String?> driveAccessToken();
 
+  /// Drops [accessToken] from the sign-in SDK's cache after Drive refused
+  /// it, so the next [driveAccessToken] gets a fresh one.
+  Future<void> clearDriveToken(String accessToken);
+
   /// Forgets the account on this device. Local data stays.
   Future<void> signOut();
 }
@@ -126,9 +130,19 @@ class GoogleAuthService implements AuthService {
   }
 
   @override
-  Future<String?> driveAccessToken() async =>
-      (await _account?.authorizationClient.authorizationForScopes(_scopes))
-          ?.accessToken;
+  Future<String?> driveAccessToken() async {
+    // After a launch, the account comes back without UI first.
+    if (_account == null) await restore();
+    return (await _account?.authorizationClient.authorizationForScopes(
+      _scopes,
+    ))?.accessToken;
+  }
+
+  @override
+  Future<void> clearDriveToken(String accessToken) async =>
+      _account?.authorizationClient.clearAuthorizationToken(
+        accessToken: accessToken,
+      );
 
   @override
   Future<void> signOut() async {
