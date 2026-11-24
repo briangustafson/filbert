@@ -69,11 +69,12 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
   - Depends on: T5, T7
   - *Result:* `DriveRemoteStore` on `googleapis` 19.0 with `DriveAuthClient` (token per request, one retry after a 401), so `extension_google_sign_in_as_googleapis_auth` isn't used; `RemoteStore.download` added for T9; `manifest.json` written on a first sync. Decided: resumable uploads in 4 MB pieces, restarting on the next pass after an interruption; hand-written Drive-shaped test responses, no recordings; Sync now (debug) in Settings until T9. Answered: Drive v3 has no conditional update (m3-design §6.3, §14). Checked: a project made on the Mac reached your phone, and a rename on the phone reached the Mac, with Sync now (debug); photos show the broken-image tile until T9 downloads them. 697 tests pass.
 
-- [ ] **T9 — Sync controller, status and downloads**
+- [x] **T9 — Sync controller, status and downloads**
   - `SyncController`: triggers (launch, resume, debounced change, every 15 min, Sync now), one pass at a time, backoff, status in Settings and the project-list progress bar (§6.6, §7.1).
   - `BlobDownloader`: thumbnails then originals, priority for an opened photo, placeholder while downloading; Drive purge at 60 days and the "no longer available" case (§6.5).
   - *Done when:* widget tests with fakes; a project created on the Mac appears with its photos on the emulator and an edit on the emulator shows on the Mac.
   - Depends on: T8
+  - *Result:* `SyncController` (launch, resume, 5 s after a change, every 15 min, Sync now; one pass at a time; backoff from 30 s to 15 min), `BlobDownloader`, `BlobAvailabilityService` and `DrivePurge` (m3-design §6.5–6.6); Settings → Sync shows the status, Sync now and Sign in when Google wants a new sign-in; the debug button is gone. Decided: Drive thumbnails in `blob-thumbs/`, deleted when the original arrives; photos render from them, cropped, until then; Crop and Export wait for the original; local changes are noticed from Drift's table updates; `RemoteUnavailable` carries a reason. Found in the manual check: Riverpod 3 paused the unlistened controller, so the app didn't sync at launch; the app now listens to it, with a test. Checked: photos from the Mac downloaded on your phone, and edits reached the other device, without tapping Sync now. 727 tests pass.
 
 - [ ] **T10 — Conflicts UI**
   - Badge on the project list, Conflicts screen with side-by-side cards (project fields; image crops rendered from the original; deletions), newest preselected, Keep selected (§7.2).

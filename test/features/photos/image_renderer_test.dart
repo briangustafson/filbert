@@ -203,4 +203,31 @@ void main() {
       throwsA(isA<UnsupportedImageException>()),
     );
   });
+
+  test(
+    'before the original downloads, renders from the Drive thumbnail',
+    () async {
+      final image = await stored(
+        'no_exif.jpg',
+        edits: const Edits(quarterTurns: 1),
+      );
+      final blob = files.blobFile(image.blobId, 'jpg');
+      await files.putBlobThumb(image.blobId, await blob.readAsBytes());
+      await blob.rename('${root.path}/elsewhere.jpg');
+
+      final fromThumb = await renderer.thumbnail(image, 64);
+      expect(fromThumb.path, endsWith('-64-drive.jpg'));
+
+      await File('${root.path}/elsewhere.jpg').rename(blob.path);
+      final fromOriginal = await renderer.thumbnail(image, 64);
+      expect(fromOriginal.path, endsWith('-64.jpg'));
+      expect(await sizeOf(fromOriginal), await sizeOf(fromThumb));
+    },
+  );
+
+  test('with neither file here, OriginalNotHereException', () async {
+    final image = await stored('no_exif.jpg');
+    await files.deleteBlob(image.blobId, 'jpg');
+    expect(renderer.preview(image), throwsA(isA<OriginalNotHereException>()));
+  });
 }

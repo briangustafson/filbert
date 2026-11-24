@@ -15,6 +15,17 @@ import '../domain/project_image.dart';
 
 part 'image_renderer.g.dart';
 
+/// Neither the original nor its Drive thumbnail is on this device yet
+/// (m3-design §6.5).
+class OriginalNotHereException implements Exception {
+  const OriginalNotHereException(this.blobId);
+
+  final String blobId;
+
+  @override
+  String toString() => 'OriginalNotHereException($blobId)';
+}
+
 /// Thumbnail size used everywhere in M1 (grid tiles, project cards, the
 /// reference slot), so each image has one cached thumbnail.
 const standardThumbnailPx = 512;
@@ -62,19 +73,16 @@ class OpenCvImageRenderer implements ImageRenderer {
   Future<File> preview(ProjectImage image) => _render(
     image,
     previewLongEdge,
-    File(
-      '${_files.previewsDir.path}/${image.id}-${editsHash(image.edits)}.jpg',
-    ),
+    _files.previewsDir,
+    '${image.id}-${editsHash(image.edits)}',
   );
 
   @override
   Future<File> detail(ProjectImage image) => _render(
     image,
     detailLongEdge,
-    File(
-      '${_files.previewsDir.path}/'
-      '${image.id}-${editsHash(image.edits)}-$detailLongEdge.jpg',
-    ),
+    _files.previewsDir,
+    '${image.id}-${editsHash(image.edits)}-$detailLongEdge',
   );
 
   @override
@@ -83,35 +91,64 @@ class OpenCvImageRenderer implements ImageRenderer {
     return _render(
       image,
       px,
-      File(
-        '${_files.thumbsDir.path}/'
-        '${image.id}-${editsHash(image.edits)}-$px.jpg',
-      ),
+      _files.thumbsDir,
+      '${image.id}-${editsHash(image.edits)}-$px',
     );
   }
 
-  Future<File> _render(ProjectImage image, int maxLongEdge, File target) {
-    final key = target.path;
+  /// Renders from the original, or, until it has downloaded, from its Drive
+  /// thumbnail (m3-design §6.5): crops are relative to the photo's size, so
+  /// they apply to either. Renders from the thumbnail are cached under their
+  /// own name (`-drive`), so the original's sharper render replaces them.
+  Future<File> _render(
+    ProjectImage image,
+    int maxLongEdge,
+    Directory dir,
+    String name,
+  ) {
+    final key = '${dir.path}/$name';
     final pending = _inFlight[key];
     if (pending != null) return pending;
     // A block body, not `=>`: whenComplete awaits a returned future, and
     // remove() returns this very future, which would never complete.
-    final future = _renderUncached(image, maxLongEdge, target).whenComplete(() {
-      _inFlight.remove(key);
-    });
+    final future = _renderFromSource(image, maxLongEdge, dir, name)
+        .whenComplete(() {
+          _inFlight.remove(key);
+        });
     _inFlight[key] = future;
     return future;
   }
 
+  Future<File> _renderFromSource(
+    ProjectImage image,
+    int maxLongEdge,
+    Directory dir,
+    String name,
+  ) async {
+    final extension = extensionForMimeType[image.mimeType];
+    if (extension == null) {
+      throw UnsupportedImageException('Unknown type ${image.mimeType}');
+    }
+    var source = _files.blobFile(image.blobId, extension);
+    var target = File('${dir.path}/$name.jpg');
+    if (!await source.exists()) {
+      source = _files.blobThumbFile(image.blobId);
+      if (!await source.exists()) throw OriginalNotHereException(image.blobId);
+      target = File('${dir.path}/$name-drive.jpg');
+    }
+    return _renderUncached(image, source, maxLongEdge, target);
+  }
+
   Future<File> _renderUncached(
     ProjectImage image,
+    File source,
     int maxLongEdge,
     File target,
   ) async {
     if (await target.exists()) return target;
     await _acquire();
     try {
-      return await _renderNow(image, maxLongEdge, target);
+      return await _renderNow(image, source, maxLongEdge, target);
     } finally {
       _release();
     }
@@ -137,14 +174,11 @@ class OpenCvImageRenderer implements ImageRenderer {
 
   Future<File> _renderNow(
     ProjectImage image,
+    File source,
     int maxLongEdge,
     File target,
   ) async {
-    final extension = extensionForMimeType[image.mimeType];
-    if (extension == null) {
-      throw UnsupportedImageException('Unknown type ${image.mimeType}');
-    }
-    final bytes = await _files.blobFile(image.blobId, extension).readAsBytes();
+    final bytes = await source.readAsBytes();
     final (rgba, plan) = await decodeForRender(bytes, image.edits, maxLongEdge);
 
     final jpeg = await _renderInIsolate(rgba, plan);

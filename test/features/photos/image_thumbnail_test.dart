@@ -1,11 +1,13 @@
 import 'package:filbert/features/photos/data/image_renderer.dart';
 import 'package:filbert/features/photos/ui/image_thumbnail.dart';
+import 'package:filbert/features/sync/data/blob_availability.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../support/fake_photos.dart';
 import '../../support/fake_project_repository.dart';
+import '../../support/fake_sync.dart';
 
 void main() {
   Future<FakeImageRenderer> pumpThumb(
@@ -16,7 +18,12 @@ void main() {
     final image = FakeImageRepository(FakeProjectRepository()).seed('p');
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [imageRendererProvider.overrideWithValue(renderer)],
+        overrides: [
+          imageRendererProvider.overrideWithValue(renderer),
+          blobAvailabilityServiceProvider.overrideWithValue(
+            FakeBlobAvailability(),
+          ),
+        ],
         child: MaterialApp(
           home: SizedBox(
             width: 100,

@@ -17,6 +17,18 @@ abstract interface class FileStore {
   /// Deletes a blob. No-op if it doesn't exist.
   Future<void> deleteBlob(String blobId, String extension);
 
+  /// Writes a downloaded original (m3-design §6.5), atomically.
+  Future<File> putBlobBytes(String blobId, String extension, List<int> bytes);
+
+  /// The Drive thumbnail of an original not downloaded yet (m3-design
+  /// §6.5): `blob-thumbs/<blobId>.jpg`, deleted once the original is here.
+  File blobThumbFile(String blobId);
+
+  Future<File> putBlobThumb(String blobId, List<int> bytes);
+
+  /// No-op if it doesn't exist.
+  Future<void> deleteBlobThumb(String blobId);
+
   /// Thumbnails of edited views: `<imageId>-<editsHash>-<px>.jpg`.
   Directory get thumbsDir;
 
@@ -37,6 +49,7 @@ abstract interface class FileStore {
 class LocalFileStore implements FileStore {
   LocalFileStore({required Directory supportDir, required Directory cacheDir})
     : _blobsDir = Directory('${supportDir.path}/blobs'),
+      _blobThumbsDir = Directory('${supportDir.path}/blob-thumbs'),
       thumbsDir = Directory('${cacheDir.path}/thumbs'),
       previewsDir = Directory('${cacheDir.path}/previews'),
       exportsDir = Directory('${cacheDir.path}/exports');
@@ -52,6 +65,7 @@ class LocalFileStore implements FileStore {
   }
 
   final Directory _blobsDir;
+  final Directory _blobThumbsDir;
 
   @override
   final Directory thumbsDir;
@@ -102,6 +116,40 @@ class LocalFileStore implements FileStore {
   Future<void> deleteBlob(String blobId, String extension) async {
     final file = blobFile(blobId, extension);
     if (await file.exists()) await file.delete();
+  }
+
+  @override
+  Future<File> putBlobBytes(String blobId, String extension, List<int> bytes) =>
+      _writeAtomically(blobFile(blobId, extension), bytes);
+
+  @override
+  File blobThumbFile(String blobId) =>
+      File('${_blobThumbsDir.path}/$blobId.jpg');
+
+  @override
+  Future<File> putBlobThumb(String blobId, List<int> bytes) =>
+      _writeAtomically(blobThumbFile(blobId), bytes);
+
+  @override
+  Future<void> deleteBlobThumb(String blobId) async {
+    final file = blobThumbFile(blobId);
+    if (await file.exists()) await file.delete();
+  }
+
+  /// Writes to a temp file in the same directory, then renames it, so the
+  /// file appears complete or not at all.
+  static Future<File> _writeAtomically(File target, List<int> bytes) async {
+    await target.parent.create(recursive: true);
+    final temp = File(
+      '${target.parent.path}/.${target.uri.pathSegments.last}.tmp',
+    );
+    try {
+      await temp.writeAsBytes(bytes, flush: true);
+      return await temp.rename(target.path);
+    } catch (_) {
+      if (await temp.exists()) await temp.delete();
+      rethrow;
+    }
   }
 
   @override

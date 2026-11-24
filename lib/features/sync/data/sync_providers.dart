@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show TableUpdateQuery;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sync_engine/sync_engine.dart';
 
@@ -10,8 +11,10 @@ import '../../photos/data/image_renderer.dart';
 import '../../photos/data/image_repository.dart';
 import '../../photos/domain/project_image.dart';
 import '../../settings/settings_screen.dart' show appVersionProvider;
+import 'blob_downloader.dart';
 import 'drift_local_store.dart';
 import 'drive_client.dart';
+import 'drive_purge.dart';
 import 'drive_remote_store.dart';
 
 part 'sync_providers.g.dart';
@@ -59,4 +62,40 @@ SyncEngine syncEngine(Ref ref) => SyncEngine(
   remote: ref.watch(remoteStoreProvider),
   deviceId: ref.watch(deviceInfoProvider).deviceId,
   now: () => ref.read(clockProvider).now().millisecondsSinceEpoch,
+);
+
+/// Downloads other devices' originals (m3-design §6.5).
+@Riverpod(keepAlive: true)
+BlobDownloader blobDownloader(Ref ref) {
+  final downloader = BlobDownloader(
+    db: ref.watch(databaseProvider),
+    files: ref.watch(fileStoreProvider),
+    remote: ref.watch(remoteStoreProvider),
+    local: ref.watch(localStoreProvider),
+  );
+  ref.onDispose(downloader.dispose);
+  return downloader;
+}
+
+/// True while originals are downloading: the project list's progress bar.
+@Riverpod(keepAlive: true)
+Stream<bool> downloading(Ref ref) => ref.watch(blobDownloaderProvider).active;
+
+/// Fires on every write to synced records: projects, images, view prefs
+/// (m3-design §6.6, the debounced trigger). A pass's own writes fire too;
+/// the controller ignores those.
+@Riverpod(keepAlive: true)
+Raw<Stream<void>> localChanges(Ref ref) {
+  final db = ref.watch(databaseProvider);
+  return db.tableUpdates(
+    TableUpdateQuery.onAllTables([db.projects, db.images, db.viewPrefs]),
+  );
+}
+
+@Riverpod(keepAlive: true)
+DrivePurge drivePurge(Ref ref) => DrivePurge(
+  db: ref.watch(databaseProvider),
+  remote: ref.watch(remoteStoreProvider),
+  local: ref.watch(localStoreProvider),
+  clock: ref.watch(clockProvider),
 );

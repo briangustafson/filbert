@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:filbert/core/auth/auth_service.dart';
+import 'package:filbert/features/sync/data/blob_availability.dart';
+import 'package:filbert/features/sync/data/blob_downloader.dart';
+import 'package:filbert/features/sync/data/drive_purge.dart';
 import 'package:filbert/features/sync/data/sync_settings.dart';
 
 /// An [AuthService] whose answers each test sets.
@@ -68,10 +71,20 @@ class FakeSyncSettingsStore implements SyncSettingsStore {
 
   SyncSettings get settings => _settings;
 
+  /// Subscribes to changes before sending the current settings, so none
+  /// made in between is lost.
   @override
-  Stream<SyncSettings> watch() async* {
-    yield _settings;
-    yield* _changes.stream;
+  Stream<SyncSettings> watch() {
+    StreamSubscription<SyncSettings>? changes;
+    late final StreamController<SyncSettings> out;
+    out = StreamController<SyncSettings>(
+      onListen: () {
+        changes = _changes.stream.listen(out.add);
+        out.add(_settings);
+      },
+      onCancel: () => changes?.cancel(),
+    );
+    return out.stream;
   }
 
   @override
@@ -102,8 +115,78 @@ class FakeSyncSettingsStore implements SyncSettingsStore {
     ),
   );
 
+  @override
+  Future<void> setLastSyncAt(int millis) async => _set(
+    SyncSettings(
+      enabled: _settings.enabled,
+      account: _settings.account,
+      deviceName: _settings.deviceName,
+      lastSyncAt: millis,
+    ),
+  );
+
   void _set(SyncSettings settings) {
     _settings = settings;
     _changes.add(settings);
   }
+}
+
+/// Every photo's original is here unless a test says otherwise.
+class FakeBlobAvailability implements BlobAvailabilityService {
+  final byBlob = <String, StreamController<BlobAvailability>>{};
+
+  /// Sets [blobId]'s availability (a broadcast to current watchers).
+  void set(String blobId, BlobAvailability availability) {
+    _latest[blobId] = availability;
+    (byBlob[blobId] ??= StreamController.broadcast()).add(availability);
+  }
+
+  final _latest = <String, BlobAvailability>{};
+
+  @override
+  Stream<BlobAvailability> watch(String blobId, String mimeType) async* {
+    yield _latest[blobId] ?? BlobAvailability.original;
+    yield* (byBlob[blobId] ??= StreamController.broadcast()).stream;
+  }
+}
+
+/// Records what the controller asks of the downloader.
+class FakeBlobDownloader implements BlobDownloader {
+  var runs = 0;
+  final prioritized = <String>[];
+  final _active = StreamController<bool>.broadcast();
+  final _updates = StreamController<String>.broadcast();
+
+  void setActive(bool active) => _active.add(active);
+
+  @override
+  Future<void> run() async => runs++;
+
+  @override
+  void prioritize(String blobId) => prioritized.add(blobId);
+
+  @override
+  Stream<bool> get active => _active.stream;
+
+  @override
+  bool get isActive => false;
+
+  @override
+  Stream<String> get updates => _updates.stream;
+
+  @override
+  void dispose() {}
+}
+
+class FakeDrivePurge implements DrivePurge {
+  var runs = 0;
+
+  @override
+  Future<int> runIfDue() async {
+    runs++;
+    return 0;
+  }
+
+  @override
+  Future<int> run() => runIfDue();
 }

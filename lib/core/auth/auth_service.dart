@@ -133,16 +133,14 @@ class GoogleAuthService implements AuthService {
   Future<String?> driveAccessToken() async {
     // After a launch, the account comes back without UI first.
     if (_account == null) await restore();
-    return (await _account?.authorizationClient.authorizationForScopes(
-      _scopes,
-    ))?.accessToken;
+    return (await _account?.authorizationClient.authorizationForScopes(_scopes))
+        ?.accessToken;
   }
 
   @override
-  Future<void> clearDriveToken(String accessToken) async =>
-      _account?.authorizationClient.clearAuthorizationToken(
-        accessToken: accessToken,
-      );
+  Future<void> clearDriveToken(String accessToken) async => _account
+      ?.authorizationClient
+      .clearAuthorizationToken(accessToken: accessToken);
 
   @override
   Future<void> signOut() async {

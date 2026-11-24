@@ -65,7 +65,7 @@ final class ThumbnailFileProvider
   }
 }
 
-String _$thumbnailFileHash() => r'9fd64d0a4d70e6cfb4ee2d5fe42051317b7971fb';
+String _$thumbnailFileHash() => r'0c37bcdd00d193215e100eb434767b452f349899';
 
 /// The cached thumbnail file of [image]'s edited view, rendering it if
 /// needed. Keyed by the whole image, so new edits give a new thumbnail.

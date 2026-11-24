@@ -68,7 +68,7 @@ final class PreviewFileProvider
   }
 }
 
-String _$previewFileHash() => r'63e68f840a73206f4c89164e17f10ef3b7009272';
+String _$previewFileHash() => r'3e0957c95cf03153a927fa00f631138222acde21';
 
 /// The display render of [image] (m1-design §5.1). Keyed by the whole
 /// image, so new edits give a new file; pass `image.withEdits(Edits.none)`
@@ -150,7 +150,7 @@ final class DetailFileProvider
   }
 }
 
-String _$detailFileHash() => r'a76c28a1777a318e5ddf1e26a58f79a909363b7e';
+String _$detailFileHash() => r'85a39e065e92a172172ff1655b9418a4647b4d2e';
 
 /// The sharper render used when zoomed in past the preview's resolution.
 

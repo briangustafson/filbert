@@ -9,6 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../photo_viewer/photo_page.dart' show PhotoMissingNotice;
+import '../sync/data/blob_availability.dart';
+import '../sync/data/sync_providers.dart';
 import '../../app/layout.dart';
 import '../../app/routes.dart';
 import '../../app/shortcuts.dart';
@@ -84,6 +87,24 @@ class CropScreen extends ConsumerWidget {
       );
     } else if (project.value == null || image == null) {
       page = EditorScaffold(body: _Missing(projectId: projectId));
+    } else if (ref
+            .watch(blobAvailabilityProvider(image.blobId, image.mimeType))
+            .value
+        case final availability?
+        when availability != BlobAvailability.original) {
+      // Crops are drawn on the full photo, not Drive's 512 px thumbnail
+      // (m3-design §6.5): wait for it, and fetch it next.
+      if (availability != BlobAvailability.missing) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => ref.read(blobDownloaderProvider).prioritize(image.blobId),
+        );
+      }
+      page = EditorScaffold(
+        body: _WaitingForOriginal(
+          projectId: projectId,
+          missing: availability == BlobAvailability.missing,
+        ),
+      );
     } else {
       page = _CropView(
         key: ValueKey(image.id),
@@ -865,6 +886,36 @@ class _Missing extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const Text('This photo no longer exists.'),
+        const SizedBox(height: 16),
+        FilledButton.tonal(
+          onPressed: () => context.go(Routes.project(projectId)),
+          child: const Text('Back'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _WaitingForOriginal extends StatelessWidget {
+  const _WaitingForOriginal({required this.projectId, required this.missing});
+
+  static const downloading = 'Downloading the full photo…';
+
+  final String projectId;
+  final bool missing;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (missing)
+          const Text(PhotoMissingNotice.text)
+        else ...[
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          const Text(downloading),
+        ],
         const SizedBox(height: 16),
         FilledButton.tonal(
           onPressed: () => context.go(Routes.project(projectId)),
