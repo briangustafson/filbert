@@ -13,7 +13,8 @@ abstract interface class DeviceInfo {
   String get deviceId;
 
   /// Human-readable name for sync conflict UI (m3-design proposal 5); set on
-  /// the first launch with sync (T6).
+  /// the first launch with sync (T6). As loaded at launch: Settings → Sync
+  /// edits it in `app_meta` (`syncSettingsProvider` has the current name).
   String? get deviceName;
 }
 

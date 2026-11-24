@@ -9,23 +9,26 @@ part of 'view_aids_providers.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 /// Which aids are on for the photo screen of [projectId], and its open
-/// panel. The aids come from the project's view prefs, so they are on again
-/// when the screen reopens; the panel lives while the screen watches this,
-/// so each visit starts with panels closed (m2-design §3.1).
+/// panel. Grid and the tone aid come from the project's view prefs, so they
+/// are on again when the screen reopens. Compare and the panel live only
+/// while the screen watches this, so each visit starts with Compare off and
+/// panels closed (m2-design §3.1).
 
 @ProviderFor(ViewAidsState)
 final viewAidsStateProvider = ViewAidsStateFamily._();
 
 /// Which aids are on for the photo screen of [projectId], and its open
-/// panel. The aids come from the project's view prefs, so they are on again
-/// when the screen reopens; the panel lives while the screen watches this,
-/// so each visit starts with panels closed (m2-design §3.1).
+/// panel. Grid and the tone aid come from the project's view prefs, so they
+/// are on again when the screen reopens. Compare and the panel live only
+/// while the screen watches this, so each visit starts with Compare off and
+/// panels closed (m2-design §3.1).
 final class ViewAidsStateProvider
     extends $NotifierProvider<ViewAidsState, ViewAids> {
   /// Which aids are on for the photo screen of [projectId], and its open
-  /// panel. The aids come from the project's view prefs, so they are on again
-  /// when the screen reopens; the panel lives while the screen watches this,
-  /// so each visit starts with panels closed (m2-design §3.1).
+  /// panel. Grid and the tone aid come from the project's view prefs, so they
+  /// are on again when the screen reopens. Compare and the panel live only
+  /// while the screen watches this, so each visit starts with Compare off and
+  /// panels closed (m2-design §3.1).
   ViewAidsStateProvider._({
     required ViewAidsStateFamily super.from,
     required String super.argument,
@@ -70,12 +73,13 @@ final class ViewAidsStateProvider
   }
 }
 
-String _$viewAidsStateHash() => r'186ba122f1ba73e325bde03f791e3f018b187a73';
+String _$viewAidsStateHash() => r'0d629265d9619b7ed9864d983685f1b6a1ec8665';
 
 /// Which aids are on for the photo screen of [projectId], and its open
-/// panel. The aids come from the project's view prefs, so they are on again
-/// when the screen reopens; the panel lives while the screen watches this,
-/// so each visit starts with panels closed (m2-design §3.1).
+/// panel. Grid and the tone aid come from the project's view prefs, so they
+/// are on again when the screen reopens. Compare and the panel live only
+/// while the screen watches this, so each visit starts with Compare off and
+/// panels closed (m2-design §3.1).
 
 final class ViewAidsStateFamily extends $Family
     with
@@ -96,9 +100,10 @@ final class ViewAidsStateFamily extends $Family
       );
 
   /// Which aids are on for the photo screen of [projectId], and its open
-  /// panel. The aids come from the project's view prefs, so they are on again
-  /// when the screen reopens; the panel lives while the screen watches this,
-  /// so each visit starts with panels closed (m2-design §3.1).
+  /// panel. Grid and the tone aid come from the project's view prefs, so they
+  /// are on again when the screen reopens. Compare and the panel live only
+  /// while the screen watches this, so each visit starts with Compare off and
+  /// panels closed (m2-design §3.1).
 
   ViewAidsStateProvider call(String projectId) =>
       ViewAidsStateProvider._(argument: projectId, from: this);
@@ -108,9 +113,10 @@ final class ViewAidsStateFamily extends $Family
 }
 
 /// Which aids are on for the photo screen of [projectId], and its open
-/// panel. The aids come from the project's view prefs, so they are on again
-/// when the screen reopens; the panel lives while the screen watches this,
-/// so each visit starts with panels closed (m2-design §3.1).
+/// panel. Grid and the tone aid come from the project's view prefs, so they
+/// are on again when the screen reopens. Compare and the panel live only
+/// while the screen watches this, so each visit starts with Compare off and
+/// panels closed (m2-design §3.1).
 
 abstract class _$ViewAidsState extends $Notifier<ViewAids> {
   late final _$args = ref.$arg as String;

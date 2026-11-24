@@ -55,12 +55,13 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
   - Depends on: T5
   - *Result:* schema 3 with `sync_state` (+ `held_json`), `blob_sync`, `sync_conflicts`, and the sync `app_meta` keys; migration test v2 → v3. `DriftLocalStore` and `localStoreProvider`; all 28 engine scenarios pass with each device on its own Drift database (`test/features/sync/drift_local_store_test.dart`). Decided: Drive thumbnails are of the unedited original, cropped on the receiving device (§6.5, display in T9); a pulled crop goes into the undo history; the device name defaults from `device_info_plus` 13.3.0 at launch and is edited in T7. The canonical JSON now writes whole-number decimals as integers (§4.4). Checked: the app upgrades to schema 3 on the emulator; integration flows pass there; the Mac debug build compiles.
 
-- [ ] **T7 — Google Sign-In and Sync settings**
+- [x] **T7 — Google Sign-In and Sync settings**
   - Write the Google Cloud setup steps for you (§11); record the scope classification (§14).
   - `AuthService` with `google_sign_in` on Android and macOS: sign in, ask for `drive.appdata`, sign out (§6.7).
   - Settings → Sync (§7.1): Turn on, account, Turn off, Sign out, device name (status and Sync now come in T9).
   - *Done when:* widget tests with a fake `AuthService`; sign-in checked on the emulator and the Mac with your test account.
   - Depends on: T6
+  - *Result:* `google_sign_in` 7.2; `AuthService` (`lib/core/auth/`) with restore, sign in, Drive authorization, a silent access token for T8 and sign out; Settings → Sync with Turn on, account, Device name, Turn off sync and Sign out; Turn on with another account clears the sync bookkeeping (m3-design §6.7). Decided: keep `com.example.filbert` through M3; the client ids are committed; your Apple team id lives in an untracked `Signing.xcconfig`, and without it the Mac app builds unsigned (`CODE_SIGNING_ALLOWED = NO`), as on CI; Drive access is asked for only by Turn on, and the launch-time restore comes with T9's launch trigger. `drive.appdata` is non-sensitive. Setup steps in `docs/google-cloud-setup.md`. `googleapis` moves to T8. Checked: sign-in on the Mac and on your phone, after adding your account as a test user (the "has not completed the Google verification process" block). 679 tests pass.
 
 - [ ] **T8 — Drive remote store**
   - `DriveRemoteStore`: flat `appDataFolder` layout with `appProperties` (§6.2), Changes API with page tokens, record read/write, resumable blob uploads, downloads, deletes. Answer the conditional-update question (§14).
@@ -106,12 +107,14 @@ Done between T6 and T7, each its own PR:
 - **Snackbars sit above the bottom controls** on Crop and the photo screen, and Revert shows no snackbar (m1-design §3.5).
 - **Compare turns off when you leave the photo screen**; Grid and the tone aid are still saved per project (m2-design §3.1).
 - **One Crop screen** with Rectangle and Corners modes and Find canvas, replacing Crop/rotate and the auto-crop review (m1-design §3.7).
+- **New app icon**: a filbert brush on teal.
 
 ## Notes and later ideas
 
 (Add ideas that come up during M3 but belong to a later milestone here, rather than building them now.)
 
 - Right-click menus on the Mac for project cards and photo tiles (today a long press, which a mouse can do but nobody expects).
+- Upgrade `desktop_drop` to 0.9.2 once `file_selector` and `image_picker` allow `cross_file` 0.4: it removes the Kotlin Gradle Plugin warning on Android builds, and needs a small rewrite of `PhotoDropTarget` for its new API.
 - Crop's Corners mode: ratio chips for the output's ratio (today the project's ratio, or the quad's own shape without one).
 
 - Carried over from M2: clamp panning to the photo's edges when zoomed; pinch/pan under the manual crop; frame pacing and the render benchmark on a mid-range phone; centered grid origin; tap a swatch to highlight its areas; wipe or side-by-side compare; aids on thumbnails; a faster Gray export; compare overlay at preview resolution when zoomed; gallery saving on Android 7–10 untested on a device (m2-tasks notes).

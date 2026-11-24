@@ -1,6 +1,8 @@
 import 'package:filbert/app/app.dart';
 import 'package:filbert/app/router.dart';
+import 'package:filbert/core/auth/auth_service.dart';
 import 'package:filbert/core/settings/app_settings.dart';
+import 'package:filbert/features/sync/data/sync_settings.dart';
 import 'package:filbert/core/units/unit_preference.dart';
 import 'package:filbert/features/projects/domain/project.dart';
 import 'package:filbert/features/projects/data/project_repository.dart';
@@ -23,6 +25,7 @@ import 'fake_export.dart';
 import 'fake_photos.dart';
 import 'fake_project_repository.dart';
 import 'fake_settings.dart';
+import 'fake_sync.dart';
 import 'fake_view_aids.dart';
 
 /// Pumps the whole app with in-memory fakes and returns its container.
@@ -42,6 +45,8 @@ Future<ProviderContainer> pumpFilbertApp(
   FakeGallerySaver? gallery,
   ExportDestination? exportDestination,
   FakeSystemSettings? systemSettings,
+  FakeAuthService? auth,
+  FakeSyncSettingsStore? syncSettings,
   String? initialLocation,
 }) async {
   // Off unless a test is about it, so adding photos stays on the project.
@@ -75,6 +80,10 @@ Future<ProviderContainer> pumpFilbertApp(
         exportDestinationProvider.overrideWithValue(exportDestination),
       systemSettingsProvider.overrideWithValue(
         systemSettings ?? FakeSystemSettings(),
+      ),
+      authServiceProvider.overrideWithValue(auth ?? FakeAuthService()),
+      syncSettingsStoreProvider.overrideWithValue(
+        syncSettings ?? FakeSyncSettingsStore(),
       ),
     ],
   );

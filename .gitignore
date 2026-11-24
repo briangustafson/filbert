@@ -52,3 +52,6 @@ app.*.map.json
 # Never committed: they carry GPS and other metadata. Fixtures are made from
 # them by tool/make_eval_fixtures.dart.
 /eval-originals/
+
+# The Mac app's Apple team id (copy Signing.example.xcconfig).
+/macos/Runner/Configs/Signing.xcconfig

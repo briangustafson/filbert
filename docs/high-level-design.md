@@ -253,7 +253,7 @@ A **Merge projects** action (move images from one project into another) is a pos
 
 - Google Sign-In, asking only for the scopes needed: `drive.appdata` when sync is enabled, the Photos Picker scope when Google Photos import is first used on a platform that needs it (incremental authorization).
 - Tokens are stored by the platform sign-in SDK / secure storage, never in the DB or synced data.
-- Before public release, the Google Cloud OAuth consent screen needs verification for the requested scopes; scope classification and verification requirements will be confirmed in M3.
+- Before public release, the Google Cloud OAuth consent screen needs verification for the requested scopes; `drive.appdata` is non-sensitive (basic brand verification only; confirmed in M3 T7), and the Photos Picker scope needs Google's OAuth verification review (m3-design §6.7).
 
 ---
 
@@ -429,7 +429,7 @@ Each milestone ends with a usable, shippable app on its platforms. Detailed desi
 |---|---|
 | Does per-image undo history sync, or stay local? | M1 design |
 | ~~Physical Drive layout; eager vs. lazy original downloads~~ Flat files; eager downloads (m3-design §2) | — |
-| Google OAuth scope classification and verification requirements | M3 |
+| ~~Google OAuth scope classification and verification requirements~~ `drive.appdata` non-sensitive; Photos needs the verification review (m3-design §6.7) | — |
 | macOS distribution: Mac App Store vs. notarized DMG (M3 builds a sandboxed app, keeping both open) | First public release |
 | Exact Instagram intent behavior (feed vs. stories, multi-image) | M6 |
 | Web hosting and OAuth origin | M10 |

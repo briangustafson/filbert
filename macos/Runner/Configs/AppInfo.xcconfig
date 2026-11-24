@@ -12,3 +12,14 @@ PRODUCT_BUNDLE_IDENTIFIER = com.example.filbert
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 Brian Gustafson. All rights reserved.
+
+// Google Sign-In's redirect: the macOS OAuth client id, reversed
+// (lib/core/auth/google_client_ids.dart has the id itself).
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.556213409118-1ccfukqr2ustd3f6gl4rd1tu7mk7s4i6
+
+// Unsigned unless Signing.xcconfig (untracked; see Signing.example.xcconfig)
+// names your Apple team: Google Sign-In's keychain entitlement can't be
+// built without one, and the team id stays out of the repo. CI builds
+// unsigned.
+CODE_SIGNING_ALLOWED = NO
+#include? "Signing.xcconfig"
