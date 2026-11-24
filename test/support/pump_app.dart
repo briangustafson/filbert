@@ -7,6 +7,7 @@ import 'package:filbert/core/units/unit_preference.dart';
 import 'package:filbert/features/projects/domain/project.dart';
 import 'package:filbert/features/projects/data/project_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:filbert/features/autocrop/canvas_detection.dart';
@@ -48,6 +49,7 @@ Future<ProviderContainer> pumpFilbertApp(
   FakeAuthService? auth,
   FakeSyncSettingsStore? syncSettings,
   String? initialLocation,
+  List<Override> overrides = const [],
 }) async {
   // Off unless a test is about it, so adding photos stays on the project.
   settings ??= FakeSettingsStore(const AppSettings(autoCropOnAdd: false));
@@ -85,6 +87,7 @@ Future<ProviderContainer> pumpFilbertApp(
       syncSettingsStoreProvider.overrideWithValue(
         syncSettings ?? FakeSyncSettingsStore(),
       ),
+      ...overrides,
     ],
   );
   if (initialLocation != null) {

@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:sync_engine/sync_engine.dart' show RemoteUnavailable;
 
 import '../../../core/auth/auth_service.dart';
+import '../data/sync_providers.dart';
 import '../data/sync_settings.dart';
 
 /// Settings → Sync (m3-design §7.1). Sync now and the last-synced status
@@ -83,9 +86,29 @@ class _SyncSettingsSectionState extends ConsumerState<SyncSettingsSection> {
           enabled: !_busy,
           onTap: () => _whileBusy(ref.read(syncSetupProvider).signOut),
         ),
+        // Until the sync controller (T9): one pass by hand, debug builds
+        // only (m3-tasks T8).
+        if (kDebugMode)
+          ListTile(
+            leading: const Icon(Icons.sync),
+            title: const Text('Sync now (debug)'),
+            enabled: !_busy,
+            onTap: _syncOnce,
+          ),
       ],
     );
   }
+
+  Future<void> _syncOnce() => _whileBusy(() async {
+    try {
+      final report = await ref.read(syncEngineProvider).syncOnce();
+      debugPrint('Sync now (debug): $report');
+      _say('$report');
+    } on RemoteUnavailable catch (e) {
+      debugPrint('Sync now (debug) failed: $e');
+      _say('Sync failed: $e');
+    }
+  });
 
   Future<void> _turnOn() => _whileBusy(() async {
     final TurnOnResult result;

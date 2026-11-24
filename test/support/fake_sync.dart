@@ -42,6 +42,13 @@ class FakeAuthService implements AuthService {
   Future<String?> driveAccessToken() async =>
       signedIn != null && grantsDrive ? 'token' : null;
 
+  /// Tokens Drive refused.
+  final cleared = <String>[];
+
+  @override
+  Future<void> clearDriveToken(String accessToken) async =>
+      cleared.add(accessToken);
+
   @override
   Future<void> signOut() async {
     calls.add('signOut');

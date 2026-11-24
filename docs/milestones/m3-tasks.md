@@ -63,10 +63,11 @@ See m3-design §11: Xcode and an Apple developer team for phase 1; a Google Clou
   - Depends on: T6
   - *Result:* `google_sign_in` 7.2; `AuthService` (`lib/core/auth/`) with restore, sign in, Drive authorization, a silent access token for T8 and sign out; Settings → Sync with Turn on, account, Device name, Turn off sync and Sign out; Turn on with another account clears the sync bookkeeping (m3-design §6.7). Decided: keep `com.example.filbert` through M3; the client ids are committed; your Apple team id lives in an untracked `Signing.xcconfig`, and without it the Mac app builds unsigned (`CODE_SIGNING_ALLOWED = NO`), as on CI; Drive access is asked for only by Turn on, and the launch-time restore comes with T9's launch trigger. `drive.appdata` is non-sensitive. Setup steps in `docs/google-cloud-setup.md`. `googleapis` moves to T8. Checked: sign-in on the Mac and on your phone, after adding your account as a test user (the "has not completed the Google verification process" block). 679 tests pass.
 
-- [ ] **T8 — Drive remote store**
+- [x] **T8 — Drive remote store**
   - `DriveRemoteStore`: flat `appDataFolder` layout with `appProperties` (§6.2), Changes API with page tokens, record read/write, resumable blob uploads, downloads, deletes. Answer the conditional-update question (§14).
   - *Done when:* tests against recorded responses; one manual sync pass between the emulator and the Mac against your real Drive (from a debug button or test).
   - Depends on: T5, T7
+  - *Result:* `DriveRemoteStore` on `googleapis` 19.0 with `DriveAuthClient` (token per request, one retry after a 401), so `extension_google_sign_in_as_googleapis_auth` isn't used; `RemoteStore.download` added for T9; `manifest.json` written on a first sync. Decided: resumable uploads in 4 MB pieces, restarting on the next pass after an interruption; hand-written Drive-shaped test responses, no recordings; Sync now (debug) in Settings until T9. Answered: Drive v3 has no conditional update (m3-design §6.3, §14). Checked: a project made on the Mac reached your phone, and a rename on the phone reached the Mac, with Sync now (debug); photos show the broken-image tile until T9 downloads them. 697 tests pass.
 
 - [ ] **T9 — Sync controller, status and downloads**
   - `SyncController`: triggers (launch, resume, debounced change, every 15 min, Sync now), one pass at a time, backoff, status in Settings and the project-list progress bar (§6.6, §7.1).
