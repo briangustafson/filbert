@@ -1,0 +1,8 @@
+// Copy to Signing.xcconfig (untracked) and fill in your Apple team id, from
+// Xcode → Settings → Accounts or developer.apple.com → Membership. Google
+// Sign-In needs the app signed by a team for keychain sharing
+// (m3-design §3.1). Without this file the app builds unsigned (CI), and
+// sign-in fails with a keychain error.
+DEVELOPMENT_TEAM = ABCDE12345
+CODE_SIGN_IDENTITY = Apple Development
+CODE_SIGNING_ALLOWED = YES

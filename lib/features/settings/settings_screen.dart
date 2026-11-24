@@ -7,10 +7,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../app/layout.dart';
 import '../../app/shortcuts.dart';
 import '../../core/settings/app_settings.dart';
+import '../sync/ui/sync_settings_section.dart';
 
 part 'settings_screen.g.dart';
 
-/// App settings (m1-design §3.9): auto-crop on add, units, About.
+/// App settings (m1-design §3.9): auto-crop on add, units, sync
+/// (m3-design §7.1), About.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -47,6 +49,8 @@ class SettingsScreen extends ConsumerWidget {
                   if (chosen != null) await store.setUnits(chosen);
                 },
               ),
+              const Divider(),
+              const SyncSettingsSection(),
               const Divider(),
               ListTile(
                 title: const Text('About Filbert'),

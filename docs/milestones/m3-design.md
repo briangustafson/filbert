@@ -65,7 +65,7 @@ project backup, export and import (M8, §8) · iOS and web (M9, M10) · macOS di
 ### 3.1 Platform setup
 
 - `flutter create --platforms=macos .` added `macos/` (T1). **Minimum macOS 12.0** (Flutter 3.50's; no plugin needs more). Bundle id `com.example.filbert`, as on Android; the app is named **Filbert**. Plugins build through Swift Package Manager (no CocoaPods).
-- **App Sandbox** on. T1's entitlements: user-selected files read/write (`com.apple.security.files.user-selected.read-write`; the debug and profile builds also have Flutter's `network.server` for the debugger). Phase 2 adds outgoing network and keychain sharing (Google Sign-In).
+- **App Sandbox** on. T1's entitlements: user-selected files read/write (`com.apple.security.files.user-selected.read-write`; the debug and profile builds also have Flutter's `network.server` for the debugger). T7 added outgoing network (`network.client`) and keychain sharing (`keychain-access-groups` for `com.google.GIDSignIn`) for Google Sign-In, in both builds. Keychain sharing needs the app signed by an Apple team: the team id is in an untracked `macos/Runner/Configs/Signing.xcconfig` (copied from `Signing.example.xcconfig`), so it stays out of the public repo; without it the app builds unsigned (`CODE_SIGNING_ALLOWED = NO`, for CI), which also leaves it unsandboxed, and sign-in fails. Setup in `docs/google-cloud-setup.md`.
 - OpenCV: dartcv4's build hooks build OpenCV for macOS; debug builds are for this Mac's chip only (arm64), a universal build is for release. The app bundles it as `dartcv.framework`. The detection eval gives the same score on the Mac as in CI (78.3%, T1).
 - **Keep-list hazard** (seen in T1): a profile or release build writes `.dart_tool/hooks_runner/shared/dartcv4/dartcv_keep.txt`, the OpenCV functions that build used, and later builds of the same target leave out the rest. `flutter test` and macOS debug builds share the host target, so after a profile run (e.g. `tool/render_benchmark.dart`) the Mac build stripped functions the tests need (`cv_imread`). Delete that file after any profile or release build.
 - Files: the same `FileStore` layout under the app container (`~/Library/Containers/com.example.filbert/Data/`); the database is `Documents/filbert.sqlite` there.
@@ -293,8 +293,10 @@ appDataFolder/
 
 - `google_sign_in` 7.x: sign in (authentication), then ask for scopes when needed (authorization): `drive.appdata` when turning on sync; `photospicker.mediaitems.readonly` at first Google Photos import (macOS only, so Android only ever asks for Drive). API calls use the access token through `extension_google_sign_in_as_googleapis_auth` and `googleapis` (Drive v3).
 - Tokens stay with the platform SDK (Credential Manager on Android, the keychain on macOS); Filbert stores only the account email for display.
+- **`AuthService`** (T7, `lib/core/auth/`): `restore()` without UI, `signIn()` with Google's account picker, `authorizeDrive()` (consent screen only if not granted yet), `driveAccessToken()` without UI for T8/T9, `signOut()`. Drive access is asked for only by Turn on; the launch-time `restore()` is called by the sync controller's launch trigger (T9), only when sync is on. The client ids are committed in `lib/core/auth/google_client_ids.dart` (public identifiers; the Mac's URL scheme is the reversed iOS id in `AppInfo.xcconfig`).
+- **Scopes** (T7): `drive.appdata` is **non-sensitive**, so publishing needs only basic brand verification. `photospicker.mediaitems.readonly`'s classification isn't published; Google requires the OAuth verification review for Photos API apps, and T12 records the console's label. See `docs/google-cloud-setup.md`.
 - **Google Cloud project** (Brian sets up, §11): OAuth clients for Android (package name + SHA-1 of the debug and release keys), macOS, and a web client id that Android needs as `serverClientId`. The consent screen stays in *testing* mode with Brian as a test user during M3; T7 records the scopes' classification (sensitive or not) and what verification public release needs (HLD §6.7).
-- **Sign out** (Settings): stops sync and forgets the account; local data stays. Signing in with a different account later treats it as a new remote (all local records are pushed there).
+- **Sign out** (Settings): stops sync and forgets the account; local data stays. Signing in with a different account later treats it as a new remote (all local records are pushed there): `sync_account` is kept after Turn off and Sign out as the account this device's bookkeeping belongs to, and Turn on with another account first clears `sync_state`, `blob_sync`, `sync_conflicts`, `changes_page_token` and `last_sync_at` (an original no longer on the device is then marked missing on upload, as in §6.5).
 
 ---
 
@@ -365,7 +367,7 @@ Not built in M3. Kept here as the agreed starting point for M8's design; it reus
 ## 11. Before starting (Brian)
 
 - Phase 1 (macOS): Xcode installed; an Apple developer team in Xcode (a free personal team is enough to run a sandboxed, keychain-using app locally).
-- Phase 2 (sync), by T7: a Google Cloud project with the Drive API and Photos Picker API enabled, the OAuth consent screen in testing mode with your account as test user, and OAuth client ids (Android debug SHA-1, macOS, web). I'll write the exact steps in T7; client ids aren't secrets but go in a config file, not code.
+- Phase 2 (sync), by T7: a Google Cloud project with the Drive API and Photos Picker API enabled, the OAuth consent screen in testing mode with your account as test user, and OAuth client ids (Android debug SHA-1, macOS, web). Steps in `docs/google-cloud-setup.md` (T7); the client ids aren't secrets and are committed (T7, Brian's choice).
 
 ---
 
@@ -393,8 +395,8 @@ Approved by Brian (2026-11-18); versions are checked in the task that adds them.
 | `file_selector` | Save dialog (Mac export), 1.1 | T4 |
 | `desktop_drop` | Drag and drop on macOS (0.8; see §3.4) | T3 |
 | `device_info_plus` | Default device name | T6 |
-| `google_sign_in` | Sign-in and scopes | T7 |
-| `googleapis`, `extension_google_sign_in_as_googleapis_auth` | Drive v3 client using the sign-in token | T7, T8 |
+| `google_sign_in` | Sign-in and scopes (7.2) | T7 |
+| `googleapis`, `extension_google_sign_in_as_googleapis_auth` | Drive v3 client using the sign-in token (added with the Drive store; T7 needs neither) | T8 |
 | `http` | Photos Picker REST, resumable uploads | T8, T12 |
 | `workmanager` | Android background sync | T11 |
 | `url_launcher` | Open the Photos picker (Show in Finder is native, §3.5) | T12 |
@@ -408,6 +410,6 @@ Approved by Brian (2026-11-18); versions are checked in the task that adds them.
 |---|---|
 | Does Drive v3 support a conditional update (If-Match or similar)? If so, use it in §6.3 step 3 | T8 |
 | Can `google_sign_in` give an access token in a WorkManager isolate? | T11 |
-| Classification of `drive.appdata` and `photospicker.mediaitems.readonly`; verification needed for public release | T7 |
+| ~~Classification of `drive.appdata`~~ non-sensitive, basic verification only (T7, §6.7); `photospicker.mediaitems.readonly`'s label from the console | T12 |
 | ~~Does HEIC import work on macOS through the existing decode path?~~ Yes (T1, §3.1) | — |
 | Later ideas: the Photos Picker API on Android, if the system picker's Google Photos support proves patchy on phones painters use; remember the window size; a cellular-data setting for original downloads; merge projects | Later milestone |
