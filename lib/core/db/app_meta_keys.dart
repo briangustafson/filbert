@@ -18,6 +18,9 @@ abstract final class AppMetaKeys {
   static const changesPageToken = 'changes_page_token';
   static const lastSyncAt = 'last_sync_at';
 
+  /// The last Drive purge (m3-design §6.5).
+  static const lastDrivePurgeAt = 'last_drive_purge_at';
+
   /// The folder of the last Save to file… (m3-design §3.5).
   static const exportFolder = 'export_folder';
 }

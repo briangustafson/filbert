@@ -238,21 +238,34 @@ class DriveRemoteStore implements RemoteStore {
       return await request();
     } on drive.DetailedApiRequestError catch (e) {
       if (e.status == 404 && fileId != null) throw RemoteNotFound(fileId);
-      throw RemoteUnavailable('Drive ${e.status}: ${e.message}');
+      throw RemoteUnavailable('Drive ${e.status}: ${e.message}', _reasonOf(e));
     } on drive.ApiRequestError catch (e) {
       throw RemoteUnavailable('Drive: ${e.message}');
     } on DriveNotAuthorized catch (e) {
-      throw RemoteUnavailable(e);
+      throw RemoteUnavailable(e, UnavailableReason.notAuthorized);
     } on SocketException catch (e) {
-      throw RemoteUnavailable(e);
+      throw RemoteUnavailable(e, UnavailableReason.offline);
     } on http.ClientException catch (e) {
-      throw RemoteUnavailable(e);
-    } on TimeoutException catch (e) {
-      throw RemoteUnavailable(e);
+      throw RemoteUnavailable(e, UnavailableReason.offline);
     } on HttpException catch (e) {
+      throw RemoteUnavailable(e, UnavailableReason.offline);
+    } on TimeoutException catch (e) {
       throw RemoteUnavailable(e);
     }
   }
+}
+
+/// Drive's error reasons (developers.google.com/drive/api/guides/
+/// handle-errors) as what the user can be told.
+UnavailableReason _reasonOf(drive.DetailedApiRequestError e) {
+  final reasons = {for (final d in e.errors) d.reason};
+  if (e.status == 401 || reasons.contains('insufficientPermissions')) {
+    return UnavailableReason.notAuthorized;
+  }
+  if (reasons.contains('storageQuotaExceeded')) {
+    return UnavailableReason.storageFull;
+  }
+  return UnavailableReason.other;
 }
 
 /// A file's `appProperties` (m3-design §6.2): what it holds, from its name.

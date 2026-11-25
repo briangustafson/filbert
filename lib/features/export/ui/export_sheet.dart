@@ -6,7 +6,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../../app/adaptive_sheet.dart';
 import '../../../core/platform/system_settings.dart';
 import '../../../core/clock/clock.dart';
+import '../../photo_viewer/photo_page.dart' show PhotoMissingNotice;
 import '../../photos/data/image_repository.dart';
+import '../../sync/data/blob_availability.dart';
+import '../../sync/data/sync_providers.dart';
 import '../../photos/domain/project_image.dart';
 import '../../projects/data/project_providers.dart';
 import '../../view_aids/data/view_aids_providers.dart';
@@ -38,6 +41,9 @@ class SavedAsNewPhoto extends ExportOutcome {
 
   final ProjectImage photo;
 }
+
+/// Shown while the original downloads.
+const downloadingOriginal = 'Downloading the full photo…';
 
 /// Opens the export sheet for [image] (m2-design §3.5); null if closed
 /// without exporting.
@@ -200,7 +206,23 @@ class _ExportSheetState extends ConsumerState<ExportSheet> {
               ),
             if (base.compareWith != null) (_Item.compare, 'Compare overlay'),
           ];
-    final ready = base != null && !_busy;
+    // Exports are full size: they wait for a downloading original
+    // (m3-design §6.5).
+    final availability = ref
+        .watch(
+          blobAvailabilityProvider(widget.image.blobId, widget.image.mimeType),
+        )
+        .value;
+    final waitingFor =
+        availability == null || availability == BlobAvailability.original
+        ? null
+        : availability;
+    if (waitingFor != null && waitingFor != BlobAvailability.missing) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => ref.read(blobDownloaderProvider).prioritize(widget.image.blobId),
+      );
+    }
+    final ready = base != null && !_busy && waitingFor == null;
 
     return PopScope(
       canPop: !_busy,
@@ -214,7 +236,11 @@ class _ExportSheetState extends ConsumerState<ExportSheet> {
               Text('Export', style: theme.textTheme.titleLarge),
               const SizedBox(height: 4),
               Text(
-                'Full size, as a JPEG.',
+                switch (waitingFor) {
+                  null => 'Full size, as a JPEG.',
+                  BlobAvailability.missing => PhotoMissingNotice.text,
+                  _ => downloadingOriginal,
+                },
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

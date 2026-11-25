@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../features/sync/data/sync_controller.dart';
 import '../features/photos/data/photo_imports.dart';
 import '../features/photos/data/photo_source.dart';
 import '../features/photos/ui/add_photos.dart';
@@ -33,6 +34,8 @@ class _FilbertAppState extends ConsumerState<FilbertApp> {
     // changes before that (m2-design §4.2).
     _lifecycle = AppLifecycleListener(
       onHide: () => ref.read(viewPrefsRepositoryProvider).flush(),
+      // Back in front: pick up what other devices did (m3-design §6.6).
+      onResume: () => ref.read(syncControllerProvider.notifier).onResume(),
     );
     menuChannel.setMethodCallHandler((call) async {
       if (call.method == 'settings') _openSettings();
@@ -51,6 +54,10 @@ class _FilbertAppState extends ConsumerState<FilbertApp> {
   /// Photos taken while Android killed the app are imported where they were
   /// meant to go; then the picker's leftovers are cleared (m1-design §3.6).
   Future<void> _startupTasks() async {
+    // Starts syncing if it's on (m3-design §6.6). Listened, not read:
+    // Riverpod pauses a provider nobody listens to, and with it the
+    // controller's watch on the sync settings.
+    ref.listenManual(syncControllerProvider, (_, _) {});
     try {
       final recovered = await ref
           .read(photoImportsProvider.notifier)

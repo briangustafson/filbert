@@ -10,7 +10,12 @@ part 'sync_settings.g.dart';
 /// What Settings → Sync shows (m3-design §7.1). Local to this device.
 @immutable
 class SyncSettings {
-  const SyncSettings({this.enabled = false, this.account, this.deviceName});
+  const SyncSettings({
+    this.enabled = false,
+    this.account,
+    this.deviceName,
+    this.lastSyncAt,
+  });
 
   final bool enabled;
 
@@ -22,18 +27,23 @@ class SyncSettings {
   /// Shown to other devices in conflicts (proposal 5).
   final String? deviceName;
 
+  /// When the last pass finished, UTC epoch milliseconds.
+  final int? lastSyncAt;
+
   @override
   bool operator ==(Object other) =>
       other is SyncSettings &&
       other.enabled == enabled &&
       other.account == account &&
-      other.deviceName == deviceName;
+      other.deviceName == deviceName &&
+      other.lastSyncAt == lastSyncAt;
 
   @override
-  int get hashCode => Object.hash(enabled, account, deviceName);
+  int get hashCode => Object.hash(enabled, account, deviceName, lastSyncAt);
 
   @override
-  String toString() => 'SyncSettings($enabled, $account, $deviceName)';
+  String toString() =>
+      'SyncSettings($enabled, $account, $deviceName, $lastSyncAt)';
 }
 
 /// Reads and writes [SyncSettings] (`app_meta`).
@@ -49,6 +59,9 @@ abstract interface class SyncSettingsStore {
   Future<void> turnOff();
 
   Future<void> setDeviceName(String name);
+
+  /// Records a finished pass (UTC epoch milliseconds).
+  Future<void> setLastSyncAt(int millis);
 }
 
 class DriftSyncSettingsStore implements SyncSettingsStore {
@@ -60,6 +73,7 @@ class DriftSyncSettingsStore implements SyncSettingsStore {
     AppMetaKeys.syncEnabled,
     AppMetaKeys.syncAccount,
     AppMetaKeys.deviceName,
+    AppMetaKeys.lastSyncAt,
   ];
 
   @override
@@ -72,6 +86,7 @@ class DriftSyncSettingsStore implements SyncSettingsStore {
           enabled: values[AppMetaKeys.syncEnabled] == 'true',
           account: values[AppMetaKeys.syncAccount],
           deviceName: values[AppMetaKeys.deviceName],
+          lastSyncAt: int.tryParse(values[AppMetaKeys.lastSyncAt] ?? ''),
         );
       });
 
@@ -108,6 +123,10 @@ class DriftSyncSettingsStore implements SyncSettingsStore {
 
   @override
   Future<void> setDeviceName(String name) => _put(AppMetaKeys.deviceName, name);
+
+  @override
+  Future<void> setLastSyncAt(int millis) =>
+      _put(AppMetaKeys.lastSyncAt, '$millis');
 
   Future<void> _put(String key, String value) => _db
       .into(_db.appMeta)

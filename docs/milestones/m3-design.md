@@ -238,7 +238,6 @@ appDataFolder/
 
 - Each file has `appProperties` `{kind, id}`, so a change can be identified without downloading it (originals and thumbnails: kind `blob` / `thumb`, id the blob id).
 - **`DriveRemoteStore`** (T8, `lib/features/sync/data/`): `googleapis` Drive v3 over `DriveAuthClient`, an `http` client that adds the access token from `AuthService` to each request and, after a 401, drops it and retries once. A first sync takes the start page token before listing every file, so nothing changed during the listing is missed; it also writes `manifest.json` if there's none (nothing reads it yet). Later syncs follow the Changes pages (`spaces=appDataFolder`, removed and trashed files reported as removed) to `newStartPageToken`. `read` gets the version before the content, so a file changed in between is read again next pass. Offline, timeouts, 5xx, 403 and 429 are `RemoteUnavailable`; a 404 on a file is `RemoteNotFound`. `RemoteStore.download` was added for T9's downloads.
-- Until the sync controller (T9), **Sync now (debug)** in Settings → Sync (debug builds only) runs one pass and shows its report.
 - Drive allows two files with one name. A retried create could make a duplicate; the engine looks up a record's file by name before creating it, and when it finds duplicates keeps the one with the highest `version` and deletes the rest.
 
 ### 6.3 One sync pass
@@ -282,7 +281,11 @@ appDataFolder/
 - **Thumbnails on Drive** (decided in T6): of the unedited original, uploaded once with it, so they never go stale. A device shows one with the image's crop and rotation applied locally (T9), so the grid is cropped from the start; it's softer for a tight crop until the original arrives and the usual thumbnail is rendered from it. (Uploading the edited view instead would mean a new upload per edit.)
 - **Downloads** (proposal 2): after a pull, thumbnails of new images download first (so the grids fill in), then originals, newest project first. Previews are rendered locally from the original, as now. A photo opened, cropped or exported before its original arrives shows its thumbnail with a progress ring and downloads it next.
 - Uploads use Drive's resumable upload in 4 MB pieces, so a failed piece is retried without starting over. An upload cut off by quitting or losing the connection starts again on the next pass (decided in T8: keeping the upload session across passes would need stored state for at most ~15 MB saved).
-- **Purge on Drive**: a device's purge job (m1-design §4.4) also deletes the Drive blob and thumbnail of images tombstoned for over **60 days** (local purge stays at 30, so a device can restore from Drive for a month after purging locally). A restored image whose blob is gone everywhere shows "This photo is no longer available" in place of the photo (`blob_sync.state = missing`). (Resolves m1-design §4.4's open restore case.)
+- **As built in T9**:
+  - `BlobDownloader` (`lib/features/sync/data/`) runs after each pass: Drive thumbnails of every waiting photo (`blob_sync.state = remoteOnly`, live image in a live project), newest project first, then the originals, one file at a time on any network. Files are found by name when `blob_sync` has no Drive id. A downloaded thumbnail goes in `blob-thumbs/<blobId>.jpg` next to the originals and is deleted once the original arrives. An original Drive doesn't have becomes `missing`.
+  - `BlobAvailabilityService` says what's here for a photo: the original, only the thumbnail, nothing yet, or missing. The render providers (thumbnail, preview, detail) wait on it, so they render again when the original lands. The renderer uses the Drive thumbnail when the original isn't here, with the crop and rotation applied (they're relative to the photo's size), cached under its own name (`-drive`).
+  - Opening a photo, Crop or Export moves its original to the front of the downloads. The photo screen shows a small ring until it arrives; **Crop** and **Export** say "Downloading the full photo…" and wait, so crops are never drawn on the 512 px thumbnail.
+- **Purge on Drive**: a device's purge job (m1-design §4.4) also deletes the Drive blob and thumbnail of images tombstoned for over **60 days** (local purge stays at 30, so a device can restore from Drive for a month after purging locally). Built in T9 as `DrivePurge`, run by the sync controller at most once a day after a successful pass (`last_drive_purge_at`); it only deletes a Drive original that no live image uses. A restored image whose blob is gone everywhere shows "This photo is no longer available" in place of the photo (`blob_sync.state = missing`). (Resolves m1-design §4.4's open restore case.)
 
 ### 6.6 When sync runs
 
@@ -290,6 +293,12 @@ appDataFolder/
 - **Android background**: a WorkManager periodic task (every 6 h, on any network) running one sync pass in a background isolate with its own Drift connection. It needs an access token without UI; T11 checks that `google_sign_in` can give one there. If it can't, background sync is dropped from M3 (sync on open and resume still covers the exit criteria) and noted for later.
 - Only one pass runs at a time; a trigger during a pass queues one more.
 - Failures (offline, token expired, Drive quota) leave everything as it was; the status in Settings says what happened and the next trigger retries, backing off up to 15 min.
+- **As built in T9** (`SyncController`):
+  - "A local change" is a write to Drift's projects, images or view prefs tables; writes during a pass, or within a second after it, are the pass's own and are ignored.
+  - Backoff after a failure: 30 s, doubling up to 15 min, with a retry timer; the automatic triggers (change, 15 min) wait it out; **Sync now** and coming back to the app always try at once. A success clears it.
+  - `RemoteUnavailable` carries a reason (`offline`, `notAuthorized`, `storageFull`, `other`), set by the Drive store from the connection error or Drive's error reasons, so the status can say which.
+  - The launch-time sign-in restore happens on the first token request of the launch pass.
+  - The app keeps a listener on the controller: Riverpod 3 pauses a provider nobody listens to, and with it the controller's watch on the sync settings (found in the manual check: the app never synced at launch).
 
 ### 6.7 Sign-in (`AuthService`)
 
@@ -309,6 +318,7 @@ appDataFolder/
 - Off: **Sync with Google Drive** explains in one line ("Keep projects in step across your devices, using your own Google Drive.") and a **Turn on** button, which signs in and asks for Drive access.
 - On: account email · **Sync now** · last synced ("Synced 2 minutes ago" / "Offline — will sync when connected" / an error) · **Device name** (editable) · **Turn off sync** (keeps local data and what's on Drive) · **Sign out**.
 - A thin progress bar under the app bar of the project list while a pass with downloads is running.
+- As built (T9): the status line is "Syncing…", "Synced just now / N minutes, hours or days ago", "Not synced yet", "Offline — will sync when connected", "Google needs you to sign in again" (with a **Sign in** button that runs Turn on's steps; sync stays on), "Your Google Drive is full", or "Couldn't sync — will try again". The bar shows while the downloader runs.
 
 ### 7.2 Conflicts
 

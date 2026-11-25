@@ -12,6 +12,7 @@ import '../../photos/domain/project_image.dart';
 import '../../photos/ui/add_photos.dart';
 import '../../photos/ui/photo_drop.dart';
 import '../../photos/ui/image_thumbnail.dart';
+import '../../sync/data/sync_providers.dart';
 import '../data/project_providers.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
@@ -57,6 +58,17 @@ class ProjectListScreen extends ConsumerWidget {
                 ],
               ),
             ],
+
+            // Photos from other devices downloading (m3-design §7.1).
+            bottom: ref.watch(downloadingProvider).value ?? false
+                ? const PreferredSize(
+                    preferredSize: Size.fromHeight(2),
+                    child: LinearProgressIndicator(
+                      minHeight: 2,
+                      semanticsLabel: 'Downloading photos',
+                    ),
+                  )
+                : null,
           ),
           floatingActionButton: FloatingActionButton.extended(
             tooltip: shortcutTooltip('New project', commandKey('N')),

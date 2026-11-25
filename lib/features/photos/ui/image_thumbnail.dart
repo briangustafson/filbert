@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/image_renderer.dart';
+import '../../sync/data/blob_availability.dart';
 import '../domain/project_image.dart';
 
 part 'image_thumbnail.g.dart';
@@ -12,8 +13,11 @@ part 'image_thumbnail.g.dart';
 /// The cached thumbnail file of [image]'s edited view, rendering it if
 /// needed. Keyed by the whole image, so new edits give a new thumbnail.
 @riverpod
-Future<File> thumbnailFile(Ref ref, ProjectImage image) =>
-    ref.watch(imageRendererProvider).thumbnail(image, standardThumbnailPx);
+Future<File> thumbnailFile(Ref ref, ProjectImage image) async {
+  final renderer = ref.watch(imageRendererProvider);
+  await whenRenderable(ref, image);
+  return renderer.thumbnail(image, standardThumbnailPx);
+}
 
 /// [image]'s edited view, filling its box (cropped to cover). Shows a
 /// placeholder while the thumbnail renders.
@@ -36,6 +40,13 @@ class ImageThumbnail extends ConsumerWidget {
           height: double.infinity,
           gaplessPlayback: true,
           errorBuilder: (_, _, _) => const _Broken(),
+        ),
+        AsyncError(error: PhotoMissingException()) => Center(
+          child: Icon(
+            Icons.image_not_supported_outlined,
+            semanticLabel: 'This photo is no longer available',
+            color: colors.onSurfaceVariant,
+          ),
         ),
         AsyncError() => const _Broken(),
         _ => const Center(

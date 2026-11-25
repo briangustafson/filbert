@@ -206,12 +206,30 @@ class RemoteChanges {
 /// Thrown by a [RemoteStore] when a request failed: offline, timed out, or
 /// refused. The pass stops; the next one retries.
 class RemoteUnavailable implements Exception {
-  const RemoteUnavailable([this.detail]);
+  const RemoteUnavailable([this.detail, this.reason = UnavailableReason.other]);
 
   final Object? detail;
 
+  /// What the user can be told (m3-design §7.1).
+  final UnavailableReason reason;
+
   @override
-  String toString() => 'RemoteUnavailable($detail)';
+  String toString() => 'RemoteUnavailable(${reason.name}: $detail)';
+}
+
+/// Why a [RemoteUnavailable] request failed.
+enum UnavailableReason {
+  /// No connection, or it dropped.
+  offline,
+
+  /// No access token without the user, or Drive refused it.
+  notAuthorized,
+
+  /// The user's Drive storage is full.
+  storageFull,
+
+  /// Anything else: a server error, rate limit, timeout.
+  other,
 }
 
 /// Thrown by a [RemoteStore] when a file isn't there (deleted, say, as a

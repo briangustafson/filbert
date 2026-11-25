@@ -2,7 +2,12 @@ import 'package:filbert/app/app.dart';
 import 'package:filbert/app/router.dart';
 import 'package:filbert/core/auth/auth_service.dart';
 import 'package:filbert/core/settings/app_settings.dart';
+import 'package:filbert/features/sync/data/blob_availability.dart';
+import 'package:filbert/features/sync/data/sync_providers.dart';
 import 'package:filbert/features/sync/data/sync_settings.dart';
+import 'package:sync_engine/src/testing/fake_remote_store.dart';
+import 'package:sync_engine/src/testing/memory_local_store.dart';
+import 'package:sync_engine/sync_engine.dart';
 import 'package:filbert/core/units/unit_preference.dart';
 import 'package:filbert/features/projects/domain/project.dart';
 import 'package:filbert/features/projects/data/project_repository.dart';
@@ -49,6 +54,10 @@ Future<ProviderContainer> pumpFilbertApp(
   FakeAuthService? auth,
   FakeSyncSettingsStore? syncSettings,
   String? initialLocation,
+  FakeBlobAvailability? blobAvailability,
+  FakeBlobDownloader? downloader,
+  Stream<void>? localChanges,
+  SyncEngine? syncEngine,
   List<Override> overrides = const [],
 }) async {
   // Off unless a test is about it, so adding photos stays on the project.
@@ -86,6 +95,25 @@ Future<ProviderContainer> pumpFilbertApp(
       authServiceProvider.overrideWithValue(auth ?? FakeAuthService()),
       syncSettingsStoreProvider.overrideWithValue(
         syncSettings ?? FakeSyncSettingsStore(),
+      ),
+      blobAvailabilityServiceProvider.overrideWithValue(
+        blobAvailability ?? FakeBlobAvailability(),
+      ),
+      blobDownloaderProvider.overrideWithValue(
+        downloader ?? FakeBlobDownloader(),
+      ),
+      drivePurgeProvider.overrideWithValue(FakeDrivePurge()),
+      localChangesProvider.overrideWithValue(
+        localChanges ?? const Stream.empty(),
+      ),
+      syncEngineProvider.overrideWithValue(
+        syncEngine ??
+            SyncEngine(
+              local: MemoryLocalStore(),
+              remote: FakeRemoteStore(),
+              deviceId: 'test-device',
+              now: () => 0,
+            ),
       ),
       ...overrides,
     ],

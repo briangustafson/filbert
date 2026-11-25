@@ -19,6 +19,8 @@ import '../view_aids/domain/view_aids.dart';
 import '../view_aids/ui/grid_painter.dart';
 import '../view_aids/ui/shaded_image.dart';
 import '../view_aids/ui/tone_shader.dart';
+import '../sync/data/blob_availability.dart';
+import '../sync/data/sync_providers.dart';
 import 'photo_files.dart';
 
 /// One photo on the photo screen (m1-design §3.5): the edited view fitted to
@@ -72,6 +74,8 @@ class PhotoZoomController {
 
 class _PhotoPageState extends ConsumerState<PhotoPage>
     with SingleTickerProviderStateMixin {
+  /// The photo whose original was asked for first in the downloads.
+  String? _askedFor;
   final _zoom = TransformationController();
   late final _zoomAnimation = AnimationController(
     vsync: this,
@@ -325,6 +329,21 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
 
     final best = detail?.value ?? preview.value ?? thumb.value;
     final failed = best == null && preview.hasError && thumb.hasError;
+    final missing = failed && preview.error is PhotoMissingException;
+    // A photo from another device: show its Drive thumbnail and fetch the
+    // original next (m3-design §6.5).
+    final availability = ref
+        .watch(blobAvailabilityProvider(image.blobId, image.mimeType))
+        .value;
+    final downloading =
+        availability == BlobAvailability.thumbnail ||
+        availability == BlobAvailability.waiting;
+    if (downloading && _askedFor != image.blobId) {
+      _askedFor = image.blobId;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => ref.read(blobDownloaderProvider).prioritize(image.blobId),
+      );
+    }
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -369,6 +388,7 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
                             ? null
                             : (_fitted.width * _devicePixelRatio).ceil(),
                       ),
+                      (_, true) when missing => const PhotoMissingNotice(),
                       (_, true) => const _Broken(),
                       _ => const _Loading(),
                     },
@@ -406,6 +426,12 @@ class _PhotoPageState extends ConsumerState<PhotoPage>
                   right: 0,
                   bottom: 48,
                   child: Center(child: _Badge('Original')),
+                ),
+              if (downloading && best != null)
+                const Positioned(
+                  top: 12,
+                  right: 12,
+                  child: SafeArea(child: DownloadingRing()),
                 ),
             ],
           );
@@ -482,6 +508,44 @@ class _Loading extends StatelessWidget {
     child: SizedBox.square(
       dimension: 28,
       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+    ),
+  );
+}
+
+/// The original is still downloading (m3-design §6.5).
+class DownloadingRing extends StatelessWidget {
+  const DownloadingRing({super.key});
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.square(
+    dimension: 20,
+    child: CircularProgressIndicator(
+      strokeWidth: 2,
+      color: Colors.white70,
+      semanticsLabel: 'Downloading the full photo',
+    ),
+  );
+}
+
+/// The photo was purged from Drive before this device got it (§6.5).
+class PhotoMissingNotice extends StatelessWidget {
+  const PhotoMissingNotice({super.key});
+
+  static const text = 'This photo is no longer available';
+
+  @override
+  Widget build(BuildContext context) => const Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.image_not_supported_outlined,
+          color: Colors.white70,
+          size: 40,
+        ),
+        SizedBox(height: 8),
+        Text(text, style: TextStyle(color: Colors.white70)),
+      ],
     ),
   );
 }
