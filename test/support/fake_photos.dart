@@ -80,10 +80,9 @@ class FakeImageRepository implements ImageRepository {
     final covers = <String, ProjectImage>{};
     for (final project in projects.live) {
       final images = _live(project.id);
-      final cover =
-          images.where((i) => i.id != project.referenceImageId).firstOrNull ??
-          images.where((i) => i.id == project.referenceImageId).firstOrNull;
-      if (cover != null) covers[project.id] = cover;
+      if (images.isNotEmpty) {
+        covers[project.id] = coverOf(images, project.referenceImageId);
+      }
     }
     return covers;
   });

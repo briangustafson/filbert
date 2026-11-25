@@ -169,36 +169,24 @@ class DriftImageRepository implements ImageRepository {
 
   @override
   Stream<Map<String, ProjectImage>> watchCovers() {
-    final query =
-        _db.select(_db.images).join([
-            innerJoin(
-              _db.projects,
-              _db.projects.id.equalsExp(_db.images.projectId),
-            ),
-          ])
-          ..where(
-            _db.images.deletedAt.isNull() & _db.projects.deletedAt.isNull(),
-          )
-          ..orderBy([
-            OrderingTerm.desc(_db.images.createdAt),
-            OrderingTerm.desc(_db.images.id),
-          ]);
+    final query = _db.select(_db.images).join([
+      innerJoin(_db.projects, _db.projects.id.equalsExp(_db.images.projectId)),
+    ])..where(_db.images.deletedAt.isNull() & _db.projects.deletedAt.isNull());
     return query.watch().map((rows) {
-      final covers = <String, ProjectImage>{};
-      final references = <String, ProjectImage>{};
+      final byProject = <String, List<ProjectImage>>{};
+      final references = <String, String?>{};
       for (final row in rows) {
-        final image = row.readTable(_db.images);
         final project = row.readTable(_db.projects);
-        if (image.id == project.referenceImageId) {
-          references[project.id] = toProjectImage(image);
-        } else {
-          covers.putIfAbsent(project.id, () => toProjectImage(image));
-        }
+        references[project.id] = project.referenceImageId;
+        byProject
+            .putIfAbsent(project.id, () => [])
+            .add(toProjectImage(row.readTable(_db.images)));
       }
-      for (final MapEntry(:key, :value) in references.entries) {
-        covers.putIfAbsent(key, () => value);
-      }
-      return covers;
+      return {
+        for (final MapEntry(key: projectId, value: images)
+            in byProject.entries)
+          projectId: coverOf(images, references[projectId]),
+      };
     });
   }
 
@@ -488,3 +476,17 @@ ImageRepository imageRepository(Ref ref) => DriftImageRepository(
   ids: ref.watch(idGeneratorProvider),
   device: ref.watch(deviceInfoProvider),
 );
+
+/// A project's cover (m1-design §3.2): the reference photo if it has one,
+/// else the most recently taken photo (by capture time, or when it was
+/// added if it has none). [images] are live and not empty.
+ProjectImage coverOf(List<ProjectImage> images, String? referenceImageId) {
+  final reference = images.where((i) => i.id == referenceImageId).firstOrNull;
+  if (reference != null) return reference;
+  DateTime taken(ProjectImage i) => i.capturedAt ?? i.createdAt;
+  return images.reduce((a, b) {
+    final order = taken(a).compareTo(taken(b));
+    if (order != 0) return order > 0 ? a : b;
+    return a.id.compareTo(b.id) >= 0 ? a : b;
+  });
+}

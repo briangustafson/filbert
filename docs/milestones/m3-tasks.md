@@ -111,6 +111,11 @@ Done between T6 and T7, each its own PR:
 - **One Crop screen** with Rectangle and Corners modes and Find canvas, replacing Crop/rotate and the auto-crop review (m1-design §3.7).
 - **New app icon**: a filbert brush on teal.
 
+Done between T9 and T10, in one PR:
+- **Deleted photos are purged after 5 days**, both locally and on Drive (were 30 and 60; m1-design §4.4, m3-design §6.5).
+- **A purged original that's on Drive becomes "on Drive only"**, so a restore on another device downloads it again (it showed a spinner forever).
+- **A project's cover is its reference photo** if it has one, else the most recently taken photo (m1-design §3.2).
+
 ## Notes and later ideas
 
 (Add ideas that come up during M3 but belong to a later milestone here, rather than building them now.)

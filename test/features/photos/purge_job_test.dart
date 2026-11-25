@@ -88,10 +88,10 @@ void main() {
       File('${files.thumbsDir.path}/$id-h-256.jpg').existsSync() &&
       File('${files.previewsDir.path}/$id-h.jpg').existsSync();
 
-  test('purges files of images deleted more than 30 days ago', () async {
+  test('purges files of images deleted more than 5 days ago', () async {
     await addProject('p');
-    await addImage('old', 'p', deletedAt: daysAgo(31));
-    await addImage('recent', 'p', deletedAt: daysAgo(29));
+    await addImage('old', 'p', deletedAt: daysAgo(6));
+    await addImage('recent', 'p', deletedAt: daysAgo(4));
     await addImage('live', 'p');
 
     expect(await job.run(), 1);
@@ -106,7 +106,7 @@ void main() {
     );
   });
 
-  test('purges files of images in projects deleted over 30 days ago', () async {
+  test('purges files of images in projects deleted over 5 days ago', () async {
     await addProject('gone', deletedAt: daysAgo(40));
     await addProject('recent', deletedAt: daysAgo(3));
     await addImage('a', 'gone');
@@ -118,11 +118,33 @@ void main() {
     expect(await db.select(db.projects).get(), hasLength(2));
   });
 
-  test('exactly 30 days is not yet purged', () async {
+  test('exactly 5 days is not yet purged', () async {
     await addProject('p');
-    await addImage('edge', 'p', deletedAt: daysAgo(30));
+    await addImage('edge', 'p', deletedAt: daysAgo(5));
     expect(await job.run(), 0);
     expect(hasAllFiles('edge'), isTrue);
+  });
+
+  test('an original also on Drive becomes "on Drive only"', () async {
+    await addProject('p');
+    await addImage('old', 'p', deletedAt: daysAgo(6));
+    await addImage('local', 'p', deletedAt: daysAgo(6));
+    await db
+        .into(db.blobSyncs)
+        .insert(BlobSyncsCompanion.insert(blobId: 'blob-old', state: 'synced'));
+    await db
+        .into(db.blobSyncs)
+        .insert(
+          BlobSyncsCompanion.insert(blobId: 'blob-local', state: 'local'),
+        );
+
+    expect(await job.run(), 2);
+
+    final states = {
+      for (final b in await db.select(db.blobSyncs).get()) b.blobId: b.state,
+    };
+    // If another device restores it, the downloader fetches it again.
+    expect(states, {'blob-old': 'remoteOnly', 'blob-local': 'local'});
   });
 
   test('never touches live data', () async {
@@ -136,7 +158,7 @@ void main() {
 
   test('re-running is harmless', () async {
     await addProject('p');
-    await addImage('old', 'p', deletedAt: daysAgo(31));
+    await addImage('old', 'p', deletedAt: daysAgo(6));
     await job.run();
     await job.run();
     expect(hasFiles('old'), isFalse);
@@ -144,7 +166,7 @@ void main() {
 
   test('runIfDue runs at most once a day', () async {
     await addProject('p');
-    await addImage('a', 'p', deletedAt: daysAgo(31));
+    await addImage('a', 'p', deletedAt: daysAgo(6));
     expect(await job.runIfDue(), 1);
 
     final meta = await (db.select(
@@ -152,7 +174,7 @@ void main() {
     )..where((m) => m.key.equals(AppMetaKeys.lastPurgeAt))).getSingle();
     expect(meta.value, now.millisecondsSinceEpoch.toString());
 
-    await addImage('b', 'p', deletedAt: daysAgo(31));
+    await addImage('b', 'p', deletedAt: daysAgo(6));
     clock.advance(const Duration(hours: 23));
     expect(await job.runIfDue(), 0);
     expect(hasAllFiles('b'), isTrue);

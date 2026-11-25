@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' show Variable;
+import 'package:drift/drift.dart' show BooleanExpressionOperators, Value, Variable;
 
 import '../../../core/clock/clock.dart';
 import '../../../core/db/app_database.dart';
@@ -9,10 +9,13 @@ import '../../../core/imaging/image_metadata.dart';
 /// Deletes the files (originals and caches) of images that have been
 /// deleted, or whose project has been deleted, for longer than [retention]
 /// (m1-design §4.4). Records are kept: they're small and sync needs them.
+/// An original that is also on Drive becomes "on Drive only"
+/// (`remoteOnly`), so if another device restores the photo, this one
+/// downloads it again (m3-design §6.5).
 class PurgeJob {
   PurgeJob({required this._db, required this._files, required this._clock});
 
-  static const retention = Duration(days: 30);
+  static const retention = Duration(days: 5);
   static const minInterval = Duration(days: 1);
 
   final AppDatabase _db;
@@ -56,6 +59,12 @@ class PurgeJob {
       if (extension != null) {
         await _files.deleteBlob(row.read<String>('blob_id'), extension);
       }
+      await (_db.update(_db.blobSyncs)..where(
+            (b) =>
+                b.blobId.equals(row.read<String>('blob_id')) &
+                b.state.equals('synced'),
+          ))
+          .write(const BlobSyncsCompanion(state: Value('remoteOnly')));
       await _files.deleteCachesFor(row.read<String>('id'));
     }
     return rows.length;
