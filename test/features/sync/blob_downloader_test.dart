@@ -287,14 +287,14 @@ void main() {
       );
     }
 
-    test('deletes photos deleted over 60 days ago from Drive', () async {
+    test('deletes photos deleted over 5 days ago from Drive', () async {
       await local.apply(
         LocalBatch()
           ..records.addAll([
             project('p'),
-            project('gone', deletedAt: today - 61 * day),
-            image('old', 'p', deletedAt: today - 61 * day),
-            image('recent', 'p', deletedAt: today - 59 * day),
+            project('gone', deletedAt: today - 6 * day),
+            image('old', 'p', deletedAt: today - 6 * day),
+            image('recent', 'p', deletedAt: today - 4 * day),
             image('live', 'p'),
             image('inGone', 'gone'),
           ]),
@@ -322,7 +322,7 @@ void main() {
         LocalBatch()
           ..records.addAll([
             project('p'),
-            image('old', 'p', deletedAt: today - 61 * day),
+            image('old', 'p', deletedAt: today - 6 * day),
           ]),
       );
       await onDrive('old');

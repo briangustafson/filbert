@@ -303,18 +303,70 @@ void main() {
         key: value.id,
     };
 
-    test('newest non-reference photo, else the reference', () async {
-      final ref = await importOne('no_exif.jpg', asReference: true);
-      expect(await covers(), {projectId: ref.id}, reason: 'only the reference');
-
+    test('the reference if there is one, else the newest photo', () async {
       tick();
       final older = await importOne('plain.png');
       tick();
-      final newer = await importOne('orientation_1_offset.jpg');
+      // Neither has a capture time, so the later one added is newer.
+      final newer = await importOne('no_exif.jpg');
       expect(await covers(), {projectId: newer.id});
 
-      await images.delete(newer.id);
-      expect(await covers(), {projectId: older.id});
+      await images.setAsReference(projectId, older.id);
+      expect(await covers(), {projectId: older.id}, reason: 'the reference');
+
+      await images.delete(older.id);
+      expect(await covers(), {projectId: newer.id});
+    });
+
+    group('coverOf', () {
+      ProjectImage photo(
+        String id, {
+        DateTime? taken,
+        required DateTime added,
+      }) => ProjectImage(
+        id: id,
+        projectId: 'p',
+        blobId: 'b-$id',
+        mimeType: 'image/jpeg',
+        width: 1,
+        height: 1,
+        origin: ImageOrigin.camera,
+        capturedAt: taken,
+        edits: Edits.none,
+        createdAt: added,
+        updatedAt: added,
+        updatedByDeviceId: 'd',
+      );
+
+      test('the most recently taken, not the most recently added', () {
+        final takenLast = photo(
+          'a',
+          taken: DateTime.utc(2026, 6),
+          added: DateTime.utc(2026, 1),
+        );
+        final addedLast = photo(
+          'b',
+          taken: DateTime.utc(2026, 2),
+          added: DateTime.utc(2026, 11),
+        );
+        expect(coverOf([addedLast, takenLast], null), takenLast);
+      });
+
+      test('a photo without a capture time counts from when it was added', () {
+        final screenshot = photo('a', added: DateTime.utc(2026, 7));
+        final older = photo(
+          'b',
+          taken: DateTime.utc(2026, 6),
+          added: DateTime.utc(2026, 8),
+        );
+        expect(coverOf([older, screenshot], null), screenshot);
+      });
+
+      test('the reference wins', () {
+        final reference = photo('a', added: DateTime.utc(2026, 1));
+        final newer = photo('b', added: DateTime.utc(2026, 11));
+        expect(coverOf([newer, reference], 'a'), reference);
+      });
     });
 
     test('skips deleted projects and projects without photos', () async {

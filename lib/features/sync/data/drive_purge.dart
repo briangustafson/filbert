@@ -6,9 +6,8 @@ import '../../../core/db/app_database.dart';
 import '../../../core/db/app_meta_keys.dart';
 
 /// Deletes from Drive the originals and thumbnails of photos deleted more
-/// than [retention] ago (m3-design §6.5). Local purge is at 30 days, so for
-/// a month after that a device can still restore a photo from Drive. The
-/// records stay; the photo is then "no longer available".
+/// than [retention] ago (m3-design §6.5), the same as the local purge. The
+/// records stay; a photo restored after that is "no longer available".
 class DrivePurge {
   DrivePurge({
     required this._db,
@@ -17,7 +16,7 @@ class DrivePurge {
     required this._clock,
   });
 
-  static const retention = Duration(days: 60);
+  static const retention = Duration(days: 5);
   static const minInterval = Duration(days: 1);
 
   final AppDatabase _db;

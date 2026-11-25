@@ -40,7 +40,7 @@ Gridlines, grayscale, limited colors, compare, export/save-to-gallery, "Save as 
 | Theme | Material 3 with a neutral-gray palette (no saturated accents near images, to avoid skewing color/value perception); light and dark, follows system. |
 | Android minSdk | Flutter default (currently 24); photo picker via the AndroidX backport. |
 | Import | Original bytes stored unchanged; EXIF orientation applied on decode; thumbnails generated locally. |
-| Delete | Confirm dialog, then an **Undo** snackbar. Records are tombstoned; local files are purged 30 days after deletion. |
+| Delete | Confirm dialog, then an **Undo** snackbar. Records are tombstoned; local files are purged 5 days after deletion (30 until 2026-11; shortened between M3 T9 and T10). |
 | Photo menu | Crop/rotate, Undo, Redo, Revert to original, Set as reference, Delete (Auto-crop until M3, now **Find canvas** inside Crop). Later features are added when built, never shown disabled. |
 | Packages | `packages/canvas_detect` created in M1; `packages/sync_engine` deferred to M3. |
 
@@ -81,7 +81,7 @@ Routes use ids only, so they stay valid across renames and can be deep-linked la
   - The empty state has one line per action (**New project**, **Take photo**).
 - Implementation notes (T8):
   - **Take photo** opens the camera first and creates the project only once there is a photo, so cancelling leaves no empty project. If the photo can't be imported, the new project is deleted again and a snackbar says so.
-  - Covers come from one query (`ImageRepository.watchCovers`): per live project, the newest live photo other than the reference, else the live reference.
+  - Covers come from one query (`ImageRepository.watchCovers`): per live project, the live reference photo if there is one, else the most recently taken live photo (by capture time, or when it was added if it has none). Changed between M3 T9 and T10; before, the newest added photo other than the reference was preferred.
 
 ### 3.3 Project screen
 
@@ -323,8 +323,8 @@ The `Edits` Dart class (immutable, `toJson`/`fromJson`) lives in `lib/core/imagi
 
 - Writes go to a temp file and are renamed into place (no partial files).
 - Cache keys include a hash of `edits_json`, so changing an edit naturally invalidates them.
-- **Purge job** (on app start, at most daily): delete blob files and caches for images whose image or project has been tombstoned for over 30 days. Tombstoned *records* are kept (they're small and M3 needs them).
-  - Runs in the background after `runApp`; `app_meta.last_purge_at` enforces the daily limit. Exactly 30 days is not yet purged.
+- **Purge job** (on app start, at most daily): delete blob files and caches for images whose image or project has been tombstoned for over 5 days (30 until shortened between M3 T9 and T10). Tombstoned *records* are kept (they're small and M3 needs them). An original that is also on Drive becomes `remoteOnly` in `blob_sync`, so if another device restores the photo, this one downloads it again (m3-design §6.5).
+  - Runs in the background after `runApp`; `app_meta.last_purge_at` enforces the daily limit. Exactly 5 days is not yet purged.
   - A record restored after its files were purged would have no original. In M1 the only restore is the 6-second Undo, so this can't happen; M3 must handle it (e.g. re-download from Drive, or refuse restore).
 
 ---
@@ -485,7 +485,7 @@ When applying an auto-crop:
 | Data layer (`ProjectRepository`, `ImageRepository`) | Create/rename/delete/restore, default names and numbering, reference pointer rules (remove/replace keeps image), tombstones exclude records from watches |
 | Undo/redo | Push, undo, redo, redo-tail discard, 50-entry cap, revert-then-undo |
 | Import | Atomic copy, EXIF orientation dimensions, failure cleans up temp files |
-| Purge | Only purges records tombstoned > 30 days; never purges live data |
+| Purge | Only purges records tombstoned > 5 days; never purges live data; marks originals on Drive as `remoteOnly` |
 | Rendering | Golden tests: axis-aligned crop, straightened crop, perspective quad, quarter turns |
 | Canvas detection | Unit tests for scoring; evaluation run against fixtures |
 | Widgets | Project list (empty/non-empty), project screen reference slot, size picker, crop handles |
